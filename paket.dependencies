@@ -1,0 +1,16 @@
+source https://api.nuget.org/v3/index.json
+
+storage: none
+framework: net6.0
+
+nuget FSharp.Compiler.Service
+nuget FSharp.Analyzers.SDK
+nuget FSharp.Core content: none
+
+nuget JaggerJo.Avalonia.FuncUI
+nuget JaggerJo.Avalonia.FuncUI.DSL
+nuget JaggerJo.Avalonia.FuncUI.Elmish
+
+nuget Avalonia.Desktop
+nuget Avalonia.Diagnostics
+nuget MessagePack.FSharpExtensions

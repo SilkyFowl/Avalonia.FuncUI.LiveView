@@ -1,0 +1,14 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"type": "msbuild",
+			"problemMatcher": [
+				"$msCompile"
+			],
+			"group": "build",
+			"label": "Build: solution",
+			"detail": "Build the Avalonia.FuncUI.LiveView.sln solution using dotnet build"
+		}
+	]
+}
