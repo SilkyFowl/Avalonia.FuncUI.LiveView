@@ -21,12 +21,12 @@ module Counter =
     open Avalonia.FuncUI.DSL
     open Avalonia.Layout
 
-    let view =
+    let view numState =
 
         Component.create (
             "Counter",
             fun ctx ->
-                let state = ctx.usePassed Store.mun
+                let state = ctx.usePassed numState
 
                 DockPanel.create [
                     DockPanel.verticalAlignment VerticalAlignment.Center
@@ -68,4 +68,4 @@ module Counter =
                 ]
         )
 
-Counter.view
+Counter.view Store.num

@@ -6,4 +6,4 @@ open Avalonia.FuncUI
 
 [<RequireQualifiedAccess>]
 module Store =
-    let mun = new State<_> 0
+    let num = new State<_> 0
