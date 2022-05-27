@@ -453,5 +453,9 @@ $RECYCLE.BIN/
 !.vscode/launch.json
 !.vscode/extensions.json
 
+#Paket dependency manager
+.paket/
+paket-files/
+
 dist/
 analyzers/
