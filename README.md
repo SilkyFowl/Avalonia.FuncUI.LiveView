@@ -8,13 +8,13 @@ Live fs/fsx previewer for Avalonia.FuncUI.
 
 [日本語(Javanese language)](README.ja.md)
 
-## これは何？
+## What is this ?
 
 Avalonia.FuncUI.LiveView is an experimental FsAutoComplete extension that aims to provide a real-time preview of the UI of Avalonia.FuncUI.
 Analyzers.SDK, it displays a real-time preview of the content of the F# file you are editing in the editor.
 **No need to save the file to update the preview.**
 
-## 使い方
+## How to use
 
 > **Warning**
 > Avalonia.FuncUI.LiveView is incomplete. It has not been fully tested and is not intended for use in a production environment. Please use this tool at your own risk.
