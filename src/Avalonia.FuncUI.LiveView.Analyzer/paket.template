@@ -1,0 +1,5 @@
+type project
+id Avalonia.FuncUI.LiveView.Analyzer
+version 0.0.1-alpha
+authors SilkyFowl
+files bin/Release/net6.0/publish ==> lib/net6.0
