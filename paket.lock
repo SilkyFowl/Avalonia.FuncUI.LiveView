@@ -361,7 +361,7 @@ NUGET
       System.Reflection.Extensions (>= 4.3)
       System.Resources.ResourceManager (>= 4.3)
       System.Runtime (>= 4.3)
-    System.Memory (4.5.4)
+    System.Memory (4.5.5)
     System.Net.Http (4.3.4)
       Microsoft.NETCore.Platforms (>= 1.1.1)
       runtime.native.System (>= 4.3)

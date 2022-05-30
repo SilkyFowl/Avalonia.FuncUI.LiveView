@@ -36,7 +36,7 @@ module internal Msg =
         MessagePackSerializer.Deserialize<Msg>(&buff, options)
 
 
-module internal Server =
+module Server =
 
     /// クライアントへのデータ送信の失敗による例外なのかを判定するアクティブパターン。
     let inline (|SerializedStreamError|_|) (ex: exn) =
@@ -96,16 +96,14 @@ module internal Server =
             do! acceptTcpClientAsync listener loop
         }
 
+    let init ipAddress port =
+        new FuncUiAnalyzer.Server(body ipAddress port)
 
-type Server(ipAddress, port, cts: CancellationTokenSource) =
-    let actor = MailboxProcessor.Start(Server.body ipAddress port cts.Token, cts.Token)
-
-    member _.Post = actor.Post
 
 open System.Net.NetworkInformation
 
 module Client =
-    let internal isActiveTcpListener ipAddredd port =
+    let isActiveTcpListener ipAddredd port =
         IPGlobalProperties
             .GetIPGlobalProperties()
             .GetActiveTcpListeners()
@@ -114,7 +112,7 @@ module Client =
 
     /// `FuncUiAnalyzer`への接続が成功するまで`ConnectAsync`を行う。
     /// `SocketException`以外のエラーになった場合は中断。
-    let internal tryConnectAsync (log: Logger) retryMilliseconds address port (client: TcpClient) =
+    let tryConnectAsync (log: Logger) retryMilliseconds address port (client: TcpClient) =
         task {
             let mutable hasConnedted = false
 
@@ -130,7 +128,7 @@ module Client =
 
 
     /// `FuncUiAnalyzer`からデータを購読するためのクライアント。
-    let initClient (log: Logger) address port (setEvalText: string -> unit) =
+    let init (log: Logger) address port (setEvalText: string -> unit) =
         let cts = new CancellationTokenSource()
 
         let token = cts.Token

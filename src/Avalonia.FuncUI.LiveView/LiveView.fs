@@ -20,19 +20,9 @@ module StateStore =
     open System.Text.RegularExpressions
     let private fsiSession = FsiSession.create ()
 
-    /// この文字列が含まれていたらEvalする。
-    [<Literal>]
-    let MatchText = "//#funcuianalyzer"
-
-    /// Evalするかを判定する。
-    let isCollectText text =
-        not <| String.IsNullOrEmpty text
-        && Regex.IsMatch(text, MatchText)
-
     /// `state`の情報に基づいてEvalする。
     let evalInteraction state =
         FsiSession.evalInteraction
-            isCollectText
             fsiSession
             state.Status.Set
             state.EvalText
@@ -48,7 +38,6 @@ module StateStore =
     let init () =
         let initText =
             $"""
-{MatchText}
 module Counter =
     open Avalonia.FuncUI
     open Avalonia.Controls
@@ -215,12 +204,11 @@ module LiveView =
 
 type LiveViewWindow() =
     inherit HostWindow(Title = "LiveView", Width = 800, Height = 600)
-    // open Ava
     /// `Interactive`のStore。
     /// ※本来、Storeはアプリケーション一つだけであるのが望ましい。
     let shared = StateStore.init ()
 
     let client =
-        Client.initClient shared.Status.Set Settings.iPAddress Settings.port shared.EvalText.Set
+        Client.init shared.Status.Set Settings.iPAddress Settings.port shared.EvalText.Set
 
     do base.Content <- LiveView.view shared client

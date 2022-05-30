@@ -57,7 +57,6 @@ open Avalonia.FuncUI.VirtualDom
 
 /// Evalを行う。
 let evalInteraction
-    isCollectText
     (fsiSession: FsiEvaluationSession)
     (log: Logger)
     (evalText: IWritable<string>)
@@ -66,29 +65,25 @@ let evalInteraction
     =
     let time = DateTime.Now.ToString "T"
 
-    if isCollectText evalText.Current then
-        let res, warnings = fsiSession.EvalInteractionNonThrowing evalText.Current
+    let res, warnings = fsiSession.EvalInteractionNonThrowing evalText.Current
 
-        warnings
-        |> Array.map (fun w -> box $"Warning {w.Message} at {w.StartLine},{w.StartColumn}")
+    warnings
+    |> Array.map (fun w -> box $"Warning {w.Message} at {w.StartLine},{w.StartColumn}")
+    |> evalWarings.Set
+
+    match res with
+    | Choice1Of2 (Some value) ->
+
+        (LogInfo >> log) $"{time} Eval Success."
+
+        match value.ReflectionValue with
+        | :? Types.IView as view ->
+            fun _ -> VirtualDom.create view |> evalResult.Set
+            |> Avalonia.Threading.Dispatcher.UIThread.Post
+        | other -> other |> evalResult.Set
+    | Choice1Of2 None -> (LogError >> log) $"{time} Null or no result."
+    | Choice2Of2 (exn: exn) ->
+        (LogError >> log) $"{time} Eval Failed."
+
+        [| box $"exception %s{exn.Message}" |]
         |> evalWarings.Set
-
-        match res with
-        | Choice1Of2 (Some value) ->
-
-            (LogInfo >> log) $"{time} Eval Success."
-
-            match value.ReflectionValue with
-            | :? Types.IView as view ->
-                fun _ -> VirtualDom.create view |> evalResult.Set
-                |> Avalonia.Threading.Dispatcher.UIThread.Post
-            | other -> other |> evalResult.Set
-        | Choice1Of2 None -> (LogError >> log) $"{time} Null or no result."
-        | Choice2Of2 (exn: exn) ->
-            (LogError >> log) $"{time} Eval Failed."
-
-            [| box $"exception %s{exn.Message}" |]
-            |> evalWarings.Set
-    else
-        [| box "not collect file..." |] |> evalWarings.Set
-        (LogError >> log) $"{time} no collect file.."

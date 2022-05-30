@@ -5,6 +5,7 @@
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="Library.fsi" />
     <Compile Include="Library.fs" />
   </ItemGroup>
   <ItemGroup>

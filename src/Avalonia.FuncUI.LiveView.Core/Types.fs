@@ -10,7 +10,19 @@ type LogMessage =
 type Logger = LogMessage -> unit
 
 module FuncUiAnalyzer =
+    open System
+    open System.Threading
+
     type Post = Msg -> unit
+
+    type Server(body) =
+        let cts = new CancellationTokenSource()
+        let actor = MailboxProcessor<Msg>.Start (body cts.Token, cts.Token)
+        member _.Post = actor.Post
+        member _.Dispose() = cts.Dispose()
+
+        interface IDisposable with
+            member this.Dispose() = this.Dispose()
 
 module FuncUiLiveView =
     type Receive = unit -> Msg
