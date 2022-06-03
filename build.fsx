@@ -1,3 +1,4 @@
+#if FAKE
 #r "paket:
 nuget Fake.Core.ReleaseNotes
 nuget Fake.DotNet.Cli
@@ -5,6 +6,7 @@ nuget Fake.DotNet.Paket
 nuget Fake.IO.FileSystem
 nuget Fake.IO.Zip
 nuget Fake.Core.Target //"
+#endif
 #load ".fake/build.fsx/intellisense.fsx"
 
 open Fake.Core

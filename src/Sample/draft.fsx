@@ -31,6 +31,7 @@ module Counter =
                 DockPanel.create [
                     DockPanel.verticalAlignment VerticalAlignment.Center
                     DockPanel.horizontalAlignment HorizontalAlignment.Center
+                    
                     DockPanel.children [
                         Button.create [
                             Button.width 64

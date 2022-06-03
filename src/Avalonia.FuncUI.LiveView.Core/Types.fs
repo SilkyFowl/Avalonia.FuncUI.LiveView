@@ -22,7 +22,8 @@ module FuncUiAnalyzer =
         member _.Dispose() = cts.Dispose()
 
         interface IDisposable with
-            member this.Dispose() = this.Dispose()
+            member this.Dispose() =
+                this.Dispose()
 
 module FuncUiLiveView =
     type Receive = unit -> Msg
