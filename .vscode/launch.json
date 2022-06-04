@@ -21,9 +21,19 @@
             }
         },
         {
-            "name": ".NET Core Attach",
+            "name": "test",
             "type": "coreclr",
-            "request": "attach"
-        }
+            "request": "launch",
+            "program": "${workspaceFolder}/src/Sample/bin/Debug/net6.0/Sample.dll",
+            "args": [],
+            "cwd": "${workspaceFolder}",
+            "console": "internalConsole",
+            "stopAtEntry": false,
+            "linux": {
+                "env": {
+                    "LANG": "en_US.UTF-8"
+                }
+            }
+        },
     ]
 }
