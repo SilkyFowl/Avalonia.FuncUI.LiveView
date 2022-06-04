@@ -1,6 +1,7 @@
 module Draft.AnalysisDraft
 
-#r "nuget: FSharp.Compiler.Service"
+#I "tests/Avalonia.FuncUI.LiveView.Core.Tests/bin/Debug/net6.0"
+#r "FSharp.Compiler.Service.dll"
 
 open System
 open System.IO
@@ -12,12 +13,87 @@ open FSharp.Compiler.Text
 // Create an interactive checker instance
 let checker: FSharpChecker = FSharpChecker.Create(keepAssemblyContents = true)
 
+let references =
+    let rootProjAsm = "Avalonia.FuncUI.LiveView.Core.Tests.dll"
+
+    let asmDirctoryPath =
+        Path.Combine [|
+            __SOURCE_DIRECTORY__
+            "tests"
+            "Avalonia.FuncUI.LiveView.Core.Tests"
+            "bin"
+            "Debug"
+            "net6.0"
+        |]
+
+    let getDeps asmName =
+
+        let asm =
+            Path.Combine (asmDirctoryPath,asmName)
+            |> Reflection.Assembly.LoadFile
+
+        asm.GetReferencedAssemblies()
+        |> Seq.map (fun asm -> $"{asm.Name}.dll")
+        |> Seq.insertAt 0 asmName
+
+    let deps =
+        seq {
+            rootProjAsm
+            "Avalonia.dll"
+            "Avalonia.Desktop.dll"
+            "Avalonia.Diagnostics.dll"
+            "Avalonia.FuncUI.dll"
+            "Avalonia.FuncUI.DSL.dll"
+            "Avalonia.FuncUI.Elmish.dll"
+        }
+        |> Seq.map getDeps
+        |> Seq.concat
+        |> Seq.sort
+        |> Seq.distinct
+        |> Seq.filter (fun lib -> Path.Combine(asmDirctoryPath, lib) |> File.Exists)
+
+    deps
+    |> Seq.map (fun p -> $"-r:{Path.GetFileName p}")
+    |> Seq.append (Seq.singleton $"-r:{rootProjAsm}")
+    |> Seq.append (Seq.singleton $"-I:{asmDirctoryPath}")
+    |> Seq.toArray
+
+open FSharp.Compiler.Interactive.Shell
+let createSession() =
+    let argv = Environment.GetCommandLineArgs()
+    let sbOut = new Text.StringBuilder()
+    let sbErr = new Text.StringBuilder()
+    let inStream = new StringReader("")
+    let outStream = new StringWriter(sbOut)
+    let errStream = new StringWriter(sbErr)
+    let fsiConfig = FsiEvaluationSession.GetDefaultConfiguration()
+    FsiEvaluationSession.Create(
+        fsiConfig,
+        [| yield "fsi.exe"
+           yield! argv
+           yield "--noninteractive"
+           yield "--nologo"
+           yield "--gui-"
+           yield "--debug+"
+           // 参照が F# インタラクティブ プロセスによってロックされないようにする。
+           yield "--shadowcopyreferences+"
+        //    yield "-d:PREVIEW"
+           yield! references |],
+        inStream,
+        outStream,
+        errStream
+    )
 let parseAndCheckSingleFile (input) =
-    let file = Path.ChangeExtension(System.IO.Path.GetTempFileName(), "fsx")
+    let file = Path.ChangeExtension(Path.GetTempFileName(), "fsx")
     File.WriteAllText(file, input)
     // Get context representing a stand-alone (script) file
     let projOptions, _errors =
-        checker.GetProjectOptionsFromScript(file, SourceText.ofString input, assumeDotNetFramework = false)
+        checker.GetProjectOptionsFromScript(
+            file,
+            SourceText.ofString input,
+            assumeDotNetFramework = false,
+            otherFlags = references
+        )
         |> Async.RunSynchronously
 
     checker.ParseAndCheckProject(projOptions)
@@ -25,30 +101,19 @@ let parseAndCheckSingleFile (input) =
 
 let input =
     """
-#r "nuget: Avalonia.Desktop"
-#r "nuget: JaggerJo.Avalonia.FuncUI"
-#r "nuget: JaggerJo.Avalonia.FuncUI.DSL"
-#r "nuget: JaggerJo.Avalonia.FuncUI.Elmish"
-
 open System
+open Avalonia.Controls
+open Avalonia.Media
+open Avalonia.Layout
 open Avalonia.FuncUI
 open Avalonia.FuncUI.DSL
-open Avalonia.Controls
-
-[<AttributeUsage(AttributeTargets.Property)>]
-type LivePreviewAttribute () =
-    inherit Attribute()
+open Avalonia.FuncUI.LiveView.Core.Types
 
 [<RequireQualifiedAccess>]
 module Store =
     let num = new State<_> 0
 
 module Counter =
-    open Avalonia.FuncUI
-    open Avalonia.Controls
-    open Avalonia.Media
-    open Avalonia.FuncUI.DSL
-    open Avalonia.Layout
 
     let view numState =
 
@@ -58,7 +123,7 @@ module Counter =
                 let state = ctx.usePassed numState
 
                 Grid.create [
-                    Grid.rowDefinitions "test,Auto"
+                    Grid.rowDefinitions "Auto"
                     Grid.children [
                         TextBlock.create [
                             TextBlock.text "Foo!!"
@@ -75,7 +140,13 @@ module Counter =
     let preview2 =
         let n = 1
         view Store.num
+    [<LivePreview>]
+    let preview3() =
+        DockPanel.create [ ]
       """
 
 let checkProjectResults: FSharpCheckProjectResults = parseAndCheckSingleFile (input)
-let declarations = checkProjectResults.AssemblyContents.ImplementationFiles[1].Declarations
+
+let declarations =
+    checkProjectResults.AssemblyContents.ImplementationFiles[0]
+        .Declarations

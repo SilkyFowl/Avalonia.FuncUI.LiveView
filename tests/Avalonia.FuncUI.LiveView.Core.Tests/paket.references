@@ -1,0 +1,12 @@
+FsUnit.xUnit
+Microsoft.NET.Test.Sdk
+xunit
+xunit.runner.visualstudio
+coverlet.collector
+FSharp.Core
+FSharp.Compiler.Service
+Avalonia.Desktop
+Avalonia.Diagnostics
+JaggerJo.Avalonia.FuncUI
+JaggerJo.Avalonia.FuncUI.DSL
+JaggerJo.Avalonia.FuncUI.Elmish

@@ -6,6 +6,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Types.fs" />
+    <Compile Include="FsiSession.fs" />
     <Compile Include="FuncUIAnalysis.fs" />
   </ItemGroup>
   <Import Project="..\..\.paket\Paket.Restore.targets" />

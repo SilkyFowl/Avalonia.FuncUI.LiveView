@@ -8,6 +8,7 @@ module Sample =
     open Avalonia.Controls
     open Avalonia.Media
     open Avalonia.Layout
+    open Avalonia.FuncUI.LiveView.Core.Types
 
     let view numState =
         Component(fun ctx ->
@@ -52,3 +53,7 @@ module Sample =
                     ]
                 ]
         )
+    
+    [<LivePreview>]
+    let preview =
+        view Store.num

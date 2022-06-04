@@ -1,33 +1,55 @@
 //#funcuianalyzer
 
 #if !PREVIEW
-#r "nuget: Avalonia.Desktop"
-#r "nuget: JaggerJo.Avalonia.FuncUI"
-#r "nuget: JaggerJo.Avalonia.FuncUI.DSL"
-#r "nuget: JaggerJo.Avalonia.FuncUI.Elmish"
-#r "bin/Debug/net6.0/Sample.dll"
+#I "bin/Debug/net6.0"
+#r "Avalonia.Desktop"
+#r "Avalonia.Controls"
+#r "Avalonia.Visuals"
+#r "Avalonia.Input"
+#r "Avalonia.Interactivity"
+#r "Avalonia.Layout"
+#r "Avalonia.Styling"
+#r "Avalonia.Animation"
+#r "Avalonia.Base"
+#r "Avalonia.FuncUI"
+#r "Avalonia.FuncUI.DSL"
+#r "Sample"
+#r "Avalonia.FuncUI.LiveView.Core"
 #endif
 
+open Avalonia.Controls
+open Avalonia.Media
+open Avalonia.Layout
 open Avalonia.FuncUI
 open Avalonia.FuncUI.DSL
-open Avalonia.Controls
+open Avalonia.FuncUI.LiveView.Core.Types
 
 open Sample
 
 module Counter =
-    open Avalonia.FuncUI
-    open Avalonia.Controls
-    open Avalonia.Media
-    open Avalonia.FuncUI.DSL
-    open Avalonia.Layout
+    let f name (content:Types.IView) =
+        Grid.create [
+            Grid.dock Dock.Top
+            Grid.rowDefinitions "Auto,*"
+            Grid.children [
+                TextBlock.create [
+                    TextBlock.row 0
+                    TextBlock.text name
+                ]
+                Border.create [
+                    Border.row 1
+                    Border.child content
+                ]
+            ]
 
+        ]
+    [<LivePreview>]
     let view numState =
-
         Component.create (
             "Counter",
             fun ctx ->
                 let state = ctx.usePassed numState
-
+                
                 DockPanel.create [
                     DockPanel.verticalAlignment VerticalAlignment.Center
                     DockPanel.horizontalAlignment HorizontalAlignment.Center
@@ -68,5 +90,3 @@ module Counter =
                     ]
                 ]
         )
-
-Counter.view Store.num

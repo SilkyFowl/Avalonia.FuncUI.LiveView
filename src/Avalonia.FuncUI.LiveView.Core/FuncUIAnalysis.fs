@@ -4,34 +4,107 @@ open System
 open FSharp.Compiler.Symbols
 open FSharp.Compiler.Symbols.FSharpExprPatterns
 open FSharp.Compiler.Text
-
+open Avalonia.Controls
+open Avalonia.Media
+open Avalonia.Controls.Shapes
+open Avalonia.FuncUI.Types
+open Avalonia.FuncUI.DSL
 
 type FuncUIAnalysisHander =
     { OnLivePreviewFunc: FSharpMemberOrFunctionOrValue -> list<list<FSharpMemberOrFunctionOrValue>> -> unit
-      OnRowDefinitionsCall: range -> FSharpMemberOrFunctionOrValue -> list<FSharpType> -> list<FSharpExpr> -> unit }
+      OnInvalidLivePreviewFunc: FSharpMemberOrFunctionOrValue -> list<list<FSharpMemberOrFunctionOrValue>> -> unit
+      OnInvalidStringCall: range -> FSharpMemberOrFunctionOrValue -> list<FSharpType> -> list<FSharpExpr> -> unit }
 
-let (|RowDefinitionsCall|_|) =
-    function
-    | Call (objExprOpt, memberOrFunc, typeArgs1, typeArgs2, argExprs) when memberOrFunc.DisplayName = "rowDefinitions" ->
-        Some(objExprOpt, memberOrFunc, typeArgs1, typeArgs2, argExprs)
+let (|String|_|) (o: obj) =
+    match o with
+    | :? string as s -> Some s
     | _ -> None
 
-let (|LivePreviewFunc|_|) =
-    function
-    | FSharpImplementationFileDeclaration.MemberOrFunctionOrValue (v, vs, e) ->
-        v.Attributes
-        |> Seq.tryPick (fun attr ->
-            if attr.AttributeType.CompiledName = "LivePreviewAttribute" then
-                Some(v, vs, e)
-            else
-                None)
+let (|FSharpString|_|) t =
+    let stringType = "type Microsoft.FSharp.Core.string"
+
+    if $"{t}" = stringType then
+        Some()
+    else
+        None
+
+let (|StringArgDSLFunc|_|) (controlTypeName) methodName (m: FSharpMemberOrFunctionOrValue) =
+    let signature =
+        "type Microsoft.FSharp.Core.string -> Avalonia.FuncUI.Types.IAttr<'t>"
+
+    match m.FullTypeSafe, m.DeclaringEntity with
+    | Some ty, Some d when
+        $"{ty}" = signature
+        && m.DisplayName = methodName
+        && d.CompiledName = controlTypeName
+        ->
+        Some()
     | _ -> None
 
-let rec visitExpr (memberCallHandler:FuncUIAnalysisHander) (e: FSharpExpr) =
+let (|InvalidStringCall|_|) =
+    function
+    | Call (objExprOpt, memberOrFunc, typeArgs1, typeArgs2, ([ Const (String arg, FSharpString) ] as argExprs)) ->
+        let validate parse (arg: string) =
+            try
+                parse arg |> ignore
+                None
+            with
+            | _ -> Some(objExprOpt, memberOrFunc, typeArgs1, typeArgs2, argExprs)
+
+        match memberOrFunc with
+        | StringArgDSLFunc (nameof Border) (nameof (Border.background: string -> IAttr<'t>))
+        | StringArgDSLFunc (nameof Border) (nameof (Border.borderBrush: string -> IAttr<'t>))
+        | StringArgDSLFunc (nameof SplitView) (nameof (SplitView.paneBackground: string -> IAttr<'t>))
+        | StringArgDSLFunc (nameof TextBlock) (nameof (TextBlock.background: string -> IAttr<'t>))
+        | StringArgDSLFunc (nameof TextBlock) (nameof (TextBlock.foreground: string -> IAttr<'t>))
+        | StringArgDSLFunc (nameof TextBox) (nameof (TextBox.selectionBrush: string -> IAttr<'t>))
+        | StringArgDSLFunc (nameof TextBox) (nameof (TextBox.selectionForegroundBrush: string -> IAttr<'t>))
+        | StringArgDSLFunc (nameof TextBox) (nameof (TextBox.caretBrush: string -> IAttr<'t>))
+        | StringArgDSLFunc (nameof TickBar) (nameof (TickBar.fill: string -> IAttr<'t>))
+        | StringArgDSLFunc (nameof Panel) (nameof (Panel.background: string -> IAttr<'t>))
+        | StringArgDSLFunc (nameof Calendar) (nameof (Calendar.headerBackground: string -> IAttr<'t>))
+        | StringArgDSLFunc (nameof Shape) (nameof (Shape.fill: string -> IAttr<'t>))
+        | StringArgDSLFunc (nameof Shape) (nameof (Shape.stroke: string -> IAttr<'t>)) -> validate Color.Parse arg
+        | StringArgDSLFunc (nameof Grid) (nameof (Grid.columnDefinitions: string -> IAttr<'t>)) ->
+            validate ColumnDefinitions.Parse arg
+        | StringArgDSLFunc (nameof Grid) (nameof (Grid.rowDefinitions: string -> IAttr<'t>)) ->
+            validate RowDefinitions.Parse arg
+        | StringArgDSLFunc (nameof Path) (nameof (Path.data: string -> IAttr<'t>)) -> validate Geometry.Parse arg
+        | _ -> None
+    | _ -> None
+
+let (|LivePreviewFunc|_|) m =
+    let hasInterface name (ty: FSharpType) =
+        ty.AllInterfaces
+        |> Seq.exists (fun ty -> $"{ty}" = name)
+
+    let isLiveViewSignatue (m: FSharpMemberOrFunctionOrValue) =
+        match m.FullTypeSafe with
+        | None -> false
+        | Some ty ->
+            let args = ty.GenericArguments
+
+            args.Count = 2
+            && $"{args[0]}" = "type Microsoft.FSharp.Core.unit"
+            && hasInterface "type Avalonia.FuncUI.Types.IView" args[1]
+
+    let hasLivePreviewAttribute (m: FSharpMemberOrFunctionOrValue) =
+        m.Attributes
+        |> Seq.exists (fun attr -> attr.AttributeType.CompiledName = "LivePreviewAttribute")
+
+    match m with
+    | FSharpImplementationFileDeclaration.MemberOrFunctionOrValue (v, vs, e) when hasLivePreviewAttribute v ->
+        if isLiveViewSignatue v then
+            Ok(v, vs, e) |> Some
+        else
+            Error(v, vs, e) |> Some
+    | _ -> None
+
+let rec visitExpr (memberCallHandler: FuncUIAnalysisHander) (e: FSharpExpr) =
     match e with
     // FuncUI Analysis
-    | RowDefinitionsCall (objExprOpt, memberOrFunc, typeArgs1, typeArgs2, argExprs) as call ->
-        memberCallHandler.OnRowDefinitionsCall e.Range memberOrFunc typeArgs2 argExprs
+    | InvalidStringCall (objExprOpt, memberOrFunc, typeArgs1, typeArgs2, argExprs) as call ->
+        memberCallHandler.OnInvalidStringCall e.Range memberOrFunc typeArgs2 argExprs
         visitObjArg memberCallHandler objExprOpt
         visitExprs memberCallHandler argExprs
 
@@ -61,8 +134,6 @@ let rec visitExpr (memberCallHandler:FuncUIAnalysisHander) (e: FSharpExpr) =
         visitExpr memberCallHandler elseExpr
     | Lambda (lambdaVar, bodyExpr) -> visitExpr memberCallHandler bodyExpr
     | Let ((bindingVar, bindingExpr, debugPointAtBinding), bodyExpr) ->
-        printfn $"bindingVar: %A{bindingVar}"
-
         visitExpr memberCallHandler bindingExpr
         visitExpr memberCallHandler bodyExpr
     | LetRec (recursiveBindings, bodyExpr) ->
@@ -132,11 +203,14 @@ and visitObjArg f objOpt = Option.iter (visitExpr f) objOpt
 
 and visitObjMember f memb = visitExpr f memb.Body
 
-let rec visitDeclaration (f:FuncUIAnalysisHander) d =
+let rec visitDeclaration (f: FuncUIAnalysisHander) d =
     match d with
     // FuncUI Analysis
-    | LivePreviewFunc (v, vs, e) ->
+    | LivePreviewFunc (Ok (v, vs, e)) ->
         f.OnLivePreviewFunc v vs
+        visitExpr f e
+    | LivePreviewFunc (Error (v, vs, e)) ->
+        f.OnInvalidLivePreviewFunc v vs
         visitExpr f e
 
     // Others
