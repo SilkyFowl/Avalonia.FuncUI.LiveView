@@ -1,10 +1,9 @@
 {
     "editor.inlayHints.enabled": "offUnlessPressed",
-    // "FSharp.enableAnalyzers": true,
+    "FSharp.enableAnalyzers": true,
     "FSharp.analyzersPath": [
         "packages/Analyzers",
         "analyzers",
         "localanalyzers"
-    ],
-    "FSharp.fsac.attachDebugger": true
+    ]
 }

@@ -4,7 +4,7 @@ storage: none
 framework: net6.0
 
 nuget coverlet.collector
-nuget FSharp.Compiler.Service
+nuget FSharp.Compiler.Service 41.0.3 // if 41.0.4, Analyzers broken. 
 nuget FSharp.Analyzers.SDK
 nuget FSharp.Core content: none
 nuget FsUnit.xUnit

@@ -51,6 +51,8 @@ Target.create "Build" (fun _ -> DotNet.build id "./Avalonia.FuncUI.LiveView.sln"
 
 Target.create "PackAnalyzer" (fun _ ->
 
+    let templateFilePath = analyzerPath @@ "paket.template"
+
     PaketTemplate.create (fun p ->
         { p with
             TemplateType = PaketTemplate.Project
@@ -62,21 +64,9 @@ Target.create "PackAnalyzer" (fun _ ->
             Authors = authors
             ProjectUrl = Some projectUrl
             Files = [ PaketTemplate.Include("bin" </> "Release" </> "net6.0" </> "publish", "lib" </> "net6.0") ] })
-
-    analyzerPath
-    |> DotNet.pack (fun opts ->
-        { opts with
-            Configuration = DotNet.Release
-            Common = opts.Common
-            MSBuildParams =
-                {opts.MSBuildParams with
-                    Properties =
-                        opts.MSBuildParams.Properties @[
-                            "PackageVersion","0.0.1-alpha"
-                        ]
-                }
-            OutputPath = Some outputPath
-        })
+    
+    ["licenseExpression MIT"]
+    |> File.append templateFilePath
 
     analyzerPath
     |> DotNet.publish (fun opts ->
@@ -84,23 +74,10 @@ Target.create "PackAnalyzer" (fun _ ->
             Configuration = DotNet.Release
             Framework = Some "net6.0" })
 
-    let unzipdPath = outputPath </> analyzerProjName
-    let publishPath = analyzerPath </> "bin" </> "Release" </> "net6.0" </> "publish"
-    let libPath = outputPath </> analyzerProjName </> "lib" </> "net6.0"
-    let nupkg =
-        outputPath
-        |> Directory.findFirstMatchingFile $"{analyzerProjName}.*"
-
-    Zip.unzip unzipdPath nupkg
-    File.delete nupkg
-
-    Shell.deleteDir libPath
-
-    (fun _ -> true)
-    |> Shell.copyDir libPath publishPath
-
-    Zip.zipFile nupkg unzipdPath
-    Shell.deleteDir unzipdPath)
+    Paket.pack (fun p ->
+        { p with
+            ToolType = ToolType.CreateLocalTool()
+            OutputPath = outputPath }))
 
 
 Target.create "ClearLocalAnalyzer" (fun _ ->
