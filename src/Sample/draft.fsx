@@ -1,5 +1,5 @@
 //#funcuianalyzer
-
+module Draft
 #if !PREVIEW
 #I "bin/Debug/net6.0"
 #r "Avalonia.Desktop"
@@ -27,7 +27,7 @@ open Avalonia.FuncUI.LiveView.Core.Types
 open Sample
 
 module Counter =
-    let f name (content:Types.IView) =
+    let f name (content: Types.IView) =
         Grid.create [
             Grid.dock Dock.Top
             Grid.rowDefinitions "Auto,*"
@@ -42,21 +42,25 @@ module Counter =
                 ]
             ]
 
-        ]
-    [<LivePreview>]
+            ]
+
     let view numState =
         Component.create (
             "Counter",
             fun ctx ->
+                let rnd = System.Random()
                 let state = ctx.usePassed numState
-                
+
                 DockPanel.create [
                     DockPanel.verticalAlignment VerticalAlignment.Center
                     DockPanel.horizontalAlignment HorizontalAlignment.Center
-                    
+
                     DockPanel.children [
                         Button.create [
-                            Button.width 64
+                            Button.content "New Button"
+                        ]
+                        Button.create [
+                            Button.width 64 
 
                             Button.horizontalAlignment HorizontalAlignment.Center
                             Button.horizontalContentAlignment HorizontalAlignment.Center
@@ -69,7 +73,7 @@ module Counter =
                             Button.horizontalAlignment HorizontalAlignment.Center
                             Button.horizontalContentAlignment HorizontalAlignment.Center
                             Button.content "-"
-                            Button.onClick (fun _ -> state.Current - 1 |> state.Set)
+                            Button.onClick (fun _ -> state.Current - rnd.Next(1,10) |> state.Set)
                             Button.dock Dock.Bottom
                         ]
                         Button.create [
@@ -77,16 +81,28 @@ module Counter =
                             Button.horizontalAlignment HorizontalAlignment.Center
                             Button.horizontalContentAlignment HorizontalAlignment.Center
                             Button.content "+"
-                            Button.onClick (fun _ -> state.Current + 1 |> state.Set)
+                            Button.onClick (fun _ -> state.Current + 100 |> state.Set)
                             Button.dock Dock.Bottom
                         ]
                         TextBlock.create [
                             TextBlock.dock Dock.Top
                             TextBlock.fontSize 48.0
-                            TextBlock.foreground Brushes.White
+                            TextBlock.foreground "Gray"
                             TextBlock.horizontalAlignment HorizontalAlignment.Center
                             TextBlock.text (string state.Current)
                         ]
                     ]
                 ]
         )
+
+    [<LivePreview>]
+    let preview () =
+        view Store.num
+    [<LivePreview>]
+    let preview2 () =
+        view Store.num
+
+module Memo =
+    [<LivePreview>]
+    let preview () =
+        Counter.view Store.num
