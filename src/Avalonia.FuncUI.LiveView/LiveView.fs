@@ -1,6 +1,7 @@
 ﻿namespace Avalonia.FuncUI.LiveView
 
 open System
+open System.IO
 open Avalonia.Controls
 open Avalonia.Media
 open Avalonia.Layout
@@ -11,10 +12,11 @@ open Avalonia.FuncUI.LiveView.Core.Types
 open Avalonia.FuncUI.LiveView.MessagePack
 
 type StateStore =
-    { EvalText: IWritable<string>
+    { Msg: IWritable<Msg>
       EvalResult: IWritable<obj>
       EvalWarings: IWritable<obj []>
-      Status: IWritable<LogMessage> }
+      Status: IWritable<LogMessage>
+      TempScriptFileInfo: FileInfo }
 
 module StateStore =
     open System.Text.RegularExpressions
@@ -25,7 +27,8 @@ module StateStore =
         FsiSession.evalInteraction
             fsiSession
             state.Status.Set
-            state.EvalText
+            state.TempScriptFileInfo
+            state.Msg.Current
             state.EvalWarings
             state.EvalResult
 
@@ -86,8 +89,6 @@ module Counter =
                 ]
             ]
         )
-
-Counter.view
             """
 
         let initResult =
@@ -98,19 +99,25 @@ Counter.view
             ]
             |> VirtualDom.VirtualDom.create
 
-        { EvalText = new State<_>(initText)
+        { Msg =
+            new State<_> { Content = initText
+                           LivePreviewFuncs =  "Counter.view" }
           EvalResult = new State<_>(box initResult)
           EvalWarings = new State<_>([||])
-          Status = new State<_>(LogInfo "") }
+          Status = new State<_>(LogInfo "")
+          TempScriptFileInfo =
+            Path.ChangeExtension(Path.GetTempFileName(), "fsx")
+            |> FileInfo }
 
 open Avalonia.FuncUI.Hosts
 
 module LiveView =
     let view shared client =
         Component (fun ctx ->
-
             // sharedの購読
-            let evalText = ctx.usePassed (shared.EvalText, false)
+            let evalText =
+                ctx.usePassedRead (shared.Msg |> State.readMap (fun m -> m.LivePreviewFuncs), false)
+
             let evalResult = ctx.usePassed (shared.EvalResult)
             let evalWarnings = ctx.usePassed (shared.EvalWarings)
             let status = ctx.usePassed shared.Status
@@ -156,7 +163,6 @@ module LiveView =
                             TextBox.acceptsReturn true
                             TextBox.textWrapping TextWrapping.Wrap
                             TextBox.text evalText.Current
-                            TextBox.onTextChanged evalText.Set
 
                             if not <| Array.isEmpty evalWarnings.Current then
                                 TextBox.errors evalWarnings.Current
@@ -204,11 +210,12 @@ module LiveView =
 
 type LiveViewWindow() =
     inherit HostWindow(Title = "LiveView", Width = 800, Height = 600)
+
     /// `Interactive`のStore。
     /// ※本来、Storeはアプリケーション一つだけであるのが望ましい。
     let shared = StateStore.init ()
 
     let client =
-        Client.init shared.Status.Set Settings.iPAddress Settings.port shared.EvalText.Set
+        Client.init shared.Status.Set Settings.iPAddress Settings.port shared.Msg.Set
 
     do base.Content <- LiveView.view shared client

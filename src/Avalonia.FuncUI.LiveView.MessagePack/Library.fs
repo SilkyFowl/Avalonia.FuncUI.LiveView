@@ -19,9 +19,13 @@ module Settings =
 
 
 [<MessagePackObject>]
-type Msg = Avalonia.FuncUI.LiveView.Core.Types.Msg
+type MsgPack =
+    { [<Key(0)>]
+      ContentMsg: string
+      [<Key(1)>]
+      LivePreviewFuncsMsg: string }
 
-module internal Msg =
+module internal MsgPack =
 
     let resolver =
         Resolvers.CompositeResolver.Create(FSharpResolver.Instance, StandardResolver.Instance)
@@ -29,11 +33,11 @@ module internal Msg =
     let options = MessagePackSerializerOptions.Standard.WithResolver(resolver)
 
     let serializeAsync (client: TcpClient) token value =
-        MessagePackSerializer.SerializeAsync<Msg>(client.GetStream(), value, options, token)
+        MessagePackSerializer.SerializeAsync<MsgPack>(client.GetStream(), value, options, token)
         |> Async.AwaitTask
 
     let deserialize buff =
-        MessagePackSerializer.Deserialize<Msg>(&buff, options)
+        MessagePackSerializer.Deserialize<MsgPack>(&buff, options)
 
 
 module Server =
@@ -63,10 +67,23 @@ module Server =
 
     /// `serializeAsync`を実行する。
     /// `SerializedStreamError`に該当する例外した場合、復旧処理として`acceptTcpClientAsync`を実行する。
-    let inline trySerializeAsync cont listener client token value =
+    let inline trySerializeAsync
+        cont
+        listener
+        client
+        token
+        { Content = content
+          LivePreviewFuncs = funcs }
+        =
         async {
             try
-                do! Msg.serializeAsync client token value
+                do!
+                    MsgPack.serializeAsync
+                        client
+                        token
+                        { ContentMsg = content
+                          LivePreviewFuncsMsg = funcs }
+
                 return! Choice2Of2 client |> cont
             with
             | SerializedStreamError e -> return! acceptTcpClientAsync listener cont
@@ -128,7 +145,7 @@ module Client =
 
 
     /// `FuncUiAnalyzer`からデータを購読するためのクライアント。
-    let init (log: Logger) address port (setEvalText: string -> unit) =
+    let init (log: Logger) address port onReceive =
         let cts = new CancellationTokenSource()
 
         let token = cts.Token
@@ -146,17 +163,20 @@ module Client =
             use reader = new MessagePackStreamReader(client.GetStream())
 
             while not token.IsCancellationRequested do
+                
                 let! result = reader.ReadAsync token
                 (LogInfo >> log) $"read: {result}"
 
 
                 match ValueOption.ofNullable result with
                 | ValueSome buff ->
-                    let (CodeEdited content) = Msg.deserialize buff
+                    let { ContentMsg = content
+                          LivePreviewFuncsMsg = funcs } =
+                        MsgPack.deserialize buff
 
-                    content
-                    |> String.concat "\n"
-                    |> setEvalText
+                    onReceive
+                        { Content = content
+                          LivePreviewFuncs = funcs }
 
                 | ValueNone -> ()
         }

@@ -79,6 +79,7 @@ let (|LivePreviewFunc|_|) m =
         |> Seq.exists (fun ty -> $"{ty}" = name)
 
     let isLiveViewSignatue (m: FSharpMemberOrFunctionOrValue) =
+
         match m.FullTypeSafe with
         | None -> false
         | Some ty ->

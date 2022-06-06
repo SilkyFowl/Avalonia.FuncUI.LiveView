@@ -5,35 +5,48 @@ module Avalonia.FuncUI.LiveView.FsiSession
 
 open System
 open System.IO
+open type System.Reflection.BindingFlags
+
 open FSharp.Compiler.Interactive.Shell
 open FSharp.Compiler.CodeAnalysis
 open FSharp.Compiler.IO
 
 open Avalonia.FuncUI.LiveView.Core.Types
 
-let create () = Core.FsiSession.create()
+let create () = Core.FsiSession.create ()
 
 open Avalonia.FuncUI
 open Avalonia.FuncUI.VirtualDom
+
+let evalText striptPath value =
+    $"""
+#load "{striptPath}"
+
+{value}    
+    """
 
 /// Evalを行う。
 let evalInteraction
     (fsiSession: FsiEvaluationSession)
     (log: Logger)
-    (evalText: IWritable<string>)
+    (tempFile: FileInfo)
+    ({ Content = content
+       LivePreviewFuncs = funcs })
     (evalWarings: IWritable<_>)
     (evalResult: IWritable<obj>)
     =
     let time = DateTime.Now.ToString "T"
+    File.WriteAllText(tempFile.FullName, content)
 
-    let res, warnings = fsiSession.EvalInteractionNonThrowing evalText.Current
-
-    warnings
-    |> Array.map (fun w -> box $"Warning {w.Message} at {w.StartLine},{w.StartColumn}")
-    |> evalWarings.Set
+    let res, warnings =
+        evalText tempFile.FullName funcs
+        |> fsiSession.EvalInteractionNonThrowing
 
     match res with
     | Choice1Of2 (Some value) ->
+        warnings
+        |> Array.map (fun w -> box $"Warning {w.Message} at {w.StartLine},{w.StartColumn}")
+        |> evalWarings.Set
 
         (LogInfo >> log) $"{time} Eval Success."
 
@@ -46,5 +59,8 @@ let evalInteraction
     | Choice2Of2 (exn: exn) ->
         (LogError >> log) $"{time} Eval Failed."
 
-        [| box $"exception %s{exn.Message}" |]
+        [| yield!
+               warnings
+               |> Array.map (fun w -> box $"Warning {w.Message} at {w.StartLine},{w.StartColumn}")
+           box $"exception %s{exn.Message}" |]
         |> evalWarings.Set
