@@ -121,7 +121,6 @@ let generateLivePreview (assembly: Assembly) =
         DockPanel.lastChildFill false
         DockPanel.children children
     ]
-    |> VirtualDom.create
 
 /// Evalを行う。
 let evalInteraction
@@ -130,7 +129,7 @@ let evalInteraction
     (tempFile: FileInfo)
     { Msg.Content = content }
     (evalWarings: IWritable<_>)
-    (evalResult: IWritable<obj>)
+    (evalResult: IWritable<IView>)
     =
     task {
         let time = DateTime.Now.ToString "T"

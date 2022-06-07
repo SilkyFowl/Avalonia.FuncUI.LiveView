@@ -2,10 +2,12 @@
 
 open System
 open System.IO
+open Avalonia
 open Avalonia.Controls
 open Avalonia.Media
 open Avalonia.Layout
 open Avalonia.FuncUI
+open Avalonia.FuncUI.Types
 open Avalonia.FuncUI.DSL
 
 open Avalonia.FuncUI.LiveView.Core.Types
@@ -13,7 +15,7 @@ open Avalonia.FuncUI.LiveView.MessagePack
 
 type StateStore =
     { Msg: IWritable<Msg>
-      EvalResult: IWritable<obj>
+      EvalResult: IWritable<IView>
       EvalWarings: IWritable<obj []>
       Status: IWritable<LogMessage>
       TempScriptFileInfo: FileInfo }
@@ -92,11 +94,9 @@ module Counter =
                 TextBlock.horizontalAlignment HorizontalAlignment.Center
                 TextBlock.text "Results are displayed here."
             ]
-            |> VirtualDom.VirtualDom.create
 
-        { Msg =
-            new State<_> { Content = initText}
-          EvalResult = new State<_>(box initResult)
+        { Msg = new State<_> { Content = initText }
+          EvalResult = new State<_>(initResult)
           EvalWarings = new State<_>([||])
           Status = new State<_>(LogInfo "")
           TempScriptFileInfo =
@@ -125,8 +125,7 @@ module LiveView =
 
             /// Evalを実行する。
             let evalInteractionAsync _ =
-                StateStore.evalInteraction shared
-                |> ignore
+                StateStore.evalInteraction shared |> ignore
 
             ctx.useEffect (
                 (fun _ ->
@@ -213,4 +212,6 @@ type LiveViewWindow() =
     let client =
         Client.init shared.Status.Set Settings.iPAddress Settings.port shared.Msg.Set
 
-    do base.Content <- LiveView.view shared client
+    do
+        base.Content <- LiveView.view shared client
+        base.AttachDevTools()

@@ -25,9 +25,15 @@ open Avalonia.FuncUI.LiveView.Core.Types
 
 open Sample
 
+/// Script demo
+/// TODO: 更新速度が遅くなる理由を解明、解決する
+/// 今わかること
+/// - view関数にlambda式が混ざると遅くなる。
+///     - このファイルをしばらく編集してから他のファイルに移ったらしばらく固まった
+///       ヒントになるか？
 module Counter =
 
-    let view name attrs numState =
+    let view name attrs fNum numState =
         Component.create (
             name,
             fun ctx ->
@@ -70,7 +76,7 @@ module Counter =
                             TextBlock.fontSize 48.0
                             TextBlock.foreground "Gray"
                             TextBlock.horizontalAlignment HorizontalAlignment.Center
-                            TextBlock.text (string state.Current)
+                            TextBlock.text (fNum state.Current |> string)
                         ]
                     ]
                 ]
@@ -80,14 +86,14 @@ module Counter =
     let preview () =
         view "preview1" [
             Component.background Brushes.DarkRed
-        ] Store.num
+        ] id Store.num
 
     [<LivePreview>]
     let preview2 () =
         Store.num
         |> view "preview2" [
             Component.background Brushes.DarkGreen
-        ]
+        ] id
 
 module Memo =
 
@@ -98,4 +104,4 @@ module Memo =
         Store.num
         |> Counter.view "preview3" [
             Component.background Brushes.DarkBlue
-        ]
+        ] (fun i -> i + 1 )

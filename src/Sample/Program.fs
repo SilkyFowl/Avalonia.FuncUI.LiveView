@@ -17,7 +17,9 @@ type MainWindow() as this =
 
         //this.VisualRoot.VisualRoot.Renderer.DrawFps <- true
         //this.VisualRoot.VisualRoot.Renderer.DrawDirtyRects <- true
-
+#if DEBUG
+        this.AttachDevTools()
+#endif
 
 type App() =
     inherit Application()
