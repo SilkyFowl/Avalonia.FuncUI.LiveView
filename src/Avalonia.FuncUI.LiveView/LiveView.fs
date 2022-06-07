@@ -32,11 +32,6 @@ module StateStore =
             state.EvalWarings
             state.EvalResult
 
-    /// `evalInteraction`の非同期版。
-    let evalInteractionAsync state _ =
-        async { evalInteraction state }
-        |> Async.StartImmediate
-
     /// `StateStore`を初期化する。
     let init () =
         let initText =
@@ -100,8 +95,7 @@ module Counter =
             |> VirtualDom.VirtualDom.create
 
         { Msg =
-            new State<_> { Content = initText
-                           LivePreviewFuncs =  "Counter.view" }
+            new State<_> { Content = initText}
           EvalResult = new State<_>(box initResult)
           EvalWarings = new State<_>([||])
           Status = new State<_>(LogInfo "")
@@ -116,7 +110,7 @@ module LiveView =
         Component (fun ctx ->
             // sharedの購読
             let evalText =
-                ctx.usePassedRead (shared.Msg |> State.readMap (fun m -> m.LivePreviewFuncs), false)
+                ctx.usePassedRead (shared.Msg |> State.readMap (fun m -> m.Content), false)
 
             let evalResult = ctx.usePassed (shared.EvalResult)
             let evalWarnings = ctx.usePassed (shared.EvalWarings)
@@ -131,7 +125,8 @@ module LiveView =
 
             /// Evalを実行する。
             let evalInteractionAsync _ =
-                StateStore.evalInteractionAsync shared ()
+                StateStore.evalInteraction shared
+                |> ignore
 
             ctx.useEffect (
                 (fun _ ->

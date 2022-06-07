@@ -55,7 +55,6 @@ module Sample =
         )
 
 
-
     [<LivePreview>]
     let draft () =
         Component.create (
@@ -79,12 +78,18 @@ module Sample =
             fun ctx ->
                 let num = ctx.usePassed Store.num
 
-                TextBlock.create [
-                    TextBlock.foreground "White"
-                    TextBlock.horizontalAlignment HorizontalAlignment.Center
-                    TextBlock.verticalAlignment VerticalAlignment.Center
-                    TextBlock.fontSize 30
-                    TextBlock.text $"Bar: {num.Current * 2}"
+                Border.create [
+                    Border.borderThickness 0.5
+                    Border.borderBrush Brushes.White
+
+                    TextBlock.create [
+                        TextBlock.foreground "White"
+                        TextBlock.horizontalAlignment HorizontalAlignment.Center
+                        TextBlock.verticalAlignment VerticalAlignment.Center
+                        TextBlock.fontSize 30
+                        TextBlock.text $"Bar: {num.Current * 3}"
+                    ]
+                    |>Border.child 
                 ]
         )
 

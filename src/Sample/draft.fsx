@@ -1,4 +1,3 @@
-//#funcuianalyzer
 module Draft
 #if !PREVIEW
 #I "bin/Debug/net6.0"
@@ -27,29 +26,15 @@ open Avalonia.FuncUI.LiveView.Core.Types
 open Sample
 
 module Counter =
-    let f name (content: Types.IView) =
-        Grid.create [
-            Grid.dock Dock.Top
-            Grid.rowDefinitions "Auto,*"
-            Grid.children [
-                TextBlock.create [
-                    TextBlock.row 0
-                    TextBlock.text name
-                ]
-                Border.create [
-                    Border.row 1
-                    Border.child content
-                ]
-            ]
 
-            ]
-
-    let view numState =
+    let view name attrs numState =
         Component.create (
-            "Counter",
+            name,
             fun ctx ->
                 let rnd = System.Random()
                 let state = ctx.usePassed numState
+
+                ctx.attrs attrs
 
                 DockPanel.create [
                     DockPanel.verticalAlignment VerticalAlignment.Center
@@ -57,11 +42,7 @@ module Counter =
 
                     DockPanel.children [
                         Button.create [
-                            Button.content "New Button"
-                        ]
-                        Button.create [
-                            Button.width 64 
-
+                            Button.width 64
                             Button.horizontalAlignment HorizontalAlignment.Center
                             Button.horizontalContentAlignment HorizontalAlignment.Center
                             Button.content "Reset"
@@ -81,7 +62,7 @@ module Counter =
                             Button.horizontalAlignment HorizontalAlignment.Center
                             Button.horizontalContentAlignment HorizontalAlignment.Center
                             Button.content "+"
-                            Button.onClick (fun _ -> state.Current + 100 |> state.Set)
+                            Button.onClick (fun _ -> state.Current + 1 |> state.Set)
                             Button.dock Dock.Bottom
                         ]
                         TextBlock.create [
@@ -97,12 +78,24 @@ module Counter =
 
     [<LivePreview>]
     let preview () =
-        view Store.num
+        view "preview1" [
+            Component.background Brushes.DarkRed
+        ] Store.num
+
     [<LivePreview>]
     let preview2 () =
-        view Store.num
+        Store.num
+        |> view "preview2" [
+            Component.background Brushes.DarkGreen
+        ]
 
 module Memo =
+
     [<LivePreview>]
     let preview () =
-        Counter.view Store.num
+        printfn "called Memo.preview"
+
+        Store.num
+        |> Counter.view "preview3" [
+            Component.background Brushes.DarkBlue
+        ]

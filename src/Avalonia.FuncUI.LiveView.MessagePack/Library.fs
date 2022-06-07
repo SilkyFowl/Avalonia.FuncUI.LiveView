@@ -21,9 +21,7 @@ module Settings =
 [<MessagePackObject>]
 type MsgPack =
     { [<Key(0)>]
-      ContentMsg: string
-      [<Key(1)>]
-      LivePreviewFuncsMsg: string }
+      ContentMsg: string }
 
 module internal MsgPack =
 
@@ -67,22 +65,10 @@ module Server =
 
     /// `serializeAsync`を実行する。
     /// `SerializedStreamError`に該当する例外した場合、復旧処理として`acceptTcpClientAsync`を実行する。
-    let inline trySerializeAsync
-        cont
-        listener
-        client
-        token
-        { Content = content
-          LivePreviewFuncs = funcs }
-        =
+    let inline trySerializeAsync cont listener client token { Content = content } =
         async {
             try
-                do!
-                    MsgPack.serializeAsync
-                        client
-                        token
-                        { ContentMsg = content
-                          LivePreviewFuncsMsg = funcs }
+                do! MsgPack.serializeAsync client token { ContentMsg = content }
 
                 return! Choice2Of2 client |> cont
             with
@@ -163,20 +149,16 @@ module Client =
             use reader = new MessagePackStreamReader(client.GetStream())
 
             while not token.IsCancellationRequested do
-                
+
                 let! result = reader.ReadAsync token
                 (LogInfo >> log) $"read: {result}"
 
 
                 match ValueOption.ofNullable result with
                 | ValueSome buff ->
-                    let { ContentMsg = content
-                          LivePreviewFuncsMsg = funcs } =
-                        MsgPack.deserialize buff
+                    let { ContentMsg = content } = MsgPack.deserialize buff
 
-                    onReceive
-                        { Content = content
-                          LivePreviewFuncs = funcs }
+                    onReceive { Content = content }
 
                 | ValueNone -> ()
         }

@@ -44,14 +44,10 @@ let funcUiAnalyzer: Analyzer =
                               Range = range
                               Fixes = [] } }
         )
-        
+
         if Seq.isEmpty errorMessages
            && livePreviewFuncs.Count > 0 then
-            { Content = String.concat Environment.NewLine ctx.Content
-              LivePreviewFuncs =
-                Seq.toArray livePreviewFuncs
-                |> LivePreviewFuncs
-                |> LivePreviewFuncs.toPreviewEvalText }
+            { Content = String.concat Environment.NewLine ctx.Content }
             |> server.Post
 
         Seq.toList errorMessages

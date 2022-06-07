@@ -10,9 +10,11 @@
 #r "Avalonia.Styling.dll"
 
 #load "draft-init.fsx"
+#load "src/Avalonia.FuncUI.LiveView.Core/Types.fs"
 #load "src/Avalonia.FuncUI.LiveView.Core/FuncUIAnalysis.fs"
 
 open Avalonia.FuncUI.LiveView
+open Avalonia.FuncUI.LiveView.Core.Types
 
 #load "draft-input.fsx"
 let t = ResizeArray()
@@ -44,23 +46,64 @@ AnalysisDraft.declarations
                     $"{nameof argExprs}: {argExprs}" ]
                   |> List.iter (printfn "%s") }
 )
+
 t[0].DisplayName
 
-let session = AnalysisDraft.createSession()
+let session = AnalysisDraft.createSession ()
 session.DynamicAssemblies.Length
 session.EvalExpression "10"
-let r,w  = session.EvalScriptNonThrowing "src/Sample/draft.fsx"
-let r',w'  = session.EvalInteractionNonThrowing "Draft.Counter.view"
+let r, w = session.EvalScriptNonThrowing "src/Sample/draft.fsx"
+let r', w' = session.EvalInteractionNonThrowing "Draft.Counter.view"
 r'
-session.DynamicAssemblies[0]
-session.CurrentPartialAssemblySignature.Entities
-session.DynamicAssemblies[0].GetTypes()
-|> Seq.iter (fun t ->
-  t.FullName |> printfn "%s")
+open type System.Reflection.BindingFlags
+
+let ty =
+    session.DynamicAssemblies
+    |> Array.last
+    |> (fun asm -> asm.GetExportedTypes())
+    |> Array.map (fun ty -> ty, ty.GetMethods(Public ||| Static))
+
+open System
+open System.Reflection
+let t', ms = ty[2]
+let m = ms[2]
+let rec getFriendlyName (ty: System.Type) path =
+    match ty.DeclaringType with
+    | null -> [ ty.Name ]
+    | ty' -> ty.Name :: (path |> getFriendlyName ty')
+
+// fullname
+m
+m.DeclaringType
+|> Seq.unfold (function
+    | null -> None
+    | ty -> Some(ty.Name, ty.DeclaringType))
+|> Seq.append [$"{m.Name}()"]
+|> Seq.rev
+|> String.concat "."
+open System
+m.ReturnType
+
+m.GetParameters()
+|> Array.isEmpty
+
+getFriendlyName ms[2].DeclaringType []
+ms[2].DeclaringType.DeclaringType.DeclaringType
+$"{ms[2]}"
+ms[ 2 ].Invoke((), [||]) :?> Avalonia.FuncUI.Types.IView
+
+session.CurrentPartialAssemblySignature.Entities[0]
+    .NestedEntities[1]
+    .MembersFunctionsAndValues[0]
+
+session.DynamicAssemblies[ 0 ].GetTypes()
+|> Seq.iter (fun t -> t.FullName |> printfn "%s")
+
 System
     .Reflection
     .Assembly
     .Load("Avalonia.FuncUI")
     .GetReferencedAssemblies()
 |> Seq.iter (fun asm -> printfn $"{asm.Name}")
+
 $"{t[0]}"
