@@ -64,7 +64,7 @@ let create () =
     )
 
 
-let generateLivePreview (assembly: Assembly) =
+let getLivePreviews (assembly: Assembly) =
 
     let isLivePreviewFunc (m: MethodInfo) =
         typeof<LivePreviewAttribute> |> m.IsDefined
@@ -79,48 +79,30 @@ let generateLivePreview (assembly: Assembly) =
         |> Seq.rev
         |> String.concat "."
 
-    let childView attrs name contentFunc : IView =
-        Grid.create [
-            yield! attrs
-            Grid.rowDefinitions "Auto,*"
-            Grid.children [
-                TextBlock.create [
-                    TextBlock.row 0
-                    TextBlock.text name
-                ]
-                Border.create [
-                    Border.row 1
-                    contentFunc ()
-                ]
-            ]
-        ]
+    assembly.GetExportedTypes()
+    |> Array.map (fun ty ->
+        ty.GetMethods(Public ||| Static)
+        |> Array.choose (fun m ->
+            if isLivePreviewFunc m then
+                let fullName = getFullName m
 
-    let children =
-        assembly.GetExportedTypes()
-        |> Array.map (fun ty ->
-            ty.GetMethods(Public ||| Static)
-            |> Array.choose (fun m ->
-                if isLivePreviewFunc m then
-                    fun () ->
+                let content =
                         match m.Invoke((), [||]) with
-                        | :? IView as view -> Border.child view
-                        | :? IControl as view -> Border.child view
+                        | :? IView as view ->  view
+                        | :? IControl as view ->
+                            ContentControl.create [
+                                ContentControl.content view
+                            ]
                         | other ->
                             TextBlock.create [
                                 TextBlock.text $"%A{other}"
                             ]
-                            |> Border.child
-                    |> childView [ Grid.dock Dock.Top ] (getFullName m)
-                    |> Some
-                else
-                    None))
-        |> Array.concat
-        |> Array.toList
-
-    DockPanel.create [
-        DockPanel.lastChildFill false
-        DockPanel.children children
-    ]
+                        |> VirtualDom.create
+                Some(fullName,content)
+            else
+                None))
+    |> Array.concat
+    |> Array.toList
 
 /// Evalを行う。
 let evalInteraction
@@ -129,10 +111,11 @@ let evalInteraction
     (tempFile: FileInfo)
     { Msg.Content = content }
     (evalWarings: IWritable<_>)
-    (evalResult: IWritable<IView>)
+    (evalResult: IWritable<_>)
     =
     task {
         let time = DateTime.Now.ToString "T"
+        (LogInfo >> log) $"{time} Eval Start..."
         do! File.WriteAllTextAsync(tempFile.FullName, content)
 
         let res, warnings = fsiSession.EvalScriptNonThrowing tempFile.FullName
@@ -146,11 +129,10 @@ let evalInteraction
             let control =
                 fsiSession.DynamicAssemblies
                 |> Array.last
-                |> generateLivePreview
+                |> getLivePreviews
 
-            do!
-                fun () -> evalResult.Set control
-                |> Avalonia.Threading.Dispatcher.UIThread.InvokeAsync
+            evalResult.Set control
+
 
             (LogInfo >> log) $"{time} Eval Success."
         | Choice2Of2 (exn: exn) ->

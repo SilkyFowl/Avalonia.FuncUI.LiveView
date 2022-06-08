@@ -15,13 +15,13 @@ open Avalonia.FuncUI.LiveView.MessagePack
 
 type StateStore =
     { Msg: IWritable<Msg>
-      EvalResult: IWritable<IView>
+      EvalResult: IWritable<list<string * IControl>>
       EvalWarings: IWritable<obj []>
       Status: IWritable<LogMessage>
       TempScriptFileInfo: FileInfo }
 
 module StateStore =
-    open System.Text.RegularExpressions
+    open Avalonia.FuncUI.VirtualDom
     let private fsiSession = FsiSession.create ()
 
     /// `state`の情報に基づいてEvalする。
@@ -94,9 +94,10 @@ module Counter =
                 TextBlock.horizontalAlignment HorizontalAlignment.Center
                 TextBlock.text "Results are displayed here."
             ]
+            |> VirtualDom.create
 
         { Msg = new State<_> { Content = initText }
-          EvalResult = new State<_>(initResult)
+          EvalResult = new State<_>([ "init", initResult ])
           EvalWarings = new State<_>([||])
           Status = new State<_>(LogInfo "")
           TempScriptFileInfo =
@@ -105,12 +106,43 @@ module Counter =
 
 open Avalonia.FuncUI.Hosts
 
+[<AutoOpen>]
+module StyledElement =
+    open Avalonia.Styling
+
+    type StyledElement with
+        /// 参考:
+        static member styles(styleSeq: list<(Selector -> Selector) * list<IAttr<'a>>>) =
+            let styles = Styles()
+
+            for (selector, setters) in styleSeq do
+                let s = Style(fun x -> selector x)
+
+                for attr in setters do
+                    match attr.Property with
+                    | Some p ->
+                        match p.Accessor with
+                        | InstanceProperty x -> failwith "Can't support instance property"
+                        | AvaloniaProperty x -> s.Setters.Add(Setter(x, p.Value))
+                    | None -> ()
+
+                styles.Add s
+
+            StyledElement.styles styles
+
 module LiveView =
+
+    open Avalonia.Styling
+
     let view shared client =
+
         Component (fun ctx ->
+            let buttonBackground =
+                Application.Current.FindResource "ButtonBackground" :?> IBrush
+
             // sharedの購読
             let evalText =
-                ctx.usePassedRead (shared.Msg |> State.readMap (fun m -> m.Content), false)
+                ctx.usePassedRead (shared.Msg |> State.readMap (fun m -> m.Content), true)
 
             let evalResult = ctx.usePassed (shared.EvalResult)
             let evalWarnings = ctx.usePassed (shared.EvalWarings)
@@ -136,7 +168,17 @@ module LiveView =
                 [ EffectTrigger.AfterInit ]
             )
 
+            let rootGridName = "live-preview-root"
+            ctx.attrs [
+                Component.styles [
+                    (fun (x: Selector) -> x.Name(rootGridName).Child()),
+                    [ Layoutable.margin (8, 4)
+                      Layoutable.verticalAlignment VerticalAlignment.Center ]
+                ]
+            ]
+
             Grid.create [
+                Grid.name rootGridName
                 Grid.rowDefinitions "Auto,*,4,*,Auto"
                 Grid.columnDefinitions "Auto,*,Auto"
                 Grid.children [
@@ -168,20 +210,56 @@ module LiveView =
                             GridSplitter.column 0
                             GridSplitter.columnSpan 3
                     ]
-                    ContentControl.create [
+                    ScrollViewer.create [
+                        ScrollViewer.verticalAlignment VerticalAlignment.Top
                         if showEvalText.Current then
-                            Border.row 3
+                            ScrollViewer.row 3
                         else
-                            Border.row 1
-                            Border.rowSpan 3
-                        TextBox.column 0
-                        TextBox.columnSpan 3
-                        TextBox.column 0
-                        ContentControl.content evalResult.Current
+                            ScrollViewer.row 1
+                            ScrollViewer.rowSpan 3
+                        ScrollViewer.column 0
+                        ScrollViewer.columnSpan 3
+                        ScrollViewer.column 0
+                        ScrollViewer.content (
+                            DockPanel.create [
+                                DockPanel.children [
+                                    for (name, content) in evalResult.Current do
+                                        Border.create [
+                                            Border.dock Dock.Top
+                                            Border.borderThickness 2
+                                            Border.borderBrush buttonBackground
+                                            Border.child (
+                                                Grid.create [
+                                                    Grid.rowDefinitions "Auto,Auto,Auto"
+                                                    Grid.children [
+                                                        TextBlock.create [
+                                                            TextBlock.row 0
+                                                            TextBlock.fontSize 20
+                                                            TextBlock.margin 4
+                                                            TextBlock.fontWeight FontWeight.SemiBold
+                                                            TextBlock.text name
+                                                        ]
+                                                        Border.create [
+                                                            Border.row 1
+                                                            Border.height 2
+                                                            Border.background buttonBackground
+                                                        ]
+                                                        Border.create [
+                                                            Border.row 2
+                                                            Border.child content
+                                                        ]
+                                                    ]
+                                                ]
+                                            )
+                                        ]
+                                ]
+                            ]
+                        )
                     ]
                     CheckBox.create [
                         CheckBox.row 4
                         CheckBox.column 0
+                        CheckBox.margin 4
                         CheckBox.content "Auto EvalText"
                         CheckBox.isChecked autoEval.Current
                         CheckBox.onChecked (fun _ -> autoEval.Set true)
