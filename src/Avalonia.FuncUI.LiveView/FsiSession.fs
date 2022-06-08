@@ -116,7 +116,9 @@ let evalInteraction
     task {
         let time = DateTime.Now.ToString "T"
         (LogInfo >> log) $"{time} Eval Start..."
-        do! File.WriteAllTextAsync(tempFile.FullName, content)
+
+        // Fsiの改行コードは、どのOSでも\n固定。
+        do! File.WriteAllTextAsync(tempFile.FullName, content.Replace(Environment.NewLine,"\n"))
 
         let res, warnings = fsiSession.EvalScriptNonThrowing tempFile.FullName
 

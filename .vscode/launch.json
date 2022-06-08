@@ -30,10 +30,12 @@
             "cwd": "${workspaceFolder}",
             "console": "internalConsole",
             "stopAtEntry": false,
+            "env": {
+                "FUNCUI_LIVEPREVIEW": "1"
+            },
             "linux": {
                 "env": {
-                    "LANG": "en_US.UTF-8",
-                    "FUNCUI_LIVEPREVIEW": "1"  
+                    "LANG": "en_US.UTF-8"
                 }
             }
         },
