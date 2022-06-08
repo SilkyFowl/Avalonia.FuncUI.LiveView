@@ -56,7 +56,7 @@ let create () =
            yield "--debug+"
            // 参照が F# インタラクティブ プロセスによってロックされないようにする。
            yield "--shadowcopyreferences+"
-           yield "-d:PREVIEW"
+           yield "-d:LIVEPREVIEW"
            yield! references |],
         inStream,
         outStream,
