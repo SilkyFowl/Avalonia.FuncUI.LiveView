@@ -136,9 +136,10 @@ module LiveView =
 
     let view shared client =
 
+        let buttonBackground =
+            Application.Current.FindResource "ButtonBackground" :?> IBrush
+
         Component (fun ctx ->
-            let buttonBackground =
-                Application.Current.FindResource "ButtonBackground" :?> IBrush
 
             // sharedの購読
             let evalText =
@@ -169,10 +170,11 @@ module LiveView =
             )
 
             let rootGridName = "live-preview-root"
+
             ctx.attrs [
                 Component.styles [
                     (fun (x: Selector) -> x.Name(rootGridName).Child()),
-                    [ Layoutable.margin (8, 4)
+                    [ Layoutable.margin 8
                       Layoutable.verticalAlignment VerticalAlignment.Center ]
                 ]
             ]
@@ -191,7 +193,6 @@ module LiveView =
                         CheckBox.onUnchecked (fun _ -> showEvalText.Set false)
                     ]
                     TextBox.create [
-                        TextBox.isVisible showEvalText.Current
                         if showEvalText.Current then
                             TextBox.row 1
                             TextBox.column 0
@@ -202,21 +203,27 @@ module LiveView =
 
                             if not <| Array.isEmpty evalWarnings.Current then
                                 TextBox.errors evalWarnings.Current
-                    ]
+                        else
+                            TextBox.isVisible false
+                        ]
+
                     GridSplitter.create [
-                        GridSplitter.isVisible showEvalText.Current
                         if showEvalText.Current then
                             GridSplitter.row 2
                             GridSplitter.column 0
                             GridSplitter.columnSpan 3
-                    ]
+                        else
+                            GridSplitter.isVisible false
+                        ]
                     ScrollViewer.create [
-                        ScrollViewer.verticalAlignment VerticalAlignment.Top
                         if showEvalText.Current then
                             ScrollViewer.row 3
                         else
                             ScrollViewer.row 1
                             ScrollViewer.rowSpan 3
+                        ScrollViewer.margin (4, 4)
+                        ScrollViewer.padding (4, 0)
+                        ScrollViewer.verticalAlignment VerticalAlignment.Top
                         ScrollViewer.column 0
                         ScrollViewer.columnSpan 3
                         ScrollViewer.column 0
