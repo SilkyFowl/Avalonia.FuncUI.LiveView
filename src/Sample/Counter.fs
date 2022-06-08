@@ -60,16 +60,19 @@ module Sample =
         Component.create (
             "draft",
             fun ctx ->
-                let num = ctx.usePassed Store.num
+                let num =
+                    Store.num
+                    |> State.readMap (fun i -> 4.0 ** i)
+                    |> ctx.usePassedRead
 
                 TextBlock.create [
-                    TextBlock.foreground Brushes.LightBlue
+                    TextBlock.foreground Brushes.LightSlateGray
+                    TextBlock.fontSize 20
                     TextBlock.horizontalAlignment HorizontalAlignment.Center
                     TextBlock.verticalAlignment VerticalAlignment.Center
-                    TextBlock.text $"Foo{num.Current}"
+                    TextBlock.text $"Foo: {num.Current}"
                 ]
         )
-
 
     [<LivePreview>]
     let draft2 () =
@@ -87,32 +90,53 @@ module Sample =
                         TextBlock.horizontalAlignment HorizontalAlignment.Center
                         TextBlock.verticalAlignment VerticalAlignment.Center
                         TextBlock.fontSize 30
-                        TextBlock.text $"Bar: {num.Current * 3}"
+                        TextBlock.text $"Bar:{num.Current * 3}"
                     ]
-                    |>Border.child 
+                    |> Border.child
                 ]
         )
 
     [<LivePreview>]
-    let draft3 () =
-        counter Store.num
+    let draft3 () = counter Store.num
 
     [<LivePreview>]
-    let dtaft4() =
+    let dtaft4 () =
         Grid.create [
+            Grid.rowDefinitions "Auto,Auto,Auto"
             Grid.columnDefinitions "Auto,*"
+            Grid.margin 8
             Grid.children [
                 TextBlock.create [
-                    TextBlock.column 0
+                    TextBlock.row 0
+                    TextBlock.columnSpan 2
+                    TextBlock.fontSize 20 
+                    TextBlock.fontWeight FontWeight.SemiBold
                     TextBlock.verticalAlignment VerticalAlignment.Center
-                    TextBlock.margin (4,0)
+                    TextBlock.margin (0, 0, 0, 4)
                     TextBlock.text "Hoge"
                 ]
+
+                TextBlock.create [
+                    TextBlock.row 2
+                    TextBlock.column 0
+                    TextBlock.verticalAlignment VerticalAlignment.Center
+                    TextBlock.margin (4, 0)
+                    TextBlock.text "Fuga"
+                ]
                 TextBox.create [
+                    TextBlock.row 2
                     TextBox.column 1
-                    TextBox.margin (4,0)
+                    TextBox.margin (4, 0)
                 ]
             ]
+        ]
+
+    [<LivePreview>]
+    let preview4 () =
+        Expander.create [
+            Expander.header "test"
+            Expander.isExpanded true
+            Expander.content (counter Store.num)
         ]
 
     let cmp =

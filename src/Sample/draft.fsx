@@ -1,5 +1,5 @@
 module Draft
-#if !PREVIEW
+#if !LIVEPREVIEW
 #I "bin/Debug/net6.0"
 #r "Avalonia.Desktop"
 #r "Avalonia.Controls"
@@ -25,12 +25,14 @@ open Avalonia.FuncUI.LiveView.Core.Types
 
 open Sample
 
-/// Script demo
-/// TODO: 更新速度が遅くなる理由を解明、解決する
+// TODO: 更新速度が遅くなる理由を解明、解決する
+/// Script-demo
+/// 
 /// 今わかること
 /// - view関数にlambda式が混ざると遅くなる。
-///     - このファイルをしばらく編集してから他のファイルに移ったらしばらく固まった
+///   - このファイルをしばらく編集してから他のファイルに移ったらしばらく固まった
 ///       ヒントになるか？
+///   - 遅延はデバッグ起動時のみ。通常起動だと実用レベルか。
 module Counter =
 
     let view name attrs fNum numState =
@@ -40,7 +42,7 @@ module Counter =
                 let rnd = System.Random()
                 let state = ctx.usePassed numState
 
-                ctx.attrs attrs
+                ctx.attrs attrs                
 
                 DockPanel.create [
                     DockPanel.verticalAlignment VerticalAlignment.Center
@@ -68,7 +70,7 @@ module Counter =
                             Button.horizontalAlignment HorizontalAlignment.Center
                             Button.horizontalContentAlignment HorizontalAlignment.Center
                             Button.content "+"
-                            Button.onClick (fun _ -> state.Current + 1 |> state.Set)
+                            Button.onClick (fun _ -> state.Current + 10 |> state.Set)
                             Button.dock Dock.Bottom
                         ]
                         TextBlock.create [
@@ -83,13 +85,13 @@ module Counter =
         )
 
     [<LivePreview>]
-    let preview () =
+    let redCounter () =
         view "preview1" [
             Component.background Brushes.DarkRed
         ] id Store.num
 
     [<LivePreview>]
-    let preview2 () =
+    let greenCounter () =
         Store.num
         |> view "preview2" [
             Component.background Brushes.DarkGreen
@@ -98,10 +100,10 @@ module Counter =
 module Memo =
 
     [<LivePreview>]
-    let preview () =
-        printfn "called Memo.preview"
+    let blueCounter () =
+        printfn "called Memo.preview."
 
         Store.num
         |> Counter.view "preview3" [
             Component.background Brushes.DarkBlue
-        ] (fun i -> i + 1 )
+        ] (fun i -> i + 9 )
