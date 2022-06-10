@@ -17,6 +17,7 @@ module Draft
 #endif
 
 open Avalonia.Controls
+open Avalonia.Controls.Shapes
 open Avalonia.Media
 open Avalonia.Layout
 open Avalonia.FuncUI
@@ -27,7 +28,7 @@ open Sample
 
 // TODO: 更新速度が遅くなる理由を解明、解決する
 /// Script-demo
-/// 
+///
 /// 今わかること
 /// - view関数にlambda式が混ざると遅くなる。
 ///   - このファイルをしばらく編集してから他のファイルに移ったらしばらく固まった
@@ -42,7 +43,7 @@ module Counter =
                 let rnd = System.Random()
                 let state = ctx.usePassed numState
 
-                ctx.attrs attrs                
+                ctx.attrs attrs
 
                 DockPanel.create [
                     DockPanel.verticalAlignment VerticalAlignment.Center
@@ -102,8 +103,7 @@ module Memo =
     [<LivePreview>]
     let blueCounter () =
         printfn "called Memo.preview."
-
         Store.num
         |> Counter.view "preview3" [
             Component.background Brushes.DarkBlue
-        ] (fun i -> i + 9 )
+        ] (fun i -> i + 3 )

@@ -1,9 +1,11 @@
 ﻿namespace Sample
 
 module Sample =
+    open Avalonia
     open Avalonia.FuncUI
     open Avalonia.FuncUI.DSL
     open Avalonia.Controls
+    open Avalonia.Controls.Shapes
     open Avalonia.Media
     open Avalonia.Layout
     open Avalonia.FuncUI.LiveView.Core.Types
@@ -56,7 +58,7 @@ module Sample =
 
 
     [<LivePreview>]
-    let draft () =
+    let draft  () =
         Component.create (
             "draft",
             fun ctx ->
@@ -75,7 +77,7 @@ module Sample =
         )
 
     [<LivePreview>]
-    let draft2 () =
+    let draft2 ()  =
         Component.create (
             "draft2",
             fun ctx ->
@@ -84,13 +86,27 @@ module Sample =
                 Border.create [
                     Border.borderThickness 0.5
                     Border.borderBrush Brushes.White
+                    Border.background "Azure"
+                    StackPanel.create [
+                        StackPanel.children [
+                            Canvas.create [
+                                Canvas.children [
+                                    Path.create [
+                                        Path.fill Brushes.DarkCyan
+                                        Path.opacity 0.7
+                                        Path.data $"M 0,0 c 0,0 {50 * (num.Current / 4)},0 50,-50 c 0,0 50,0 50,50 h -50 v 50 l -50,-50 Z"
+                                    ]
+                                ]
+                            ]
+                            TextBlock.create [
+                                TextBlock.foreground "Blue"
 
-                    TextBlock.create [
-                        TextBlock.foreground "White"
-                        TextBlock.horizontalAlignment HorizontalAlignment.Center
-                        TextBlock.verticalAlignment VerticalAlignment.Center
-                        TextBlock.fontSize 30
-                        TextBlock.text $"Bar:{num.Current * 3}"
+                                TextBlock.horizontalAlignment HorizontalAlignment.Left
+                                TextBlock.verticalAlignment VerticalAlignment.Center
+                                TextBlock.fontSize 22
+                                TextBlock.text $"Bar:{num.Current * 3}"
+                            ]
+                        ]
                     ]
                     |> Border.child
                 ]
@@ -109,7 +125,8 @@ module Sample =
                 TextBlock.create [
                     TextBlock.row 0
                     TextBlock.columnSpan 2
-                    TextBlock.fontSize 20 
+                    TextBlock.fontSize 20
+                    TextBlock.foreground Brushes.Red
                     TextBlock.fontWeight FontWeight.SemiBold
                     TextBlock.verticalAlignment VerticalAlignment.Center
                     TextBlock.margin (0, 0, 0, 4)
@@ -134,10 +151,18 @@ module Sample =
     [<LivePreview>]
     let preview4 () =
         Expander.create [
-            Expander.header "test"
+            Expander.header "test..."
             Expander.isExpanded true
             Expander.content (counter Store.num)
         ]
+
+    [<LivePreview>]
+    let previewObj () =
+        [1..10]
+        |> List.map (fun i ->
+            match Store.num.CurrentAny with
+            | :? int as num -> i * num
+            | _ -> i * 3)
 
     let cmp =
         Component (fun ctx ->

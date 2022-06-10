@@ -80,9 +80,6 @@ let (|InvalidStringCall|_|) =
     | _ -> None
 
 let (|LivePreviewFunc|_|) m =
-    let hasInterface name (ty: FSharpType) =
-        ty.AllInterfaces
-        |> Seq.exists (fun ty -> $"{ty}" = name)
 
     let isLiveViewSignatue (m: FSharpMemberOrFunctionOrValue) =
 
@@ -93,7 +90,6 @@ let (|LivePreviewFunc|_|) m =
 
             args.Count = 2
             && $"{args[0]}" = "type Microsoft.FSharp.Core.unit"
-            && hasInterface "type Avalonia.FuncUI.Types.IView" args[1]
 
     let hasLivePreviewAttribute (m: FSharpMemberOrFunctionOrValue) =
         m.Attributes
