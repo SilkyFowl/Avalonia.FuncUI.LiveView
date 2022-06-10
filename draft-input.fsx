@@ -21,6 +21,10 @@ type LivePreviewAttribute () =
 module Store =
     let num = new State<_> 0
 
+type Foo =
+    | Hoge of int
+    | Fuga
+
 module Counter =
     open Avalonia.FuncUI
     open Avalonia.Controls

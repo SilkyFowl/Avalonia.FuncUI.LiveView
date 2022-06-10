@@ -10,6 +10,7 @@ module Sample =
     open Avalonia.Layout
     open Avalonia.FuncUI.LiveView.Core.Types
 
+
     let counter numState =
         Component.create (
             "counter",
@@ -168,3 +169,63 @@ module Sample =
         Component (fun ctx ->
             let num = ctx.usePassed Store.num
             counter num)
+
+/// 参考：https://github.com/fsprojects/Avalonia.FuncUI/blob/master/src/Avalonia.FuncUI.ControlCatalog/Views/Tabs/TextBoxDemo.fs
+module ElmishDemo =
+    open Avalonia.Controls
+    open Avalonia.Layout
+    open Avalonia.FuncUI
+    open Avalonia.FuncUI.DSL
+    open Avalonia.FuncUI.Elmish
+    open Avalonia.FuncUI.Builder
+    open Avalonia.FuncUI.LiveView.Core.Types
+
+    type State = {watermark:string}
+
+    let init = { watermark = ""}
+
+    /// 判別共用体を含むコードをLivePreviewをするためには値を持たないケースを**1つ以上**入れないといけない.
+    /// 参考：https://github.com/dotnet/fsharp/issues/8854
+    type Msg =
+        | SetWatermark of string
+        | UnSetWatermark
+
+
+    let update msg state =
+        match msg with
+        | SetWatermark test -> {state with watermark = test}
+        | UnSetWatermark -> {state with watermark = ""}
+
+    let view state dispatch =
+            StackPanel.create [
+                StackPanel.spacing 10.0
+                StackPanel.children [
+                    TextBox.create [
+                    TextBox.watermark state.watermark
+                    TextBox.horizontalAlignment HorizontalAlignment.Stretch
+                    ]
+
+                    Button.create [
+                        Button.content "Set Watermark"
+                        Button.onClick (fun _ -> dispatch (SetWatermark "test"))
+                        Button.horizontalAlignment HorizontalAlignment.Stretch
+                    ]
+
+                    Button.create [
+                        Button.content "Unset Watermark"
+                        Button.onClick (fun _ -> dispatch (UnSetWatermark ))
+                        Button.horizontalAlignment HorizontalAlignment.Stretch
+                    ]
+                ]
+            ]
+
+    type ElmishHost() as this =
+        inherit Hosts.HostControl()
+        do
+            Elmish.Program.mkSimple(fun () -> init) update view
+            |> Program.withHost this
+            |> Elmish.Program.run
+
+    [<LivePreview>]
+    let preview () =
+        ViewBuilder.Create<ElmishHost>[]

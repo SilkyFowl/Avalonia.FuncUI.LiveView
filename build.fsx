@@ -95,7 +95,7 @@ Target.create "Clean" (fun _ ->
 
 Target.create "Build" (fun _ -> DotNet.build id "./Avalonia.FuncUI.LiveView.sln")
 
-Target.create "PackAnalyzer" (fun _ ->
+Target.create "Pack" (fun _ ->
     for setting in Paket.settings do
 
         setting.templateParams
@@ -138,7 +138,7 @@ Target.create "Default" ignore
 "Clean" ==> "Build" ==> "Default"
 
 "ClearLocalAnalyzer"
-==> "PackAnalyzer"
+==> "Pack"
 ==> "SetLocalAnalyzer"
 
 Target.runOrDefault "Default"

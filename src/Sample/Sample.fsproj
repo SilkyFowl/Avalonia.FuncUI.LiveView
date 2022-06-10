@@ -5,7 +5,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Types.fs" />
-    <Compile Include="Counter.fs" />
+    <Compile Include="Sample.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
   <ItemGroup>

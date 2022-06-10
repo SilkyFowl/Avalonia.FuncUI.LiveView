@@ -103,8 +103,7 @@ module FuncUIAnalysisTests =
     open Avalonia.FuncUI.LiveView
 
     [<Fact>]
-    let ``Should work.`` () =
-        // let
+    let ``should work.`` () =
         let results =
             Helper.runFuncUIAnalysis
                 """
@@ -154,3 +153,59 @@ module Counter =
         results.livePreviewFuncs.Count |> shouldEqual 1
         results.invalidLivePreviewFuncs.Count |> shouldEqual 1
         results.invalidStringCalls.Count |> shouldEqual 1
+
+    let badCodes : obj[] list =
+        [
+            """
+module SingleCaseUnion
+
+type Foo = Foo of int
+            """
+            """
+module MultiCaseUnion
+
+type Bar =
+    | Hoge of int
+    | Fuga of string
+            """
+        ]
+        |> List.map (fun s -> [|box s|])
+
+    [<Theory>]
+    [<MemberData(nameof badCodes)>]
+    let ``wont work if all union case have value`` badCode =
+        let ex =
+            (fun _ -> Helper.runFuncUIAnalysis badCode |> ignore)
+            |> Assert.Throws<exn>
+
+        ex.Message |> shouldContainText "FSharp.Compiler.Service cannot yet return this kind of pattern match at"
+
+    let okCodes : obj[] list =
+        [
+            """
+module SingleCaseUnion
+
+type Foo = Foo
+            """
+            """
+module MultiCaseUnion
+
+type Bar =
+    | Hoge
+    | Fuga of string
+            """
+            """
+module MultiCaseUnion2
+
+type Bar<'t> =
+    | Hoge
+    | Fuga of string
+    | A of {|a:int; b:string; c: bool * string|}
+    | B of 't -> unit
+            """
+        ]
+        |> List.map (fun s -> [|box s|])
+    [<Theory>]
+    [<MemberData(nameof okCodes)>]
+    let ``should work if there is at least one case label with no union value`` okCode =
+        Helper.runFuncUIAnalysis okCode |> ignore

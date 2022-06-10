@@ -1,7 +1,10 @@
 // #r "nuget: Avalonia.Desktop"
 // #r "nuget: FSharp.Compiler.Service"
 #I "tests/Avalonia.FuncUI.LiveView.Core.Tests/bin/Debug/net6.0"
+#r "Avalonia"
+#r "Avalonia.Base"
 #r "Avalonia.Desktop"
+#r "Avalonia.Skia"
 #r "Avalonia.Controls"
 #r "Avalonia.Visuals"
 #r "Avalonia.FuncUI"
@@ -21,8 +24,32 @@ let t = ResizeArray()
 open Draft
 AnalysisDraft.references
 AnalysisDraft.checkProjectResults
+let d = AnalysisDraft.parseAndCheckSingleFile InputData.input
+d
 // let input = "DockPanel.background \"Fpp\""
 // (AnalysisDraft.parseAndCheckSingleFile InputData.input).AssemblyContents.ImplementationFiles[1].Declarations
+d.AssemblyContents.ImplementationFiles[1].Declarations
+|> List.iter (
+    FuncUIAnalysis.visitDeclaration
+        { OnLivePreviewFunc =
+            fun v vs ->
+                printfn $"{nameof v}:{v}"
+                printfn $"{nameof vs}:{vs}"
+          OnInvalidLivePreviewFunc =
+            fun v vs ->
+                printfn $"{nameof v}:{v}"
+                printfn $"{nameof vs}:{vs}"
+
+          OnInvalidStringCall =
+              fun ex range m typeArgs argExprs ->
+                  [ $"{nameof range}: %A{range}"
+                    $"{nameof m}: {m}"
+                    $"{nameof m}: {m.FullName}"
+                    $"{nameof m}: {m.ReturnParameter}"
+                    $"{nameof typeArgs}: {typeArgs}"
+                    $"{nameof argExprs}: {argExprs}" ]
+                  |> List.iter (printfn "%s") }
+)
 AnalysisDraft.declarations
 |> List.iter (
     FuncUIAnalysis.visitDeclaration
@@ -37,7 +64,7 @@ AnalysisDraft.declarations
                 printfn $"{nameof vs}:{vs}"
 
           OnInvalidStringCall =
-              fun range m typeArgs argExprs ->
+              fun ex range m typeArgs argExprs ->
                   [ $"{nameof range}: %A{range}"
                     $"{nameof m}: {m}"
                     $"{nameof m}: {m.FullName}"
