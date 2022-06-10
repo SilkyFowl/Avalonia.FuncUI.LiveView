@@ -63,7 +63,7 @@ module private Helper =
                 otherFlags = references
             )
             |> Async.RunSynchronously
- 
+
         checker.ParseAndCheckProject projOptions
         |> Async.RunSynchronously
 
@@ -86,7 +86,7 @@ module private Helper =
                 { OnLivePreviewFunc = fun v vs -> livePreviewFuncs.Add(v, vs)
                   OnInvalidLivePreviewFunc = fun v vs -> invalidLivePreviewFuncs.Add(v, vs)
                   OnInvalidStringCall =
-                    fun range m typeArgs argExprs -> invalidStringCalls.Add(range, m, typeArgs, argExprs) }
+                    fun ex range m typeArgs argExprs -> invalidStringCalls.Add(ex, range, m, typeArgs, argExprs) }
         )
 
         {| livePreviewFuncs = livePreviewFuncs

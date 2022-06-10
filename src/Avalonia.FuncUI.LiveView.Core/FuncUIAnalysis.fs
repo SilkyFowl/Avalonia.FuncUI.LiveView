@@ -4,8 +4,11 @@ open System
 open FSharp.Compiler.Symbols
 open FSharp.Compiler.Symbols.FSharpExprPatterns
 open FSharp.Compiler.Text
+open Avalonia
 open Avalonia.Controls
+open Avalonia.Skia
 open Avalonia.Media
+open Avalonia.Platform
 open Avalonia.Controls.Shapes
 open Avalonia.FuncUI.Types
 open Avalonia.FuncUI.DSL
@@ -13,7 +16,7 @@ open Avalonia.FuncUI.DSL
 type FuncUIAnalysisHander =
     { OnLivePreviewFunc: FSharpMemberOrFunctionOrValue -> list<list<FSharpMemberOrFunctionOrValue>> -> unit
       OnInvalidLivePreviewFunc: FSharpMemberOrFunctionOrValue -> list<list<FSharpMemberOrFunctionOrValue>> -> unit
-      OnInvalidStringCall: range -> FSharpMemberOrFunctionOrValue -> list<FSharpType> -> list<FSharpExpr> -> unit }
+      OnInvalidStringCall: exn -> range -> FSharpMemberOrFunctionOrValue -> list<FSharpType> -> list<FSharpExpr> -> unit }
 
 let (|String|_|) (o: obj) =
     match o with
@@ -49,7 +52,7 @@ let (|InvalidStringCall|_|) =
                 parse arg |> ignore
                 None
             with
-            | _ -> Some(objExprOpt, memberOrFunc, typeArgs1, typeArgs2, argExprs)
+            | ex -> Some(ex, objExprOpt, memberOrFunc, typeArgs1, typeArgs2, argExprs)
 
         match memberOrFunc with
         | StringArgDSLFunc (nameof Border) (nameof (Border.background: string -> IAttr<'t>))
@@ -69,7 +72,10 @@ let (|InvalidStringCall|_|) =
             validate ColumnDefinitions.Parse arg
         | StringArgDSLFunc (nameof Grid) (nameof (Grid.rowDefinitions: string -> IAttr<'t>)) ->
             validate RowDefinitions.Parse arg
-        | StringArgDSLFunc (nameof Path) (nameof (Path.data: string -> IAttr<'t>)) -> validate Geometry.Parse arg
+        | StringArgDSLFunc (nameof Path) (nameof (Path.data: string -> IAttr<'t>)) ->
+            if isNull <| AvaloniaLocator.Current.GetService<IPlatformRenderInterface>() then
+                SkiaPlatform.Initialize()
+            validate StreamGeometry.Parse arg
         | _ -> None
     | _ -> None
 
@@ -104,8 +110,8 @@ let (|LivePreviewFunc|_|) m =
 let rec visitExpr (memberCallHandler: FuncUIAnalysisHander) (e: FSharpExpr) =
     match e with
     // FuncUI Analysis
-    | InvalidStringCall (objExprOpt, memberOrFunc, typeArgs1, typeArgs2, argExprs) as call ->
-        memberCallHandler.OnInvalidStringCall e.Range memberOrFunc typeArgs2 argExprs
+    | InvalidStringCall (ex, objExprOpt, memberOrFunc, typeArgs1, typeArgs2, argExprs) as call ->
+        memberCallHandler.OnInvalidStringCall ex e.Range memberOrFunc typeArgs2 argExprs
         visitObjArg memberCallHandler objExprOpt
         visitExprs memberCallHandler argExprs
 

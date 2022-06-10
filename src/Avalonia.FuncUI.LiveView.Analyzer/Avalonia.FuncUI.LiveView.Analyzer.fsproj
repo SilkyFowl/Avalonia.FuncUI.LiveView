@@ -5,10 +5,6 @@
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <DisableImplicitFSharpCoreReference>true</DisableImplicitFSharpCoreReference>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)'=='Release'">
-      <Optimize>true</Optimize>
-      <Tailcalls>true</Tailcalls>
-  </PropertyGroup>
   <ItemGroup>
     <Compile Include="Library.fs" />
   </ItemGroup>

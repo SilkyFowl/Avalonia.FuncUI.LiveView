@@ -35,10 +35,11 @@ let funcUiAnalyzer: Analyzer =
                               Range = v.DeclarationLocation
                               Fixes = [] }
                   OnInvalidStringCall =
-                    fun range m typeArgs argExprs ->
+                    fun ex range m typeArgs argExprs ->
+
                         errorMessages.Add
                             { Type = "FuncUi analyzer"
-                              Message = "Invalid string value, Parse failed."
+                              Message = $"{ex.GetType().Name}:{ex.Message}"
                               Code = "OV002"
                               Severity = Error
                               Range = range
