@@ -107,6 +107,7 @@ module FuncUIAnalysisTests =
     open FsUnit.Xunit
     open FsUnitTyped
     open Avalonia.FuncUI.LiveView
+    open FSharp.Compiler.Diagnostics
 
     let createTestCode =
         sprintf """
@@ -236,10 +237,6 @@ open Avalonia.FuncUI.DSL
 open Avalonia.Controls
 open Avalonia.FuncUI.LiveView.Core.Types
 
-[<RequireQualifiedAccess>]
-module Store =
-    let num = new State<_> 0
-
 %s
 
 module Counter =
@@ -249,12 +246,11 @@ module Counter =
     open Avalonia.FuncUI.DSL
     open Avalonia.Layout
 
-    let view numState =
-
+    let view =
         Component.create (
             "Counter",
             fun ctx ->
-                let state = ctx.usePassed numState
+                let state = ctx.useState 0
 
                 Grid.create [
                     Grid.rowDefinitions "test,Auto"
@@ -268,12 +264,12 @@ module Counter =
 
     [<LivePreview>]
     let preview () =
-        view Store.num
+        view
 
     [<LivePreview>]
     let preview2 =
         let n = 1
-        view Store.num
+        view
 
     """
         anyNoValueCaseDUs
@@ -281,14 +277,84 @@ module Counter =
             [| (baseCode >> box) du |]
         )
 
+    let nestedAnyNoValueCaseDUs =
+                [
+                    """
+    type Foo = Foo
+                    """
+                    """
+    type Bar =
+        | Hoge
+        | Fuga of string
+                    """
+                    """
+    type Bar<'t> =
+        | Hoge
+        | Fuga of string
+        | A of {|a:int; b:string; c: bool * string|}
+        | B of ('t -> unit)
+                    """
+                ]
+
+    let module_after_DU_contain_module =
+        let baseCode =
+                sprintf """
+open System
+open Avalonia.FuncUI
+open Avalonia.FuncUI.DSL
+open Avalonia.Controls
+open Avalonia.FuncUI.LiveView.Core.Types
+
+
+module DUs =
+%s
+
+module Counter =
+    open Avalonia.FuncUI
+    open Avalonia.Controls
+    open Avalonia.Media
+    open Avalonia.FuncUI.DSL
+    open Avalonia.Layout
+
+    let view =
+        Component.create (
+            "Counter",
+            fun ctx ->
+                let state = ctx.useState 0
+
+                Grid.create [
+                    Grid.rowDefinitions "test,Auto"
+                    Grid.children [
+                        TextBlock.create [
+                            TextBlock.text "Foo!!"
+                        ]
+                    ]
+                ]
+        )
+
+    [<LivePreview>]
+    let preview () =
+        view
+
+    [<LivePreview>]
+    let preview2 =
+        let n = 1
+        view
+
+    """
+        nestedAnyNoValueCaseDUs
+        |> List.map ( fun du ->
+            [| (baseCode >> box) du |]
+        )
+
     [<Theory>]
     [<MemberData(nameof module_with_some_value_after_DU)>]
+    [<MemberData(nameof module_after_DU_contain_module)>]
     let ``wont work If module with some value after DU`` code =
-        let results =
+        let ex =
+            Assert.Throws<Sdk.EmptyException>(fun _ ->
             createTestCode code
             |> Helper.runFuncUIAnalysis
-
-        results.notSuppurtPattern.Count |> shouldEqual 0
-        results.livePreviewFuncs.Count |> shouldEqual 1
-        results.invalidLivePreviewFuncs.Count |> shouldEqual 1
-        results.invalidStringCalls.Count |> shouldEqual 1
+            |> ignore
+            )
+        ex.Message |> shouldContainText "typecheck error Duplicate definition of type, exception or module 'Counter'"
