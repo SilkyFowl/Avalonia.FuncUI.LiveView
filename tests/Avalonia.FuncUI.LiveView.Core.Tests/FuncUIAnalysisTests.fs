@@ -77,6 +77,8 @@ module private Helper =
         let livePreviewFuncs = ResizeArray()
         let invalidLivePreviewFuncs = ResizeArray()
         let invalidStringCalls = ResizeArray()
+        let notSuppurtPattern = ResizeArray()
+
 
         sourceCode
         |> parseAndCheckSingleFile
@@ -86,12 +88,16 @@ module private Helper =
                 { OnLivePreviewFunc = fun v vs -> livePreviewFuncs.Add(v, vs)
                   OnInvalidLivePreviewFunc = fun v vs -> invalidLivePreviewFuncs.Add(v, vs)
                   OnInvalidStringCall =
-                    fun ex range m typeArgs argExprs -> invalidStringCalls.Add(ex, range, m, typeArgs, argExprs) }
+                    fun ex range m typeArgs argExprs -> invalidStringCalls.Add(ex, range, m, typeArgs, argExprs)
+                  OnNotSuppurtPattern =
+                    fun ex e ->
+                        notSuppurtPattern.Add(ex,e)}
         )
 
         {| livePreviewFuncs = livePreviewFuncs
            invalidLivePreviewFuncs = invalidLivePreviewFuncs
-           invalidStringCalls = invalidStringCalls |}
+           invalidStringCalls = invalidStringCalls
+           notSuppurtPattern = notSuppurtPattern |}
 
 
 module FuncUIAnalysisTests =
@@ -102,11 +108,8 @@ module FuncUIAnalysisTests =
     open FsUnitTyped
     open Avalonia.FuncUI.LiveView
 
-    [<Fact>]
-    let ``should work.`` () =
-        let results =
-            Helper.runFuncUIAnalysis
-                """
+    let createTestCode =
+        sprintf """
 open System
 open Avalonia.FuncUI
 open Avalonia.FuncUI.DSL
@@ -149,63 +152,143 @@ module Counter =
     let preview2 =
         let n = 1
         view Store.num
-"""
+
+%s
+    """
+
+    [<Fact>]
+    let ``should work if no contain DU`` () =
+        let results =
+            createTestCode ""
+            |> Helper.runFuncUIAnalysis
+        //
         results.livePreviewFuncs.Count |> shouldEqual 1
         results.invalidLivePreviewFuncs.Count |> shouldEqual 1
         results.invalidStringCalls.Count |> shouldEqual 1
 
-    let badCodes : obj[] list =
-        [
-            """
-module SingleCaseUnion
 
+    let allValueCaseDUs : obj[] list =
+            [
+                """
 type Foo = Foo of int
-            """
-            """
-module MultiCaseUnion
-
+                """
+                """
 type Bar =
     | Hoge of int
     | Fuga of string
-            """
-        ]
-        |> List.map (fun s -> [|box s|])
+                """
+                ]
+            |> List.map (fun s -> [|box s|])
 
     [<Theory>]
-    [<MemberData(nameof badCodes)>]
-    let ``wont work if all union case have value`` badCode =
-        let ex =
-            (fun _ -> Helper.runFuncUIAnalysis badCode |> ignore)
-            |> Assert.Throws<exn>
+    [<MemberData(nameof allValueCaseDUs)>]
+    let ``wont work if all case have value DU`` allValueCaseDU =
+        let results =
+            createTestCode allValueCaseDU
+            |> Helper.runFuncUIAnalysis
 
-        ex.Message |> shouldContainText "FSharp.Compiler.Service cannot yet return this kind of pattern match at"
+        results.notSuppurtPattern.Count |> shouldBeGreaterThan 1
+        results.livePreviewFuncs.Count |> shouldEqual 1
+        results.invalidLivePreviewFuncs.Count |> shouldEqual 1
+        results.invalidStringCalls.Count |> shouldEqual 1
 
-    let okCodes : obj[] list =
-        [
-            """
-module SingleCaseUnion
-
+    let anyNoValueCaseDUs =
+                [
+                    """
 type Foo = Foo
-            """
-            """
-module MultiCaseUnion
-
+                    """
+                    """
 type Bar =
     | Hoge
     | Fuga of string
-            """
-            """
-module MultiCaseUnion2
-
+                    """
+                    """
 type Bar<'t> =
     | Hoge
     | Fuga of string
     | A of {|a:int; b:string; c: bool * string|}
-    | B of 't -> unit
-            """
-        ]
+    | B of ('t -> unit)
+                    """
+                ]
+
+    let anyNoValueCaseDUsData =
+        anyNoValueCaseDUs
         |> List.map (fun s -> [|box s|])
+
     [<Theory>]
-    [<MemberData(nameof okCodes)>]
-    let ``should work if there is at least one case label with no union value`` okCode =
-        Helper.runFuncUIAnalysis okCode |> ignore
+    [<MemberData(nameof anyNoValueCaseDUsData)>]
+    let ``should work If at least one no value case DU is the end of the code`` anyNoValueCase =
+            let results =
+                createTestCode anyNoValueCase
+                |> Helper.runFuncUIAnalysis
+
+            results.livePreviewFuncs.Count |> shouldEqual 1
+            results.invalidLivePreviewFuncs.Count |> shouldEqual 1
+            results.invalidStringCalls.Count |> shouldEqual 1
+            results.notSuppurtPattern.Count |> shouldEqual 0
+
+    let module_with_some_value_after_DU =
+        let baseCode =
+                sprintf """
+open System
+open Avalonia.FuncUI
+open Avalonia.FuncUI.DSL
+open Avalonia.Controls
+open Avalonia.FuncUI.LiveView.Core.Types
+
+[<RequireQualifiedAccess>]
+module Store =
+    let num = new State<_> 0
+
+%s
+
+module Counter =
+    open Avalonia.FuncUI
+    open Avalonia.Controls
+    open Avalonia.Media
+    open Avalonia.FuncUI.DSL
+    open Avalonia.Layout
+
+    let view numState =
+
+        Component.create (
+            "Counter",
+            fun ctx ->
+                let state = ctx.usePassed numState
+
+                Grid.create [
+                    Grid.rowDefinitions "test,Auto"
+                    Grid.children [
+                        TextBlock.create [
+                            TextBlock.text "Foo!!"
+                        ]
+                    ]
+                ]
+        )
+
+    [<LivePreview>]
+    let preview () =
+        view Store.num
+
+    [<LivePreview>]
+    let preview2 =
+        let n = 1
+        view Store.num
+
+    """
+        anyNoValueCaseDUs
+        |> List.map ( fun du ->
+            [| (baseCode >> box) du |]
+        )
+
+    [<Theory>]
+    [<MemberData(nameof module_with_some_value_after_DU)>]
+    let ``wont work If module with some value after DU`` code =
+        let results =
+            createTestCode code
+            |> Helper.runFuncUIAnalysis
+
+        results.notSuppurtPattern.Count |> shouldEqual 0
+        results.livePreviewFuncs.Count |> shouldEqual 1
+        results.invalidLivePreviewFuncs.Count |> shouldEqual 1
+        results.invalidStringCalls.Count |> shouldEqual 1

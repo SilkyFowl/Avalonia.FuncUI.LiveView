@@ -59,7 +59,7 @@ module Sample =
 
 
     [<LivePreview>]
-    let draft  () =
+    let draft () =
         Component.create (
             "draft",
             fun ctx ->
@@ -78,7 +78,7 @@ module Sample =
         )
 
     [<LivePreview>]
-    let draft2 ()  =
+    let draft2 () =
         Component.create (
             "draft2",
             fun ctx ->
@@ -95,7 +95,8 @@ module Sample =
                                     Path.create [
                                         Path.fill Brushes.DarkCyan
                                         Path.opacity 0.7
-                                        Path.data $"M 0,0 c 0,0 {50 * (num.Current / 4)},0 50,-50 c 0,0 50,0 50,50 h -50 v 50 l -50,-50 Z"
+                                        Path.data
+                                            $"M 0,0 c 0,0 {50 * (num.Current / 4)},0 50,-50 c 0,0 50,0 50,50 h -50 v 50 l -50,-50 Z"
                                     ]
                                 ]
                             ]
@@ -137,9 +138,10 @@ module Sample =
                 TextBlock.create [
                     TextBlock.row 2
                     TextBlock.column 0
+                    TextBlock.background "DarkBlue"
                     TextBlock.verticalAlignment VerticalAlignment.Center
                     TextBlock.margin (4, 0)
-                    TextBlock.text "Fuga"
+                    TextBlock.text "Fuga."
                 ]
                 TextBox.create [
                     TextBlock.row 2
@@ -159,7 +161,7 @@ module Sample =
 
     [<LivePreview>]
     let previewObj () =
-        [1..10]
+        [ 1..10 ]
         |> List.map (fun i ->
             match Store.num.CurrentAny with
             | :? int as num -> i * num
@@ -180,9 +182,9 @@ module ElmishDemo =
     open Avalonia.FuncUI.Builder
     open Avalonia.FuncUI.LiveView.Core.Types
 
-    type State = {watermark:string}
+    type State = { watermark: string }
 
-    let init = { watermark = ""}
+    let init = { watermark = "" }
 
     /// 判別共用体を含むコードをLivePreviewをするためには値を持たないケースを**1つ以上**入れないといけない.
     /// 参考：https://github.com/dotnet/fsharp/issues/8854
@@ -193,39 +195,40 @@ module ElmishDemo =
 
     let update msg state =
         match msg with
-        | SetWatermark test -> {state with watermark = test}
-        | UnSetWatermark -> {state with watermark = ""}
+        | SetWatermark test -> { state with watermark = test }
+        | UnSetWatermark -> { state with watermark = "" }
 
     let view state dispatch =
-            StackPanel.create [
-                StackPanel.spacing 10.0
-                StackPanel.children [
-                    TextBox.create [
+        StackPanel.create [
+            StackPanel.spacing 10.0
+            StackPanel.children [
+                TextBox.create [
                     TextBox.watermark state.watermark
                     TextBox.horizontalAlignment HorizontalAlignment.Stretch
-                    ]
+                ]
 
-                    Button.create [
-                        Button.content "Set Watermark"
-                        Button.onClick (fun _ -> dispatch (SetWatermark "test"))
-                        Button.horizontalAlignment HorizontalAlignment.Stretch
-                    ]
+                Button.create [
+                    Button.content "Set Watermark"
+                    Button.background "DarkBlue"
+                    Button.onClick (fun _ -> dispatch (SetWatermark "test"))
+                    Button.horizontalAlignment HorizontalAlignment.Stretch
+                ]
 
-                    Button.create [
-                        Button.content "Unset Watermark"
-                        Button.onClick (fun _ -> dispatch (UnSetWatermark ))
-                        Button.horizontalAlignment HorizontalAlignment.Stretch
-                    ]
+                Button.create [
+                    Button.content "Unset Watermark"
+                    Button.onClick (fun _ -> dispatch (UnSetWatermark))
+                    Button.horizontalAlignment HorizontalAlignment.Stretch
                 ]
             ]
+        ]
 
     type ElmishHost() as this =
         inherit Hosts.HostControl()
+
         do
-            Elmish.Program.mkSimple(fun () -> init) update view
+            Elmish.Program.mkSimple (fun () -> init) update view
             |> Program.withHost this
             |> Elmish.Program.run
 
     [<LivePreview>]
-    let preview () =
-        ViewBuilder.Create<ElmishHost>[]
+    let preview () = ViewBuilder.Create<ElmishHost> []

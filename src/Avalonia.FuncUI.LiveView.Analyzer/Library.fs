@@ -43,6 +43,15 @@ let funcUiAnalyzer: Analyzer =
                               Code = "OV002"
                               Severity = Error
                               Range = range
+                              Fixes = [] }
+                  OnNotSuppurtPattern =
+                    fun ex e ->
+                        errorMessages.Add
+                            { Type = "FuncUi analyzer"
+                              Message = ex.Message
+                              Code = "OV000"
+                              Severity = Warning
+                              Range = e.Range
                               Fixes = [] } }
         )
 
@@ -51,4 +60,5 @@ let funcUiAnalyzer: Analyzer =
             { Content = String.concat Environment.NewLine ctx.Content }
             |> server.Post
 
-        Seq.toList errorMessages
+        Seq.distinct errorMessages
+        |> Seq.toList

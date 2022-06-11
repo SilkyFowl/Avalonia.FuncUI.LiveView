@@ -87,17 +87,37 @@ let getLivePreviews (assembly: Assembly) =
                 let fullName = getFullName m
 
                 let content =
-                        match m.Invoke((), [||]) with
-                        | :? IView as view ->  view
-                        | :? IControl as view ->
-                            ContentControl.create [
-                                ContentControl.content view
-                            ]
-                        | other ->
-                            TextBlock.create [
-                                TextBlock.text $"%A{other}"
-                            ]
-                        |> VirtualDom.create
+                        try
+                            match m.Invoke((), [||]) with
+                            | :? IView as view ->  view
+                            | :? IControl as view ->
+                                ContentControl.create [
+                                    ContentControl.content view
+                                ]
+                            | other ->
+                                TextBlock.create [
+                                    TextBlock.text $"%A{other}"
+                                ]
+                            |> VirtualDom.create
+                        with
+                            | :? TargetInvocationException as e ->
+                                StackPanel.create [
+                                    StackPanel.children [
+                                        TextBlock.create [
+                                            TextBlock.foreground Brushes.Red
+                                            TextBlock.text $"%A{e.InnerException.GetType()}"
+                                        ]
+                                        TextBlock.create [
+                                            TextBlock.foreground Brushes.Red
+                                            TextBlock.text $"%s{e.InnerException.Message}"
+                                        ]
+                                        TextBlock.create [
+                                            TextBlock.text $"%s{e.InnerException.StackTrace}"
+                                            TextBlock.textWrapping TextWrapping.WrapWithOverflow
+                                        ]
+                                    ]
+                                ]
+                                |> VirtualDom.create
                 Some(fullName,content)
             else
                 None))
