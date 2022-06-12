@@ -351,6 +351,7 @@ module Counter =
     [<MemberData(nameof module_with_some_value_after_DU)>]
     [<MemberData(nameof module_after_DU_contain_module)>]
     let ``wont work If module with some value after DU`` code =
+
         let ex =
             Assert.Throws<Sdk.EmptyException>(fun _ ->
             createTestCode code

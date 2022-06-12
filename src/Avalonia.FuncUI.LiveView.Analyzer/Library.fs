@@ -1,8 +1,6 @@
 ﻿module Avalonia.FuncUI.LiveView.Analyzer
 
 open System
-open System.IO
-open System.Text.RegularExpressions
 open Avalonia.FuncUI.LiveView
 open Avalonia.FuncUI.LiveView.MessagePack
 open Avalonia.FuncUI.LiveView.Core.Types
@@ -13,6 +11,8 @@ let server = Server.init Settings.iPAddress Settings.port
 // `fsautocomplete`が終了するときにサーバも終了する。
 AppDomain.CurrentDomain.ProcessExit.Add(fun _ -> server.Dispose())
 
+let private nl = Environment.NewLine
+
 /// AnalyzerでIDEによるF#コードの編集にフックできる。
 /// これを利用してLiveViewを実現する。
 [<Analyzer "FuncUiAnalyzer">]
@@ -20,6 +20,7 @@ let funcUiAnalyzer: Analyzer =
     fun ctx ->
         let livePreviewFuncs = ResizeArray()
         let errorMessages = ResizeArray()
+        let notSuppurtPatternMessages = ResizeArray()
 
         ctx.TypedTree.Declarations
         |> List.iter (
@@ -29,14 +30,13 @@ let funcUiAnalyzer: Analyzer =
                     fun v vs ->
                         errorMessages.Add
                             { Type = "FuncUi analyzer"
-                              Message = "LivePreview must be unit -> IView<'t>"
+                              Message = "LivePreview must be unit -> 'a"
                               Code = "OV001"
                               Severity = Error
                               Range = v.DeclarationLocation
                               Fixes = [] }
                   OnInvalidStringCall =
                     fun ex range m typeArgs argExprs ->
-
                         errorMessages.Add
                             { Type = "FuncUi analyzer"
                               Message = $"{ex.GetType().Name}:{ex.Message}"
@@ -46,19 +46,22 @@ let funcUiAnalyzer: Analyzer =
                               Fixes = [] }
                   OnNotSuppurtPattern =
                     fun ex e ->
-                        errorMessages.Add
+                        notSuppurtPatternMessages.Add
                             { Type = "FuncUi analyzer"
-                              Message = ex.Message
+                              Message = $"FuncUiAnalyzer does not support this pattern.{nl}{ex.Message}"
                               Code = "OV000"
                               Severity = Warning
                               Range = e.Range
                               Fixes = [] } }
         )
 
-        if Seq.isEmpty errorMessages
-           && livePreviewFuncs.Count > 0 then
-            { Content = String.concat Environment.NewLine ctx.Content }
-            |> server.Post
+        if livePreviewFuncs.Count > 0 then
+            // FuncUIAnalyzer自体のエラーはPreview対象がある時のみカウントする。
+            errorMessages.AddRange notSuppurtPatternMessages
 
-        Seq.distinct errorMessages
-        |> Seq.toList
+            // エラーがなければPreviewを実行
+            if Seq.isEmpty errorMessages then
+                { Content = String.concat Environment.NewLine ctx.Content }
+                |> server.Post
+
+        Seq.distinct errorMessages |> Seq.toList

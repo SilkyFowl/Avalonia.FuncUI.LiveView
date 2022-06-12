@@ -107,6 +107,12 @@ let (|LivePreviewFunc|_|) m =
             Error(v, vs, e) |> Some
     | _ -> None
 
+let (|NotSuppurtPatternMessage|_|) (ex:exn) =
+    if  ex.Message.Contains "FSharp.Compiler.Service cannot yet return this kind of pattern match" then
+        Some ex
+    else
+        None
+
 let rec visitExpr (memberCallHandler: FuncUIAnalysisHander) (e: FSharpExpr) =
     try
         match e with
@@ -206,7 +212,7 @@ let rec visitExpr (memberCallHandler: FuncUIAnalysisHander) (e: FSharpExpr) =
         | Value (valueToGet) -> ()
         | _ -> ()
     with
-    | ex when ex.Message.Contains "FSharp.Compiler.Service cannot yet return this kind of pattern match" ->
+    | NotSuppurtPatternMessage ex ->
         memberCallHandler.OnNotSuppurtPattern ex e
 
 and visitExprs f exprs = List.iter (visitExpr f) exprs
