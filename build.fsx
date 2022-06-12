@@ -22,6 +22,7 @@ open Fake.Core.TargetOperators
 
 let srcPath = "./src"
 let outputPath = "./dist"
+let slnPath = "./Avalonia.FuncUI.LiveView.sln"
 
 // properties
 let projectDescription = [ "Live fs/fsx previewer for Avalonia.FuncUI." ]
@@ -88,12 +89,24 @@ Target.initEnvironment ()
 // --------------------------------------------- Targets ---------------------------------------------
 // ****************************************************************************************************
 
-Target.create "Clean" (fun _ ->
-    !! "src/**/bin" ++ "src/**/obj" ++ outputPath
+Target.create "CleanDebug" (fun _ ->
+    !! "src/**/Debug"
+    ++ outputPath
+    |> Shell.cleanDirs)
+
+Target.create "CleanRelease" (fun _ ->
+    !! "src/**/Release"
+    ++ outputPath
     |> Shell.cleanDirs)
 
 
-Target.create "Build" (fun _ -> DotNet.build id "./Avalonia.FuncUI.LiveView.sln")
+Target.create "BuildDebug" (fun _ ->
+    slnPath
+    |> DotNet.build (fun setParams -> { setParams with Configuration = DotNet.Debug }))
+
+Target.create "BuildRelease" (fun _ ->
+    slnPath
+    |> DotNet.build (fun setParams -> { setParams with Configuration = DotNet.Release }))
 
 Target.create "Pack" (fun _ ->
     for setting in Paket.settings do
@@ -115,8 +128,7 @@ Target.create "Pack" (fun _ ->
                 TemplateFile = Option.toObj setting.templateParams.TemplateFilePath
                 OutputPath = outputPath
                 MinimumFromLockFile = not isAvalyzer
-                IncludeReferencedProjects = not isAvalyzer
-                }))
+                IncludeReferencedProjects = not isAvalyzer }))
 
 Target.create "ClearLocalAnalyzer" (fun _ ->
     !!outputPath ++ AnalyzerProjInfo.localanalyzerPath
@@ -135,9 +147,11 @@ Target.create "Default" ignore
 // --------------------------------------- Targets Dependencies ---------------------------------------
 // ****************************************************************************************************
 
-"Clean" ==> "Build" ==> "Default"
+"CleanDebug" ==> "BuildDebug" ==> "Default"
 
-"ClearLocalAnalyzer"
+"CleanRelease"
+==> "ClearLocalAnalyzer"
+==> "BuildRelease"
 ==> "Pack"
 ==> "SetLocalAnalyzer"
 
