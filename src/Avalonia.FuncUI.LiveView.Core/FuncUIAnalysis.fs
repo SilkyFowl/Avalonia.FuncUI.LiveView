@@ -1,17 +1,20 @@
 module Avalonia.FuncUI.LiveView.FuncUIAnalysis
 
-open System
 open FSharp.Compiler.Symbols
 open FSharp.Compiler.Symbols.FSharpExprPatterns
 open FSharp.Compiler.Text
+
 open Avalonia
 open Avalonia.Controls
-open Avalonia.Skia
+open Avalonia.Controls.Primitives
+open Avalonia.Controls.Presenters
+open Avalonia.Controls.Shapes
 open Avalonia.Media
 open Avalonia.Platform
-open Avalonia.Controls.Shapes
-open Avalonia.FuncUI.Types
+open Avalonia.Skia
+
 open Avalonia.FuncUI.DSL
+open Avalonia.FuncUI.Types
 
 type FuncUIAnalysisHander =
     { OnLivePreviewFunc: FSharpMemberOrFunctionOrValue -> list<list<FSharpMemberOrFunctionOrValue>> -> unit
@@ -65,8 +68,13 @@ let (|InvalidStringCall|_|) =
         | StringArgDSLFunc (nameof TextBox) (nameof (TextBox.selectionForegroundBrush: string -> IAttr<'t>))
         | StringArgDSLFunc (nameof TextBox) (nameof (TextBox.caretBrush: string -> IAttr<'t>))
         | StringArgDSLFunc (nameof TickBar) (nameof (TickBar.fill: string -> IAttr<'t>))
+        | StringArgDSLFunc (nameof ContentPresenter) (nameof (ContentPresenter.background: string -> IAttr<'t>))
+        | StringArgDSLFunc (nameof ContentPresenter) (nameof (ContentPresenter.borderBrush: string -> IAttr<'t>))
         | StringArgDSLFunc (nameof Panel) (nameof (Panel.background: string -> IAttr<'t>))
         | StringArgDSLFunc (nameof Calendar) (nameof (Calendar.headerBackground: string -> IAttr<'t>))
+        | StringArgDSLFunc (nameof TemplatedControl) (nameof (TemplatedControl.background: string -> IAttr<'t>))
+        | StringArgDSLFunc (nameof TemplatedControl) (nameof (TemplatedControl.borderBrush: string -> IAttr<'t>))
+        | StringArgDSLFunc (nameof TemplatedControl) (nameof (TemplatedControl.foreground: string -> IAttr<'t>))
         | StringArgDSLFunc (nameof Shape) (nameof (Shape.fill: string -> IAttr<'t>))
         | StringArgDSLFunc (nameof Shape) (nameof (Shape.stroke: string -> IAttr<'t>)) -> validate Color.Parse arg
         | StringArgDSLFunc (nameof Grid) (nameof (Grid.columnDefinitions: string -> IAttr<'t>)) ->
@@ -107,8 +115,8 @@ let (|LivePreviewFunc|_|) m =
             Error(v, vs, e) |> Some
     | _ -> None
 
-let (|NotSuppurtPatternMessage|_|) (ex:exn) =
-    if  ex.Message.Contains "FSharp.Compiler.Service cannot yet return this kind of pattern match" then
+let (|NotSuppurtPatternMessage|_|) (ex: exn) =
+    if ex.Message.Contains "FSharp.Compiler.Service cannot yet return this kind of pattern match" then
         Some ex
     else
         None
@@ -212,8 +220,7 @@ let rec visitExpr (memberCallHandler: FuncUIAnalysisHander) (e: FSharpExpr) =
         | Value (valueToGet) -> ()
         | _ -> ()
     with
-    | NotSuppurtPatternMessage ex ->
-        memberCallHandler.OnNotSuppurtPattern ex e
+    | NotSuppurtPatternMessage ex -> memberCallHandler.OnNotSuppurtPattern ex e
 
 and visitExprs f exprs = List.iter (visitExpr f) exprs
 
