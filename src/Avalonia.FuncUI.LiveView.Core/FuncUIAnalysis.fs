@@ -1,19 +1,13 @@
 module Avalonia.FuncUI.LiveView.FuncUIAnalysis
 
+open System.Reflection
+open type System.Reflection.BindingFlags
+
 open FSharp.Compiler.Symbols
 open FSharp.Compiler.Symbols.FSharpExprPatterns
 open FSharp.Compiler.Text
 
-open Avalonia
-open Avalonia.Controls
-open Avalonia.Controls.Primitives
-open Avalonia.Controls.Presenters
-open Avalonia.Controls.Shapes
-open Avalonia.Media
-open Avalonia.Platform
 open Avalonia.Skia
-
-open Avalonia.FuncUI.DSL
 open Avalonia.FuncUI.Types
 
 type FuncUIAnalysisHander =
@@ -35,58 +29,89 @@ let (|FSharpString|_|) t =
     else
         None
 
-let (|StringArgDSLFunc|_|) (controlTypeName) methodName (m: FSharpMemberOrFunctionOrValue) =
+do
+    // Load service required for `Path.data` parsing.
+    SkiaPlatform.Initialize()
+
+let stringArgDSLFuncMap =
+    let (|FsStaticMember|_|) (m: MethodInfo) =
+        match m.Name.Split(".") with
+        | [| _; name; _ |] -> Some name
+        | _ -> None
+
+    let (|StringParam|_|) (m: MethodInfo) =
+        match m.GetParameters() with
+        | [| p |] when p.ParameterType = typeof<string> -> Some()
+        | _ -> None
+
+    let (|ReturnIAttr|_|) (m: MethodInfo) =
+        match m.ReturnType.GetInterfaces() with
+        | [| t |] when t = typeof<IAttr> -> Some()
+        | _ -> None
+
+    let controlTypes =
+        [| "Avalonia.Controls"
+           "Avalonia.Styling" |]
+        |> Array.map (fun name -> Assembly.Load(name).GetExportedTypes())
+        |> Array.concat
+
+    let dslAssembly = Assembly.Load "Avalonia.FuncUI.DSL"
+
+    dslAssembly.GetExportedTypes()
+    |> Array.choose (fun ty ->
+        let memberMap =
+            ty.GetMethods(Public ||| Static)
+            |> Array.choose (function
+                | FsStaticMember name & StringParam & ReturnIAttr as m ->
+                    let controlType =
+                        controlTypes
+                        |> Array.find (fun ty -> ty.Name = m.DeclaringType.Name)
+
+                    let m' = m.MakeGenericMethod [| controlType |]
+
+                    let invoke (str: string) = m'.Invoke((), [| box str |]) |> ignore
+
+                    Some(name, invoke)
+                | _ -> None)
+            |> Map.ofArray
+
+        if Map.isEmpty memberMap then
+            None
+        else
+            Some(ty.Name, memberMap))
+    |> Map.ofArray
+
+
+let (|StringArgDSLFunc|_|) (m: FSharpMemberOrFunctionOrValue) =
     let signature =
         "type Microsoft.FSharp.Core.string -> Avalonia.FuncUI.Types.IAttr<'t>"
 
     match m.FullTypeSafe, m.DeclaringEntity with
-    | Some ty, Some d when
-        $"{ty}" = signature
-        && m.DisplayName = methodName
-        && d.CompiledName = controlTypeName
-        ->
-        Some()
+    | Some ty, Some d when $"{ty}" = signature ->
+        Map.tryFind d.CompiledName stringArgDSLFuncMap
+        |> Option.bind (Map.tryFind m.DisplayName)
     | _ -> None
 
+
 let (|InvalidStringCall|_|) =
+
+    let (|TargetInvocationExceptionInner|_|) (ex: exn) =
+        match ex with
+        | :? TargetInvocationException as t -> Some t.InnerException
+        | _ -> None
+
     function
     | Call (objExprOpt, memberOrFunc, typeArgs1, typeArgs2, ([ Const (String arg, FSharpString) ] as argExprs)) ->
-        let validate parse (arg: string) =
+        let validate func (arg: string) =
             try
-                parse arg |> ignore
+                func arg
                 None
             with
+            | TargetInvocationExceptionInner ex
             | ex -> Some(ex, objExprOpt, memberOrFunc, typeArgs1, typeArgs2, argExprs)
 
         match memberOrFunc with
-        | StringArgDSLFunc (nameof Border) (nameof (Border.background: string -> IAttr<'t>))
-        | StringArgDSLFunc (nameof Border) (nameof (Border.borderBrush: string -> IAttr<'t>))
-        | StringArgDSLFunc (nameof SplitView) (nameof (SplitView.paneBackground: string -> IAttr<'t>))
-        | StringArgDSLFunc (nameof TextBlock) (nameof (TextBlock.background: string -> IAttr<'t>))
-        | StringArgDSLFunc (nameof TextBlock) (nameof (TextBlock.foreground: string -> IAttr<'t>))
-        | StringArgDSLFunc (nameof TextBox) (nameof (TextBox.selectionBrush: string -> IAttr<'t>))
-        | StringArgDSLFunc (nameof TextBox) (nameof (TextBox.selectionForegroundBrush: string -> IAttr<'t>))
-        | StringArgDSLFunc (nameof TextBox) (nameof (TextBox.caretBrush: string -> IAttr<'t>))
-        | StringArgDSLFunc (nameof TickBar) (nameof (TickBar.fill: string -> IAttr<'t>))
-        | StringArgDSLFunc (nameof ContentPresenter) (nameof (ContentPresenter.background: string -> IAttr<'t>))
-        | StringArgDSLFunc (nameof ContentPresenter) (nameof (ContentPresenter.borderBrush: string -> IAttr<'t>))
-        | StringArgDSLFunc (nameof Panel) (nameof (Panel.background: string -> IAttr<'t>))
-        | StringArgDSLFunc (nameof Calendar) (nameof (Calendar.headerBackground: string -> IAttr<'t>))
-        | StringArgDSLFunc (nameof TemplatedControl) (nameof (TemplatedControl.background: string -> IAttr<'t>))
-        | StringArgDSLFunc (nameof TemplatedControl) (nameof (TemplatedControl.borderBrush: string -> IAttr<'t>))
-        | StringArgDSLFunc (nameof TemplatedControl) (nameof (TemplatedControl.foreground: string -> IAttr<'t>))
-        | StringArgDSLFunc (nameof Shape) (nameof (Shape.fill: string -> IAttr<'t>))
-        | StringArgDSLFunc (nameof Shape) (nameof (Shape.stroke: string -> IAttr<'t>)) -> validate Color.Parse arg
-        | StringArgDSLFunc (nameof Grid) (nameof (Grid.columnDefinitions: string -> IAttr<'t>)) ->
-            validate ColumnDefinitions.Parse arg
-        | StringArgDSLFunc (nameof Grid) (nameof (Grid.rowDefinitions: string -> IAttr<'t>)) ->
-            validate RowDefinitions.Parse arg
-        | StringArgDSLFunc (nameof Path) (nameof (Path.data: string -> IAttr<'t>)) ->
-            if isNull
-               <| AvaloniaLocator.Current.GetService<IPlatformRenderInterface>() then
-                SkiaPlatform.Initialize()
-
-            validate StreamGeometry.Parse arg
+        | StringArgDSLFunc invoke -> validate invoke arg
         | _ -> None
     | _ -> None
 

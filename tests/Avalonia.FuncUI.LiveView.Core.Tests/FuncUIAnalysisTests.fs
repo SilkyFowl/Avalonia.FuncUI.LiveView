@@ -162,7 +162,7 @@ module Counter =
         let results =
             createTestCode ""
             |> Helper.runFuncUIAnalysis
-        //
+
         results.livePreviewFuncs.Count |> shouldEqual 1
         results.invalidLivePreviewFuncs.Count |> shouldEqual 1
         results.invalidStringCalls.Count |> shouldEqual 1
