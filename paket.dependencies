@@ -4,7 +4,7 @@ storage: none
 framework: net6.0
 
 nuget coverlet.collector
-nuget FSharp.Compiler.Service 41.0.3 // if 41.0.4, Analyzers broken. 
+nuget FSharp.Compiler.Service 41.0.3 // if 41.0.4, Analyzers broken.
 nuget FSharp.Analyzers.SDK
 nuget FSharp.Core content: none
 nuget FsUnit.xUnit
@@ -15,6 +15,7 @@ nuget JaggerJo.Avalonia.FuncUI.Elmish
 
 nuget Avalonia.Desktop
 nuget Avalonia.Diagnostics
+nuget Avalonia.Angle.Windows.Natives 2.1.0.2020091801
 nuget MessagePack.FSharpExtensions
 nuget Microsoft.NET.Test.Sdk
 nuget xunit
