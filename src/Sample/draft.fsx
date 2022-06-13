@@ -63,7 +63,7 @@ module Counter =
                             Button.horizontalAlignment HorizontalAlignment.Center
                             Button.horizontalContentAlignment HorizontalAlignment.Center
                             Button.content "-"
-                            Button.onClick (fun _ -> state.Current - rnd.Next(1,10) |> state.Set)
+                            Button.onClick (fun _ -> state.Current - rnd.Next(1, 10) |> state.Set)
                             Button.dock Dock.Bottom
                         ]
                         Button.create [
@@ -87,23 +87,18 @@ module Counter =
 
     [<LivePreview>]
     let redCounter () =
-        view "preview1" [
-            Component.background Brushes.DarkRed
-        ] id Store.num
+        view "preview1" [ Component.background Brushes.DarkRed ] id Store.num
 
     [<LivePreview>]
     let greenCounter () =
         Store.num
-        |> view "preview2" [
-            Component.background Brushes.DarkGreen
-        ] id
+        |> view "preview2" [ Component.background Brushes.DarkGreen ] id
 
 module Memo =
 
     [<LivePreview>]
     let blueCounter () =
         printfn "called Memo.preview."
+
         Store.num
-        |> Counter.view "preview3" [
-            Component.background Brushes.DarkBlue
-        ] (fun i -> i + 3 )
+        |> Counter.view "preview3" [ Component.background Brushes.DarkBlue ] (fun i -> i + 3)

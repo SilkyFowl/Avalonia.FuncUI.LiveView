@@ -1,234 +1,171 @@
-﻿namespace Sample
+﻿module Sample.ComponentSample
 
-module Sample =
-    open Avalonia
-    open Avalonia.FuncUI
-    open Avalonia.FuncUI.DSL
-    open Avalonia.Controls
-    open Avalonia.Controls.Shapes
-    open Avalonia.Media
-    open Avalonia.Layout
-    open Avalonia.FuncUI.LiveView.Core.Types
+open Avalonia
+open Avalonia.FuncUI
+open Avalonia.FuncUI.DSL
+open Avalonia.Controls
+open Avalonia.Controls.Shapes
+open Avalonia.Media
+open Avalonia.Layout
+open Avalonia.FuncUI.LiveView.Core.Types
 
+let counter numState =
 
-    let counter numState =
-        Component.create (
-            "counter",
-            fun ctx ->
-                let num = ctx.usePassed numState
+    Component.create (
+        "counter",
+        fun ctx ->
+            let num = ctx.usePassed numState
 
-                DockPanel.create [
-                    DockPanel.verticalAlignment VerticalAlignment.Center
-                    DockPanel.horizontalAlignment HorizontalAlignment.Center
-                    DockPanel.children [
-                        Button.create [
-                            Button.width 64
+            DockPanel.create [
+                DockPanel.verticalAlignment VerticalAlignment.Center
+                DockPanel.horizontalAlignment HorizontalAlignment.Center
+                DockPanel.children [
+                    Button.create [
+                        Button.width 64
 
-                            Button.horizontalAlignment HorizontalAlignment.Center
-                            Button.horizontalContentAlignment HorizontalAlignment.Center
-                            Button.content "Reset"
-                            Button.onClick (fun _ -> num.Set 0)
-                            Button.dock Dock.Bottom
-                        ]
-                        Button.create [
-                            Button.width 64
-                            Button.horizontalAlignment HorizontalAlignment.Center
-                            Button.horizontalContentAlignment HorizontalAlignment.Center
-                            Button.content "-"
-                            Button.onClick (fun _ -> num.Current - 10 |> num.Set)
-                            Button.dock Dock.Bottom
-                        ]
-                        Button.create [
-                            Button.width 64
-                            Button.horizontalAlignment HorizontalAlignment.Center
-                            Button.horizontalContentAlignment HorizontalAlignment.Center
-                            Button.content "+"
-                            Button.onClick (fun _ -> num.Current + 1 |> num.Set)
-                            Button.dock Dock.Bottom
-                        ]
-                        TextBlock.create [
-                            TextBlock.dock Dock.Top
-                            TextBlock.fontSize 48.0
-                            TextBlock.foreground Brushes.White
-                            TextBlock.horizontalAlignment HorizontalAlignment.Center
-                            TextBlock.text (string num.Current)
-                        ]
+                        Button.horizontalAlignment HorizontalAlignment.Center
+                        Button.horizontalContentAlignment HorizontalAlignment.Center
+                        Button.content "Reset"
+                        Button.onClick (fun _ -> num.Set 0)
+                        Button.dock Dock.Bottom
+                    ]
+                    Button.create [
+                        Button.width 64
+                        Button.horizontalAlignment HorizontalAlignment.Center
+                        Button.horizontalContentAlignment HorizontalAlignment.Center
+                        Button.content "-"
+                        Button.onClick (fun _ -> num.Current - 10 |> num.Set)
+                        Button.dock Dock.Bottom
+                    ]
+                    Button.create [
+                        Button.width 64
+                        Button.horizontalAlignment HorizontalAlignment.Center
+                        Button.horizontalContentAlignment HorizontalAlignment.Center
+                        Button.content "+"
+                        Button.onClick (fun _ -> num.Current + 1 |> num.Set)
+                        Button.dock Dock.Bottom
+                    ]
+                    TextBlock.create [
+                        TextBlock.dock Dock.Top
+                        TextBlock.fontSize 48.0
+                        TextBlock.foreground Brushes.White
+                        TextBlock.horizontalAlignment HorizontalAlignment.Center
+                        TextBlock.text (string num.Current)
                     ]
                 ]
-        )
+            ]
+    )
 
 
-    [<LivePreview>]
-    let draft () =
-        Component.create (
-            "draft",
-            fun ctx ->
-                let num =
-                    Store.num
-                    |> State.readMap (fun i -> 4.0 ** i)
-                    |> ctx.usePassedRead
+[<LivePreview>]
+let draft () =
+    Component.create (
+        "draft",
+        fun ctx ->
+            let num =
+                Store.num
+                |> State.readMap (fun i -> 4.0 ** i)
+                |> ctx.usePassedRead
 
-                TextBlock.create [
-                    TextBlock.foreground Brushes.LightSlateGray
-                    TextBlock.fontSize 20
-                    TextBlock.horizontalAlignment HorizontalAlignment.Center
-                    TextBlock.verticalAlignment VerticalAlignment.Center
-                    TextBlock.text $"Foo: {num.Current}"
-                ]
-        )
+            TextBlock.create [
+                TextBlock.foreground Brushes.LightSlateGray
+                TextBlock.fontSize 20
+                TextBlock.horizontalAlignment HorizontalAlignment.Center
+                TextBlock.verticalAlignment VerticalAlignment.Center
+                TextBlock.text $"Foo: {num.Current}"
+            ]
+    )
 
-    [<LivePreview>]
-    let draft2 () =
-        Component.create (
-            "draft2",
-            fun ctx ->
-                let num = ctx.usePassed Store.num
+[<LivePreview>]
+let draft2 () =
+    Component.create (
+        "draft2",
+        fun ctx ->
+            let num = ctx.usePassed Store.num
 
-                Border.create [
-                    Border.borderThickness 0.5
-                    Border.borderBrush Brushes.White
-                    Border.background "Azure"
-                    StackPanel.create [
-                        StackPanel.children [
-                            Canvas.create [
-                                Canvas.children [
-                                    Path.create [
-                                        Path.fill Brushes.DarkCyan
-                                        Path.opacity 0.7
-                                        Path.data
-                                            $"M 0,0 c 0,0 {50 * (num.Current / 4)},0 50,-50 c 0,0 50,0 50,50 h -50 v 50 l -50,-50 Z"
-                                    ]
+            Border.create [
+                Border.borderThickness 0.5
+                Border.borderBrush Brushes.White
+                Border.background "Azure"
+                StackPanel.create [
+                    StackPanel.children [
+                        Canvas.create [
+                            Canvas.children [
+                                Path.create [
+                                    Path.fill Brushes.DarkCyan
+                                    Path.opacity 0.7
+                                    Path.data "M 0,0 c 0,0 50,0 50,-50 c 0,0 50,0 50,50 h -50 v 50 l -50,-50 Z"
                                 ]
                             ]
-                            TextBlock.create [
-                                TextBlock.foreground "Blue"
+                        ]
+                        TextBlock.create [
+                            TextBlock.foreground "Blue"
 
-                                TextBlock.horizontalAlignment HorizontalAlignment.Left
-                                TextBlock.verticalAlignment VerticalAlignment.Center
-                                TextBlock.fontSize 22
-                                TextBlock.text $"Bar:{num.Current * 3}"
-                            ]
+                            TextBlock.horizontalAlignment HorizontalAlignment.Left
+                            TextBlock.verticalAlignment VerticalAlignment.Center
+                            TextBlock.fontSize 22
+                            TextBlock.text $"Bar:{num.Current * 3}"
                         ]
                     ]
-                    |> Border.child
                 ]
-        )
+                |> Border.child
+            ]
+    )
 
-    [<LivePreview>]
-    let draft3 () = counter Store.num
+[<LivePreview>]
+let draft3 () = counter Store.num
 
-    [<LivePreview>]
-    let dtaft4 () =
-        Grid.create [
-            Grid.rowDefinitions "Auto,Auto,Auto"
-            Grid.columnDefinitions "Auto,*"
-            Grid.margin 8
-            Grid.children [
-                TextBlock.create [
-                    TextBlock.row 0
-                    TextBlock.columnSpan 2
-                    TextBlock.fontSize 20
-                    TextBlock.foreground Brushes.Red
-                    TextBlock.fontWeight FontWeight.SemiBold
-                    TextBlock.verticalAlignment VerticalAlignment.Center
-                    TextBlock.margin (0, 0, 0, 4)
-                    TextBlock.text "Hoge"
-                ]
+[<LivePreview>]
+let dtaft4 () =
+    Grid.create [
+        Grid.rowDefinitions "Auto,Auto,Auto"
+        Grid.columnDefinitions "Auto,*"
+        Grid.margin 8
+        Grid.children [
+            TextBlock.create [
+                TextBlock.row 0
+                TextBlock.columnSpan 2
+                TextBlock.fontSize 20
+                TextBlock.foreground Brushes.Red
+                TextBlock.fontWeight FontWeight.SemiBold
+                TextBlock.verticalAlignment VerticalAlignment.Center
+                TextBlock.margin (0, 0, 0, 4)
+                TextBlock.text "Hoge"
+            ]
 
-                TextBlock.create [
-                    TextBlock.row 2
-                    TextBlock.column 0
-                    TextBlock.background "DarkBlue"
-                    TextBlock.verticalAlignment VerticalAlignment.Center
-                    TextBlock.margin (4, 0)
-                    TextBlock.text "Fuga."
-                ]
-                TextBox.create [
-                    TextBlock.row 2
-                    TextBox.column 1
-                    TextBox.margin (4, 0)
-                ]
+            TextBlock.create [
+                TextBlock.row 2
+                TextBlock.column 0
+                TextBlock.background "DarkBlue"
+                TextBlock.verticalAlignment VerticalAlignment.Center
+                TextBlock.margin (4, 0)
+                TextBlock.text "Fuga."
+            ]
+            TextBox.create [
+                TextBlock.row 2
+                TextBox.column 1
+                TextBox.margin (4, 0)
             ]
         ]
+    ]
 
-    [<LivePreview>]
-    let preview4 () =
-        Expander.create [
-            Expander.header "test..."
-            Expander.isExpanded true
-            Expander.content (counter Store.num)
-        ]
+[<LivePreview>]
+let preview4 () =
+    Expander.create [
+        Expander.header "test..."
+        Expander.isExpanded true
+        Expander.content (counter Store.num)
+    ]
 
-    [<LivePreview>]
-    let previewObj () =
-        [ 1..10 ]
-        |> List.map (fun i ->
-            match Store.num.CurrentAny with
-            | :? int as num -> i * num
-            | _ -> i * 3)
+[<LivePreview>]
+let previewObj () =
+    [ 1..10 ]
+    |> List.map (fun i ->
+        match Store.num.CurrentAny with
+        | :? int as num -> i * num
+        | _ -> i * 3)
 
-    let cmp =
-        Component (fun ctx ->
-            let num = ctx.usePassed Store.num
-            counter num)
-
-/// 参考：https://github.com/fsprojects/Avalonia.FuncUI/blob/master/src/Avalonia.FuncUI.ControlCatalog/Views/Tabs/TextBoxDemo.fs
-module ElmishDemo =
-    open Avalonia.Controls
-    open Avalonia.Layout
-    open Avalonia.FuncUI
-    open Avalonia.FuncUI.DSL
-    open Avalonia.FuncUI.Elmish
-    open Avalonia.FuncUI.Builder
-    open Avalonia.FuncUI.LiveView.Core.Types
-
-    type State = { watermark: string }
-
-    let init = { watermark = "" }
-
-    /// 判別共用体を含むコードをLivePreviewをするためには値を持たないケースを**1つ以上**入れないといけない.
-    /// 参考：https://github.com/dotnet/fsharp/issues/8854
-    type Msg =
-        | SetWatermark of string
-        | UnSetWatermark
-
-
-    let update msg state =
-        match msg with
-        | SetWatermark test -> { state with watermark = test }
-        | UnSetWatermark -> { state with watermark = "" }
-
-    let view state dispatch =
-        StackPanel.create [
-            StackPanel.spacing 10.0
-            StackPanel.children [
-                TextBox.create [
-                    TextBox.watermark state.watermark
-                    TextBox.horizontalAlignment HorizontalAlignment.Stretch
-                ]
-
-                Button.create [
-                    Button.content "Set Watermark"
-                    Button.background "DarkBlue"
-                    Button.onClick (fun _ -> dispatch (SetWatermark "test"))
-                    Button.horizontalAlignment HorizontalAlignment.Stretch
-                ]
-
-                Button.create [
-                    Button.content "Unset Watermark"
-                    Button.onClick (fun _ -> dispatch (UnSetWatermark))
-                    Button.horizontalAlignment HorizontalAlignment.Stretch
-                ]
-            ]
-        ]
-
-    type ElmishHost() as this =
-        inherit Hosts.HostControl()
-
-        do
-            Elmish.Program.mkSimple (fun () -> init) update view
-            |> Program.withHost this
-            |> Elmish.Program.run
-
-    [<LivePreview>]
-    let preview () = ViewBuilder.Create<ElmishHost> []
+let cmp =
+    Component (fun ctx ->
+        let num = ctx.usePassed Store.num
+        counter num)
