@@ -1,8 +1,8 @@
 type project
 id SilkyFowl.Avalonia.FuncUI.LiveView
-version 0.0.1-alpha
+version 0.0.1-alpha2
 description Live fs/fsx previewer for Avalonia.FuncUI.
 authors SilkyFowl
 projectUrl https://github.com/SilkyFowl/Avalonia.FuncUI.LiveView
-releaseNotes Initial release
-licenseExpression MIT
+releaseNotes Add License
+files ..\..\LICENSE.md ==> 
