@@ -77,9 +77,6 @@ framework: net6.0
 
 ```json
 {
-    // IntelliSense を使用して利用可能な属性を学べます。
-    // 既存の属性の説明をホバーして表示します。
-    // 詳細情報は次を確認してください: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
     "configurations": [
         {
@@ -319,9 +316,43 @@ index 00ef90f..4d22a95 100644
 
 ```
 
+### Launch LivePreview
+
+#### When using debugger
+
 Change the debugger setting to `FuncUI Launch(Live Preview)` and start it.
 
 [Enjoy-It!!]
+
+#### When not using debugger
+
+Set environment variables.
+
+bash
+
+```bash
+export FUNCUI_LIVEPREVIEW=1
+```
+
+cmd
+
+```bat
+set FUNCUI_LIVEPREVIEW=1
+```
+
+powershell
+
+```powershell
+$env:FUNCUI_LIVEPREVIEW = 1
+```
+
+> **Note**
+> Without the debugger, response to code changes is improved.
+
+```sh
+dotnet build -c Release
+dotnet ./bin/Release/net6.0/PreviewApp.dll
+```
 
 ## Known Issues, Limitations
 
