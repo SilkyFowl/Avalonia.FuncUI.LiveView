@@ -11,6 +11,8 @@
 [cant-analyze-du]: github/img/README.ja/cant-analyze-du.png
 [install-Ionide.Ionide-fsharp]: github/img/README.ja/install-Ionide.Ionide-fsharp.png
 [First-Debug]: github/img/README.ja/First-Debug.png
+[First-Debug-success]: github/img/README.ja/First-Debug-success.png
+[DU-with-any-no-value-case]: github/img/README.ja/DU-with-any-no-value-case.png
 
 # Avalonia.FuncUI.LiveView
 
@@ -144,6 +146,8 @@ framework: net6.0
 ![First-Debug]
 
 起動したら次へ進みます。
+
+![First-Debug-success](README.ja/First-Debug-success.png)
 
 ### FuncUI Analyzerのセットアップ
 
@@ -329,7 +333,11 @@ index 00ef90f..4d22a95 100644
 
 ### 回避方法
 
-判別共用体は別ファイルに定義する。
+#### 値を持たないケースを1つ以上含めた判別共用体にする
+
+![DU-with-any-no-value-case]
+
+#### 判別共用体は別ファイルに定義する
 
 ```fsharp
 // TypesDefinition.fs
@@ -393,4 +401,4 @@ let preview () = ViewBuilder.Create<Host> []
 
 ## 計画
 
--> #4
+-> SilkyFowl/Avalonia.FuncUI.LiveView#4
