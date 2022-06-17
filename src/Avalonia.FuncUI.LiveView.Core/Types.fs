@@ -1,6 +1,9 @@
 module Avalonia.FuncUI.LiveView.Core.Types
 
-type Msg = CodeEdited of string []
+open System    
+
+type Msg =
+    { Content: string }
 
 type LogMessage =
     | LogDebug of string
@@ -8,6 +11,10 @@ type LogMessage =
     | LogError of string
 
 type Logger = LogMessage -> unit
+
+[<AttributeUsage(AttributeTargets.Property)>]
+type LivePreviewAttribute() =
+    inherit Attribute()
 
 module FuncUiAnalyzer =
     open System

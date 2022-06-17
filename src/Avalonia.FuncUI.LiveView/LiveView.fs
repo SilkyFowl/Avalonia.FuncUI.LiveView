@@ -1,23 +1,27 @@
 ﻿namespace Avalonia.FuncUI.LiveView
 
 open System
+open System.IO
+open Avalonia
 open Avalonia.Controls
 open Avalonia.Media
 open Avalonia.Layout
 open Avalonia.FuncUI
+open Avalonia.FuncUI.Types
 open Avalonia.FuncUI.DSL
 
 open Avalonia.FuncUI.LiveView.Core.Types
 open Avalonia.FuncUI.LiveView.MessagePack
 
 type StateStore =
-    { EvalText: IWritable<string>
-      EvalResult: IWritable<obj>
+    { Msg: IWritable<Msg>
+      EvalResult: IWritable<list<string * IControl>>
       EvalWarings: IWritable<obj []>
-      Status: IWritable<LogMessage> }
+      Status: IWritable<LogMessage>
+      TempScriptFileInfo: FileInfo }
 
 module StateStore =
-    open System.Text.RegularExpressions
+    open Avalonia.FuncUI.VirtualDom
     let private fsiSession = FsiSession.create ()
 
     /// `state`の情報に基づいてEvalする。
@@ -25,14 +29,10 @@ module StateStore =
         FsiSession.evalInteraction
             fsiSession
             state.Status.Set
-            state.EvalText
+            state.TempScriptFileInfo
+            state.Msg.Current
             state.EvalWarings
             state.EvalResult
-
-    /// `evalInteraction`の非同期版。
-    let evalInteractionAsync state _ =
-        async { evalInteraction state }
-        |> Async.StartImmediate
 
     /// `StateStore`を初期化する。
     let init () =
@@ -86,8 +86,6 @@ module Counter =
                 ]
             ]
         )
-
-Counter.view
             """
 
         let initResult =
@@ -96,21 +94,57 @@ Counter.view
                 TextBlock.horizontalAlignment HorizontalAlignment.Center
                 TextBlock.text "Results are displayed here."
             ]
-            |> VirtualDom.VirtualDom.create
+            |> VirtualDom.create
 
-        { EvalText = new State<_>(initText)
-          EvalResult = new State<_>(box initResult)
+        { Msg = new State<_> { Content = initText }
+          EvalResult = new State<_>([ "init", initResult ])
           EvalWarings = new State<_>([||])
-          Status = new State<_>(LogInfo "") }
+          Status = new State<_>(LogInfo "")
+          TempScriptFileInfo =
+            Path.ChangeExtension(Path.GetTempFileName(), "fsx")
+            |> FileInfo }
 
 open Avalonia.FuncUI.Hosts
 
+[<AutoOpen>]
+module StyledElement =
+    open Avalonia.Styling
+
+    type StyledElement with
+        /// 参考:
+        static member styles(styleSeq: list<(Selector -> Selector) * list<IAttr<'a>>>) =
+            let styles = Styles()
+
+            for (selector, setters) in styleSeq do
+                let s = Style(fun x -> selector x)
+
+                for attr in setters do
+                    match attr.Property with
+                    | Some p ->
+                        match p.Accessor with
+                        | InstanceProperty x -> failwith "Can't support instance property"
+                        | AvaloniaProperty x -> s.Setters.Add(Setter(x, p.Value))
+                    | None -> ()
+
+                styles.Add s
+
+            StyledElement.styles styles
+
 module LiveView =
+
+    open Avalonia.Styling
+
     let view shared client =
+
+        let buttonBackground =
+            Application.Current.FindResource "ButtonBackground" :?> IBrush
+
         Component (fun ctx ->
 
             // sharedの購読
-            let evalText = ctx.usePassed (shared.EvalText, false)
+            let evalText =
+                ctx.usePassedRead (shared.Msg |> State.readMap (fun m -> m.Content), true)
+
             let evalResult = ctx.usePassed (shared.EvalResult)
             let evalWarnings = ctx.usePassed (shared.EvalWarings)
             let status = ctx.usePassed shared.Status
@@ -124,7 +158,7 @@ module LiveView =
 
             /// Evalを実行する。
             let evalInteractionAsync _ =
-                StateStore.evalInteractionAsync shared ()
+                StateStore.evalInteraction shared |> ignore
 
             ctx.useEffect (
                 (fun _ ->
@@ -135,7 +169,18 @@ module LiveView =
                 [ EffectTrigger.AfterInit ]
             )
 
+            let rootGridName = "live-preview-root"
+
+            ctx.attrs [
+                Component.styles [
+                    (fun (x: Selector) -> x.Name(rootGridName).Child()),
+                    [ Layoutable.margin 8
+                      Layoutable.verticalAlignment VerticalAlignment.Center ]
+                ]
+            ]
+
             Grid.create [
+                Grid.name rootGridName
                 Grid.rowDefinitions "Auto,*,4,*,Auto"
                 Grid.columnDefinitions "Auto,*,Auto"
                 Grid.children [
@@ -148,7 +193,6 @@ module LiveView =
                         CheckBox.onUnchecked (fun _ -> showEvalText.Set false)
                     ]
                     TextBox.create [
-                        TextBox.isVisible showEvalText.Current
                         if showEvalText.Current then
                             TextBox.row 1
                             TextBox.column 0
@@ -156,32 +200,73 @@ module LiveView =
                             TextBox.acceptsReturn true
                             TextBox.textWrapping TextWrapping.Wrap
                             TextBox.text evalText.Current
-                            TextBox.onTextChanged evalText.Set
 
                             if not <| Array.isEmpty evalWarnings.Current then
                                 TextBox.errors evalWarnings.Current
-                    ]
+                        else
+                            TextBox.isVisible false
+                        ]
+
                     GridSplitter.create [
-                        GridSplitter.isVisible showEvalText.Current
                         if showEvalText.Current then
                             GridSplitter.row 2
                             GridSplitter.column 0
                             GridSplitter.columnSpan 3
-                    ]
-                    ContentControl.create [
-                        if showEvalText.Current then
-                            Border.row 3
                         else
-                            Border.row 1
-                            Border.rowSpan 3
-                        TextBox.column 0
-                        TextBox.columnSpan 3
-                        TextBox.column 0
-                        ContentControl.content evalResult.Current
+                            GridSplitter.isVisible false
+                        ]
+                    ScrollViewer.create [
+                        if showEvalText.Current then
+                            ScrollViewer.row 3
+                        else
+                            ScrollViewer.row 1
+                            ScrollViewer.rowSpan 3
+                        ScrollViewer.margin (4, 4)
+                        ScrollViewer.padding (4, 0)
+                        ScrollViewer.verticalAlignment VerticalAlignment.Top
+                        ScrollViewer.column 0
+                        ScrollViewer.columnSpan 3
+                        ScrollViewer.column 0
+                        ScrollViewer.content (
+                            DockPanel.create [
+                                DockPanel.children [
+                                    for (name, content) in evalResult.Current do
+                                        Border.create [
+                                            Border.dock Dock.Top
+                                            Border.borderThickness 2
+                                            Border.borderBrush buttonBackground
+                                            Border.child (
+                                                Grid.create [
+                                                    Grid.rowDefinitions "Auto,Auto,Auto"
+                                                    Grid.children [
+                                                        TextBlock.create [
+                                                            TextBlock.row 0
+                                                            TextBlock.fontSize 20
+                                                            TextBlock.margin 4
+                                                            TextBlock.fontWeight FontWeight.SemiBold
+                                                            TextBlock.text name
+                                                        ]
+                                                        Border.create [
+                                                            Border.row 1
+                                                            Border.height 2
+                                                            Border.background buttonBackground
+                                                        ]
+                                                        Border.create [
+                                                            Border.row 2
+                                                            Border.child content
+                                                        ]
+                                                    ]
+                                                ]
+                                            )
+                                        ]
+                                ]
+                            ]
+                        )
                     ]
                     CheckBox.create [
                         CheckBox.row 4
                         CheckBox.column 0
+                        CheckBox.margin 4
                         CheckBox.content "Auto EvalText"
                         CheckBox.isChecked autoEval.Current
                         CheckBox.onChecked (fun _ -> autoEval.Set true)
@@ -204,11 +289,14 @@ module LiveView =
 
 type LiveViewWindow() =
     inherit HostWindow(Title = "LiveView", Width = 800, Height = 600)
+
     /// `Interactive`のStore。
     /// ※本来、Storeはアプリケーション一つだけであるのが望ましい。
     let shared = StateStore.init ()
 
     let client =
-        Client.init shared.Status.Set Settings.iPAddress Settings.port shared.EvalText.Set
+        Client.init shared.Status.Set Settings.iPAddress Settings.port shared.Msg.Set
 
-    do base.Content <- LiveView.view shared client
+    do
+        base.Content <- LiveView.view shared client
+        base.AttachDevTools()

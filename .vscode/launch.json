@@ -5,7 +5,7 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": ".NET Core Launch (console)",
+            "name": "Sample",
             "type": "coreclr",
             "request": "launch",
             "preLaunchTask": "Build: solution",
@@ -21,9 +21,24 @@
             }
         },
         {
-            "name": ".NET Core Attach",
+            "name": "Sample(Live Preview)",
             "type": "coreclr",
-            "request": "attach"
-        }
+            "request": "launch",
+            "preLaunchTask": "Build: solution",
+            "program": "${workspaceFolder}/src/Sample/bin/Debug/net6.0/Sample.dll",
+            "args": [],
+            "cwd": "${workspaceFolder}",
+            "console": "internalConsole",
+            "stopAtEntry": false,
+            "env": {
+                "FUNCUI_LIVEPREVIEW": "1"
+            },
+            "linux": {
+                "env": {
+                    "LANG": "en_US.UTF-8",
+                    "FUNCUI_LIVEPREVIEW": "1"
+                }
+            }
+        },
     ]
 }
