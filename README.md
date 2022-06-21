@@ -233,7 +233,9 @@ With these conditions, editing **the F# code recognized in the `Solution Explore
 
 > **Warning**
 > You can analyze `fsx` scripts, etc. that are not recognized by the `Solution Explorer`, but you cannot start the `FuncUi Analyzer`.
+>
 > ![fsx-in-explorer]
+>
 > ![there-is-no-fsx-in-fs-explorer]
 
 ### LivePreview Setup
