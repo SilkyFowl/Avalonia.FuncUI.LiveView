@@ -153,7 +153,7 @@ framework: net6.0
 
 起動したら次へ進みます。
 
-![First-Debug-success](README.ja/First-Debug-success.png)
+![First-Debug-success]
 
 ### FuncUI Analyzerのセットアップ
 
@@ -233,7 +233,9 @@ dotnet paket update
 
 > **Warning**
 > 以下のような`Solution Explorer`に認識されてない`fsx`スクリプトなどもAnalyze出来ますが、`FuncUi Analyzer`の起動は出来ません。
+>
 > ![fsx-in-explorer]
+>
 > ![there-is-no-fsx-in-fs-explorer]
 
 ### LivePreviewのセットアップ
