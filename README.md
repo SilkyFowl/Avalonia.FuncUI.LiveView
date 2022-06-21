@@ -13,6 +13,8 @@
 [First-Debug]: github/img/README.ja/First-Debug.png
 [First-Debug-success]: github/img/README.ja/First-Debug-success.png
 [DU-with-any-no-value-case]: github/img/README.ja/DU-with-any-no-value-case.png
+[fsx-in-explorer]: github/img/README.ja/fsx-in-explorer.png
+[there-is-no-fsx-in-fs-explorer]: github/img/README.ja/there-is-no-fsx-in-fs-explorer.png
 
 # Avalonia.FuncUI.LiveView
 
@@ -34,6 +36,13 @@ Analyzers.SDK, it displays a real-time preview of the content of the F# file you
 The following is a case of using VScode and Paket.
 
 ### Preliminary Preparation
+
+#### Network
+
+Use `localhost:8080` for communication between Analyzer and LivePreview.
+Communication method will be improved in the future.
+
+#### VScode
 
 Install [Ionide.Ionide-fsharp] in VScode.
 
@@ -215,9 +224,17 @@ Add a configuration file here.
 }
 ```
 
-This will start the `FuncUi Analyzer`.
+- `FSharp.enableAnalyzers` is true
+- Analyzer Dll exists in `FSharp.analyzersPath`.
+
+With these conditions, editing **the F# code recognized in the `Solution Explorer` of Ionide for F#** will start the `FuncUi Analyzer`.
 
 ![Active Analyzer][funcUi-analyzer]
+
+> **Warning**
+> You can analyze `fsx` scripts, etc. that are not recognized by the `Solution Explorer`, but you cannot start the `FuncUi Analyzer`.
+> ![fsx-in-explorer]
+> ![there-is-no-fsx-in-fs-explorer]
 
 ### LivePreview Setup
 

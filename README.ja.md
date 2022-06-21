@@ -13,6 +13,8 @@
 [First-Debug]: github/img/README.ja/First-Debug.png
 [First-Debug-success]: github/img/README.ja/First-Debug-success.png
 [DU-with-any-no-value-case]: github/img/README.ja/DU-with-any-no-value-case.png
+[fsx-in-explorer]: github/img/README.ja/fsx-in-explorer.png
+[there-is-no-fsx-in-fs-explorer]: github/img/README.ja/there-is-no-fsx-in-fs-explorer.png
 
 # Avalonia.FuncUI.LiveView
 
@@ -35,7 +37,14 @@ Avalonia.FuncUI.LiveViewは[Avalonia.FuncUI][Avalonia.FuncUI-Docs]のUIをリア
 
 ### 事前準備
 
-VScodeに[Ionide.Ionide-fsharp]をインストールしてください。
+#### Network
+
+AnalyzerとLivePreviewの通信で`localhost:8080`を使用します。
+通信方式については今後改善予定です。
+
+#### VScode
+
+[Ionide.Ionide-fsharp]をインストールしてください。
 
 ![install extension][install-Ionide.Ionide-fsharp]
 
@@ -215,9 +224,17 @@ dotnet paket update
 }
 ```
 
-これで`FuncUi Analyzer`が起動します。
+- `FSharp.enableAnalyzers`が`true`
+- `FSharp.analyzersPath`にAnalyzerのDllが存在する
+
+この条件をみたした状態で**Ionide for F#の`Solution Explorer`に認識されているF#コード**を編集すると`FuncUi Analyzer`が起動します。
 
 ![Active Analyzer][funcUi-analyzer]
+
+> **Warning**
+> 以下のような`Solution Explorer`に認識されてない`fsx`スクリプトなどもAnalyze出来ますが、`FuncUi Analyzer`の起動は出来ません。
+> ![fsx-in-explorer]
+> ![there-is-no-fsx-in-fs-explorer]
 
 ### LivePreviewのセットアップ
 
