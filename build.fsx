@@ -78,6 +78,10 @@ module Nuspec =
     open System.IO.Compression
 
     let addLicense (proj: ProjSetting) =
+        let xn = XName.Get
+
+        let ns localName =
+            XName.Get(localName, "http://schemas.microsoft.com/packaging/2011/10/nuspec.xsd")
 
         let unzipedPath =
             outputPath
@@ -91,16 +95,19 @@ module Nuspec =
 
         let nupkgDoc = XDocument.Load nuspecPath
 
-        let xn localName =
-            XName.Get(localName, "http://schemas.microsoft.com/packaging/2011/10/nuspec.xsd")
-
-        nupkgDoc.Descendants(xn "authors")
+        nupkgDoc.Descendants(ns "authors")
         |> Seq.iter (fun metadata ->
             metadata.AddAfterSelf(
-                XElement(xn "requireLicenseAcceptance", "false"),
-                XElement(xn "license", XAttribute(XName.Get "type", "file"), "LICENSE.md"),
-                XElement(xn "licenseUrl", "https://aka.ms/deprecateLicenseUrl")
+                XElement(ns "requireLicenseAcceptance", "false"),
+                XElement(ns "license", XAttribute(xn "type", "file"), "LICENSE.md"),
+                XElement(ns "licenseUrl", "https://aka.ms/deprecateLicenseUrl")
             ))
+
+        if proj = analyzerProjSetting then
+            nupkgDoc.Descendants(ns "dependency")
+            |> Seq.filter (fun dependency -> dependency.Attribute(xn "id").Value <> "FSharp.Analyzers.SDK")
+            |> Seq.toList
+            |> List.iter (fun dependency -> dependency.Remove())
 
         nupkgDoc.Save nuspecPath
         Shell.rm nupkgPath
@@ -141,15 +148,13 @@ Target.create "Pack" (fun _ ->
                 SelfContained = Some false
                 Framework = Some "net6.0" })
 
-        let isAvalyzer = setting.projSetting = analyzerProjSetting
-
         Paket.pack (fun p ->
             { p with
                 ToolType = ToolType.CreateLocalTool()
                 TemplateFile = Option.toObj setting.templateParams.TemplateFilePath
                 OutputPath = outputPath
-                MinimumFromLockFile = not isAvalyzer
-                IncludeReferencedProjects = not isAvalyzer })
+                MinimumFromLockFile = true
+                IncludeReferencedProjects = true })
 
         Nuspec.addLicense setting.projSetting)
 
