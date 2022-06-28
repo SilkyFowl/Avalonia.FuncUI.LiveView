@@ -8,6 +8,7 @@
     <Compile Include="ComponentSample.fs" />
     <Compile Include="ElmishDefineDUInAnotherFileSample.fs" />
     <Compile Include="ElmishSample.fs" />
+    <Compile Include="TemplatedControlSample.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
   <ItemGroup>
