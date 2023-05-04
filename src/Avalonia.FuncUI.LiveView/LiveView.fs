@@ -15,7 +15,7 @@ open Avalonia.FuncUI.LiveView.MessagePack
 
 type StateStore =
     { Msg: IWritable<Msg>
-      EvalResult: IWritable<list<string * IControl>>
+      EvalResult: IWritable<list<string * Control>>
       EvalWarings: IWritable<obj []>
       Status: IWritable<LogMessage>
       TempScriptFileInfo: FileInfo }

@@ -10,12 +10,12 @@ group Main
     nuget FSharp.Core content: none
     nuget FsUnit.xUnit
 
-    nuget JaggerJo.Avalonia.FuncUI
-    nuget JaggerJo.Avalonia.FuncUI.DSL
-    nuget JaggerJo.Avalonia.FuncUI.Elmish
+    nuget Avalonia.FuncUI
+    nuget Avalonia.FuncUI.Elmish
 
-    nuget Avalonia.Desktop
-    nuget Avalonia.Diagnostics
+    nuget Avalonia.Desktop prerelease
+    nuget Avalonia.Diagnostics prerelease
+    nuget Avalonia.Themes.Fluent prerelease
     nuget Avalonia.Angle.Windows.Natives 2.1.0.2023020321
     nuget MessagePack.FSharpExtensions
     nuget Microsoft.NET.Test.Sdk

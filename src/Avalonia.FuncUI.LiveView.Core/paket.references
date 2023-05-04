@@ -1,5 +1,4 @@
 group Main
     Avalonia.Desktop
     FSharp.Compiler.Service
-    JaggerJo.Avalonia.FuncUI
-    JaggerJo.Avalonia.FuncUI.DSL
+    Avalonia.FuncUI

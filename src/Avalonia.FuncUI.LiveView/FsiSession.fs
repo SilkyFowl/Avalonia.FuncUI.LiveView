@@ -90,7 +90,7 @@ let getLivePreviews (assembly: Assembly) =
                         try
                             match m.Invoke((), [||]) with
                             | :? IView as view ->  view
-                            | :? IControl as view ->
+                            | :? Control as view ->
                                 ContentControl.create [
                                     ContentControl.content view
                                 ]

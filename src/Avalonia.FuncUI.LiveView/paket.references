@@ -1,7 +1,6 @@
 group Main
     Avalonia.Desktop
     Avalonia.Diagnostics
-    JaggerJo.Avalonia.FuncUI
-    JaggerJo.Avalonia.FuncUI.DSL
-    JaggerJo.Avalonia.FuncUI.Elmish
+    Avalonia.FuncUI
+    Avalonia.FuncUI.Elmish
     FSharp.Compiler.Service

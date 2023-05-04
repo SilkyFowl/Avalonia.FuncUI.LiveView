@@ -54,7 +54,7 @@ type Host() as this =
     do
         Elmish.Program.mkSimple (fun () -> init) update view
         |> Program.withHost this
-        |> Elmish.Program.run
+        |> Program.runWithAvaloniaSyncDispatch ()
 
 [<LivePreview>]
 let preview () = ViewBuilder.Create<Host> []

@@ -51,11 +51,11 @@ let stringArgDSLFuncMap =
 
     let controlTypes =
         [| "Avalonia.Controls"
-           "Avalonia.Styling" |]
+           "Avalonia.Base" |]
         |> Array.map (fun name -> Assembly.Load(name).GetExportedTypes())
         |> Array.concat
 
-    let dslAssembly = Assembly.Load "Avalonia.FuncUI.DSL"
+    let dslAssembly = Assembly.Load "Avalonia.FuncUI"
 
     dslAssembly.GetExportedTypes()
     |> Array.choose (fun ty ->
