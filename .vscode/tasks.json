@@ -2,9 +2,15 @@
 	"version": "2.0.0",
 	"tasks": [
 		{
-			"type": "msbuild",
+			"type": "shell",
 			"problemMatcher": [
 				"$msCompile"
+			],
+			"command" : "dotnet",
+			"args": [
+				"run",
+				"--project",
+				"${workspaceFolder}/build"
 			],
 			"group": "build",
 			"label": "Build: solution",
