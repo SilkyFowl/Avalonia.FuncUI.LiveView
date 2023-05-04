@@ -6,11 +6,8 @@
 #r "Avalonia.Desktop"
 #r "Avalonia.Skia"
 #r "Avalonia.Controls"
-#r "Avalonia.Visuals"
 #r "Avalonia.FuncUI"
-#r "Avalonia.FuncUI.DSL"
 #r "FSharp.Compiler.Service"
-#r "Avalonia.Styling.dll"
 
 #load "draft-init.fsx"
 #load "src/Avalonia.FuncUI.LiveView.Core/Types.fs"
@@ -25,10 +22,10 @@ open Draft
 AnalysisDraft.references
 AnalysisDraft.checkProjectResults
 let d = AnalysisDraft.parseAndCheckSingleFile InputData.input
-d
+d.AssemblyContents.ImplementationFiles.Length
 // let input = "DockPanel.background \"Fpp\""
 // (AnalysisDraft.parseAndCheckSingleFile InputData.input).AssemblyContents.ImplementationFiles[1].Declarations
-d.AssemblyContents.ImplementationFiles[1].Declarations
+d.AssemblyContents.ImplementationFiles[0].Declarations
 |> List.iter (
     FuncUIAnalysis.visitDeclaration
         { OnLivePreviewFunc =
@@ -48,7 +45,10 @@ d.AssemblyContents.ImplementationFiles[1].Declarations
                     $"{nameof m}: {m.ReturnParameter}"
                     $"{nameof typeArgs}: {typeArgs}"
                     $"{nameof argExprs}: {argExprs}" ]
-                  |> List.iter (printfn "%s") }
+                  |> List.iter (printfn "%s")
+          OnNotSuppurtPattern =
+            fun ex e ->
+                () }
 )
 AnalysisDraft.declarations
 |> List.iter (
@@ -71,7 +71,10 @@ AnalysisDraft.declarations
                     $"{nameof m}: {m.ReturnParameter}"
                     $"{nameof typeArgs}: {typeArgs}"
                     $"{nameof argExprs}: {argExprs}" ]
-                  |> List.iter (printfn "%s") }
+                  |> List.iter (printfn "%s")
+          OnNotSuppurtPattern = 
+            fun ex e ->
+                () }
 )
 
 t[0].DisplayName
@@ -125,7 +128,6 @@ session.CurrentPartialAssemblySignature.Entities[0]
 
 session.DynamicAssemblies[ 0 ].GetTypes()
 |> Seq.iter (fun t -> t.FullName |> printfn "%s")
-
 System
     .Reflection
     .Assembly
@@ -134,3 +136,66 @@ System
 |> Seq.iter (fun asm -> printfn $"{asm.Name}")
 
 $"{t[0]}"
+let assemblies =System.AppDomain.CurrentDomain.GetAssemblies()
+let allTypeInfo =
+    assemblies
+    |> Array.map(fun asm ->
+        asm.GetExportedTypes()
+        |> Array.map (fun ty -> ty, ty.GetMethods(Public ||| Static))
+    )
+    |> Array.concat
+
+let tInfo,_= 
+    allTypeInfo
+    |> Array.find(fun (ty,_) ->
+        let rec loop (t:Type) =
+            if t.FullName = "Avalonia.AvaloniaObject" then
+                true
+            else
+                match t.BaseType with
+                | null -> false
+                | b -> loop b
+        loop ty
+    )
+tInfo.FullName.Contains "Ava"
+
+let a =
+    [|
+
+        let rec containBase (t:Type) =
+            if t.FullName = "Avalonia.AvaloniaObject" then
+                true
+            else
+                match t.BaseType with
+                | null -> false
+                | b -> containBase b
+
+        for asm in System.AppDomain.CurrentDomain.GetAssemblies() do
+            for ty in asm.ExportedTypes do
+                if containBase ty then
+                    ty
+    |]
+    |> Array.groupBy (fun t -> t.FullName)
+    |> Array.filter (fun (_,arr) -> arr.Length >= 2)
+    // // |> Array.head
+    // |> Array.iter (fun (_,ts) ->
+    //     Array.iter (printfn "%A") ts)
+a[0]
+assemblies
+|> Array.map(fun asm ->
+    asm.GetExportedTypes()
+    |> Array.filter(fun (ty) ->
+        let rec loop (t:Type) =
+            if t.FullName = "Avalonia.AvaloniaObject" then
+                true
+            else
+                match t.BaseType with
+                | null -> false
+                | b -> loop b
+        loop ty
+    )
+)
+|> Array.concat
+|> Array.iter (fun (ty) ->
+    printfn $"{ty.FullName}"
+)

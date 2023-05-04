@@ -4,9 +4,8 @@ module Draft.InputData
 let input =
     """
 #r "nuget: Avalonia.Desktop"
-#r "nuget: JaggerJo.Avalonia.FuncUI"
-#r "nuget: JaggerJo.Avalonia.FuncUI.DSL"
-#r "nuget: JaggerJo.Avalonia.FuncUI.Elmish"
+#r "nuget: Avalonia.FuncUI"
+#r "nuget: Avalonia.FuncUI.Elmish"
 
 open System
 open Avalonia.FuncUI

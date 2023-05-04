@@ -43,7 +43,6 @@ let references =
             "Avalonia.Desktop.dll"
             "Avalonia.Diagnostics.dll"
             "Avalonia.FuncUI.dll"
-            "Avalonia.FuncUI.DSL.dll"
             "Avalonia.FuncUI.Elmish.dll"
         }
         |> Seq.map getDeps
