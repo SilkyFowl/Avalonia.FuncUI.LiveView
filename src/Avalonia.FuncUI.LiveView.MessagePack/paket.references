@@ -1,1 +1,2 @@
-MessagePack.FSharpExtensions
+group Main
+    MessagePack.FSharpExtensions

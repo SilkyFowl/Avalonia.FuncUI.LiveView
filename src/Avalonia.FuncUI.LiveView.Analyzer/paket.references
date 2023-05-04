@@ -1,1 +1,2 @@
-FSharp.Analyzers.SDK
+group Main
+    FSharp.Analyzers.SDK
