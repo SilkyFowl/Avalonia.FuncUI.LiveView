@@ -10,6 +10,7 @@ open Fake.Core.TargetOperators
 // ****************************************************************************************************
 
 let srcPath = "./src"
+let testsPath = "./tests"
 let outputPath = "./dist"
 let slnPath = "./Avalonia.FuncUI.LiveView.sln"
 let localanalyzerPath = "./localanalyzers"
@@ -103,6 +104,7 @@ module Nuspec =
         Shell.deleteDir unzipedPath
 
 #nowarn "20"
+
 let initTargets () =
     Target.initEnvironment ()
 
@@ -124,6 +126,15 @@ let initTargets () =
     Target.create "BuildRelease" (fun _ ->
         slnPath
         |> DotNet.build (fun setParams -> { setParams with Configuration = DotNet.Release }))
+
+    Target.create "TestRelease" (fun _ ->
+        slnPath
+        |> DotNet.test (fun p -> 
+            {p with
+                NoBuild = true
+                Configuration = DotNet.BuildConfiguration.Release
+            })
+    )
 
     Target.create "Pack" (fun _ ->
         for setting in Paket.settings do
@@ -169,6 +180,7 @@ let initTargets () =
     "CleanRelease"
     ==> "ClearLocalAnalyzer"
     ==> "BuildRelease"
+    ==> "TestRelease"
     ==> "Pack"
     ==> "SetLocalAnalyzer"
 
