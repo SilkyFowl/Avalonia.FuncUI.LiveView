@@ -136,9 +136,6 @@ module LiveView =
 
     let view shared client =
 
-        let buttonBackground =
-            Application.Current.FindResource "ButtonBackground" :?> IBrush
-
         Component (fun ctx ->
 
             // sharedの購読
@@ -234,7 +231,6 @@ module LiveView =
                                         Border.create [
                                             Border.dock Dock.Top
                                             Border.borderThickness 2
-                                            Border.borderBrush buttonBackground
                                             Border.child (
                                                 Grid.create [
                                                     Grid.rowDefinitions "Auto,Auto,Auto"
@@ -249,7 +245,6 @@ module LiveView =
                                                         Border.create [
                                                             Border.row 1
                                                             Border.height 2
-                                                            Border.background buttonBackground
                                                         ]
                                                         Border.create [
                                                             Border.row 2
