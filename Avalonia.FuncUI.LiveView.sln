@@ -5,8 +5,11 @@ VisualStudioVersion = 16.0.30114.105
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".paket", ".paket", "{0A4244DC-3284-4E74-A62E-1A04BF2F016D}"
 	ProjectSection(SolutionItems) = preProject
+		.editorconfig = .editorconfig
 		paket.dependencies = paket.dependencies
 	EndProjectSection
+EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "build", "build\build.fsproj", "{58DC7613-7B55-4C0C-929A-ACFD312E894B}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{DB8DF710-E6E6-4722-99D4-514834AEEB16}"
 EndProject
@@ -23,8 +26,6 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{77D972B7-9F97-4C02-959F-C95D4B35CD61}"
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Avalonia.FuncUI.LiveView.Core.Tests", "tests\Avalonia.FuncUI.LiveView.Core.Tests\Avalonia.FuncUI.LiveView.Core.Tests.fsproj", "{20DD3B4D-46C8-4F78-B114-6ED2CCAA1433}"
-EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "build", "build\build.fsproj", "{58DC7613-7B55-4C0C-929A-ACFD312E894B}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

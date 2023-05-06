@@ -1,2 +1,3 @@
 group Main
+    MessagePack
     MessagePack.FSharpExtensions

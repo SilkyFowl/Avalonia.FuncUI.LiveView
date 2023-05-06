@@ -1,3 +1,7 @@
+### 0.0.2-preview02
+
+* Fix package dependencies.
+
 ### 0.0.2-preview01
 
 * Support for 0.6.0-preview9.1 of Avalonia.FuncUI.

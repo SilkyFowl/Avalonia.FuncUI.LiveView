@@ -10,13 +10,15 @@ group Main
     nuget FSharp.Core content: none
     nuget FsUnit.xUnit
 
-    nuget Avalonia.FuncUI
-    nuget Avalonia.FuncUI.Elmish
+    nuget Avalonia.FuncUI 0.6.0-preview9.1
+    nuget Avalonia.FuncUI.Elmish 0.6.0-preview9.1
 
+    nuget Avalonia != 11.0.0-preview6
     nuget Avalonia.Desktop prerelease
     nuget Avalonia.Diagnostics prerelease
     nuget Avalonia.Themes.Fluent prerelease
-    nuget Avalonia.Angle.Windows.Natives 2.1.0.2023020321
+    nuget Avalonia.Angle.Windows.Natives ~> 2.1.0.0
+    nuget MessagePack
     nuget MessagePack.FSharpExtensions
     nuget Microsoft.NET.Test.Sdk
     nuget xunit
