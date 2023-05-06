@@ -1,3 +1,7 @@
+### 0.0.2-preview03
+
+* Fixed a bug that app crashes when displaying LiveViewWindow with SimpleTheme instead of FluentTheme.
+
 ### 0.0.2-preview02
 
 * Fix package dependencies.

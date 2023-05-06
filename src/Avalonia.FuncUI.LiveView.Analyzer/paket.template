@@ -1,10 +1,10 @@
 type project
 id SilkyFowl.Avalonia.FuncUI.LiveView.Analyzer
-version 0.0.2-preview02
+version 0.0.2-preview03
 description Live fs/fsx previewer for Avalonia.FuncUI.
 authors SilkyFowl
 projectUrl https://github.com/SilkyFowl/Avalonia.FuncUI.LiveView
-releaseNotes Fix package dependencies.
+releaseNotes Fixed a bug that app crashes when displaying LiveViewWindow with SimpleTheme instead of FluentTheme.
 files
     ..\..\LICENSE.md ==> 
     bin\Release\net6.0\publish ==> lib\net6.0
