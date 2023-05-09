@@ -14,8 +14,7 @@ module ElmishModule =
     type State = { watermark: string }
     let init = { watermark = "" }
 
-    type Msg =
-        | SetWatermark of string
+    type Msg = SetWatermark of string
 
     let update msg state =
         match msg with

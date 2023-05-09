@@ -70,44 +70,48 @@ let createTestCode beforeViewModule afterViewModule =
 {afterViewModule}
 """
 
-let allValueCaseDUs =
-    [ """
+let allValueCaseDUs = [
+    """
 type Foo = Foo of int
                 """
-      """
+    """
 type Bar =
     | Hoge of int
     | Fuga of string
-                """ ]
+                """
+]
 
-let anyNoValueCaseDUs =
-    [ """
+let anyNoValueCaseDUs = [
+    """
 type Foo = Foo
                     """
-      """
+    """
 type Bar =
     | Hoge
     | Fuga of string
                     """
-      """
+    """
 type Bar<'t> =
     | Hoge
     | Fuga of string
     | A of {|a:int; b:string; c: bool * string|}
     | B of ('t -> unit)
-                    """ ]
+                    """
+]
 
 let nestedAnyNoValueCaseDUs =
-    [ """
+    [
+        """
     type Foo = Foo"""
-      """
+        """
     type Bar =
         | Hoge
         | Fuga of string"""
-      """
+        """
     type Bar<'t> =
         | Hoge
         | Fuga of string
         | A of {|a:int; b:string; c: bool * string|}
-        | B of ('t -> unit)""" ]
+        | B of ('t -> unit)"""
+    ]
     |> List.map (sprintf "module DUs =%s")

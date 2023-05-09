@@ -1,9 +1,8 @@
 module Avalonia.FuncUI.LiveView.Core.Types
 
-open System    
+open System
 
-type Msg =
-    { Content: string }
+type Msg = { Content: string }
 
 type LogMessage =
     | LogDebug of string
@@ -24,7 +23,7 @@ module FuncUiAnalyzer =
 
     type Server(body) =
         let cts = new CancellationTokenSource()
-        let actor = MailboxProcessor<Msg>.Start (body cts.Token, cts.Token)
+        let actor = MailboxProcessor<Msg>.Start(body cts.Token, cts.Token)
         member _.Post = actor.Post
         member _.Dispose() = cts.Dispose()
 

@@ -24,35 +24,39 @@ let funcUiAnalyzer: Analyzer =
 
         ctx.TypedTree.Declarations
         |> List.iter (
-            FuncUIAnalysis.visitDeclaration
-                { OnLivePreviewFunc = fun v vs -> livePreviewFuncs.Add v.FullName
-                  OnInvalidLivePreviewFunc =
+            FuncUIAnalysis.visitDeclaration {
+                OnLivePreviewFunc = fun v vs -> livePreviewFuncs.Add v.FullName
+                OnInvalidLivePreviewFunc =
                     fun v vs ->
-                        errorMessages.Add
-                            { Type = "FuncUi analyzer"
-                              Message = "LivePreview must be unit -> 'a"
-                              Code = "OV001"
-                              Severity = Error
-                              Range = v.DeclarationLocation
-                              Fixes = [] }
-                  OnInvalidStringCall =
+                        errorMessages.Add {
+                            Type = "FuncUi analyzer"
+                            Message = "LivePreview must be unit -> 'a"
+                            Code = "OV001"
+                            Severity = Error
+                            Range = v.DeclarationLocation
+                            Fixes = []
+                        }
+                OnInvalidStringCall =
                     fun ex range m typeArgs argExprs ->
-                        errorMessages.Add
-                            { Type = "FuncUi analyzer"
-                              Message = $"{ex.GetType().Name}:{ex.Message}"
-                              Code = "OV002"
-                              Severity = Error
-                              Range = range
-                              Fixes = [] }
-                  OnNotSuppurtPattern =
+                        errorMessages.Add {
+                            Type = "FuncUi analyzer"
+                            Message = $"{ex.GetType().Name}:{ex.Message}"
+                            Code = "OV002"
+                            Severity = Error
+                            Range = range
+                            Fixes = []
+                        }
+                OnNotSuppurtPattern =
                     fun ex e ->
-                        notSuppurtPatternMessages.Add
-                            { Type = "FuncUi analyzer"
-                              Message = $"FuncUiAnalyzer does not support this pattern.{nl}{ex.Message}"
-                              Code = "OV000"
-                              Severity = Warning
-                              Range = e.Range
-                              Fixes = [] } }
+                        notSuppurtPatternMessages.Add {
+                            Type = "FuncUi analyzer"
+                            Message = $"FuncUiAnalyzer does not support this pattern.{nl}{ex.Message}"
+                            Code = "OV000"
+                            Severity = Warning
+                            Range = e.Range
+                            Fixes = []
+                        }
+            }
         )
 
         if livePreviewFuncs.Count > 0 then
@@ -61,7 +65,9 @@ let funcUiAnalyzer: Analyzer =
 
             // エラーがなければPreviewを実行
             if Seq.isEmpty errorMessages then
-                { Content = String.concat Environment.NewLine ctx.Content }
+                {
+                    Content = String.concat Environment.NewLine ctx.Content
+                }
                 |> server.Post
 
         Seq.distinct errorMessages |> Seq.toList

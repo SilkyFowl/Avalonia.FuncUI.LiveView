@@ -35,9 +35,7 @@ let create () =
     let references =
         let asm = Assembly.GetEntryAssembly()
 
-        let deps =
-            asm.GetReferencedAssemblies()
-            |> Seq.map (fun asm -> asm.Name)
+        let deps = asm.GetReferencedAssemblies() |> Seq.map (fun asm -> asm.Name)
 
         let path = (Directory.GetParent asm.Location).FullName
 
@@ -48,16 +46,18 @@ let create () =
 
     FsiEvaluationSession.Create(
         fsiConfig,
-        [| yield "fsi.exe"
-           yield! argv
-           yield "--noninteractive"
-           yield "--nologo"
-           yield "--gui-"
-           yield "--debug+"
-           // 参照が F# インタラクティブ プロセスによってロックされないようにする。
-           yield "--shadowcopyreferences+"
-           yield "-d:LIVEPREVIEW"
-           yield! references |],
+        [|
+            yield "fsi.exe"
+            yield! argv
+            yield "--noninteractive"
+            yield "--nologo"
+            yield "--gui-"
+            yield "--debug+"
+            // 参照が F# インタラクティブ プロセスによってロックされないようにする。
+            yield "--shadowcopyreferences+"
+            yield "-d:LIVEPREVIEW"
+            yield! references
+        |],
         inStream,
         outStream,
         errStream
@@ -87,38 +87,32 @@ let getLivePreviews (assembly: Assembly) =
                 let fullName = getFullName m
 
                 let content =
-                        try
-                            match m.Invoke((), [||]) with
-                            | :? IView as view ->  view
-                            | :? Control as view ->
-                                ContentControl.create [
-                                    ContentControl.content view
-                                ]
-                            | other ->
+                    try
+                        match m.Invoke((), [||]) with
+                        | :? IView as view -> view
+                        | :? Control as view -> ContentControl.create [ ContentControl.content view ]
+                        | other -> TextBlock.create [ TextBlock.text $"%A{other}" ]
+                        |> VirtualDom.create
+                    with :? TargetInvocationException as e ->
+                        StackPanel.create [
+                            StackPanel.children [
                                 TextBlock.create [
-                                    TextBlock.text $"%A{other}"
+                                    TextBlock.foreground Brushes.Red
+                                    TextBlock.text $"%A{e.InnerException.GetType()}"
                                 ]
-                            |> VirtualDom.create
-                        with
-                            | :? TargetInvocationException as e ->
-                                StackPanel.create [
-                                    StackPanel.children [
-                                        TextBlock.create [
-                                            TextBlock.foreground Brushes.Red
-                                            TextBlock.text $"%A{e.InnerException.GetType()}"
-                                        ]
-                                        TextBlock.create [
-                                            TextBlock.foreground Brushes.Red
-                                            TextBlock.text $"%s{e.InnerException.Message}"
-                                        ]
-                                        TextBlock.create [
-                                            TextBlock.text $"%s{e.InnerException.StackTrace}"
-                                            TextBlock.textWrapping TextWrapping.WrapWithOverflow
-                                        ]
-                                    ]
+                                TextBlock.create [
+                                    TextBlock.foreground Brushes.Red
+                                    TextBlock.text $"%s{e.InnerException.Message}"
                                 ]
-                                |> VirtualDom.create
-                Some(fullName,content)
+                                TextBlock.create [
+                                    TextBlock.text $"%s{e.InnerException.StackTrace}"
+                                    TextBlock.textWrapping TextWrapping.WrapWithOverflow
+                                ]
+                            ]
+                        ]
+                        |> VirtualDom.create
+
+                Some(fullName, content)
             else
                 None))
     |> Array.concat
@@ -138,31 +132,30 @@ let evalInteraction
         (LogInfo >> log) $"{time} Eval Start..."
 
         // Fsiの改行コードは、どのOSでも\n固定。
-        do! File.WriteAllTextAsync(tempFile.FullName, content.Replace(Environment.NewLine,"\n"))
+        do! File.WriteAllTextAsync(tempFile.FullName, content.Replace(Environment.NewLine, "\n"))
 
         let res, warnings = fsiSession.EvalScriptNonThrowing tempFile.FullName
 
         match res with
-        | Choice1Of2 () ->
+        | Choice1Of2() ->
             warnings
             |> Array.map (fun w -> box $"Warning {w.Message} at {w.StartLine},{w.StartColumn}")
             |> evalWarings.Set
 
-            let control =
-                fsiSession.DynamicAssemblies
-                |> Array.last
-                |> getLivePreviews
+            let control = fsiSession.DynamicAssemblies |> Array.last |> getLivePreviews
 
             evalResult.Set control
 
 
             (LogInfo >> log) $"{time} Eval Success."
-        | Choice2Of2 (exn: exn) ->
+        | Choice2Of2(exn: exn) ->
             (LogError >> log) $"{time} Eval Failed."
 
-            [| yield!
-                   warnings
-                   |> Array.map (fun w -> box $"Warning {w.Message} at {w.StartLine},{w.StartColumn}")
-               box $"exception %s{exn.Message}" |]
+            [|
+                yield!
+                    warnings
+                    |> Array.map (fun w -> box $"Warning {w.Message} at {w.StartLine},{w.StartColumn}")
+                box $"exception %s{exn.Message}"
+            |]
             |> evalWarings.Set
     }

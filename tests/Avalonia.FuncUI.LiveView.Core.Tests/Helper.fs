@@ -15,9 +15,7 @@ let references =
 
     let getDeps asmName =
 
-        let asm =
-            Path.Combine(asmPath.FullName, asmName)
-            |> Reflection.Assembly.LoadFile
+        let asm = Path.Combine(asmPath.FullName, asmName) |> Reflection.Assembly.LoadFile
 
         asm.GetReferencedAssemblies()
         |> Seq.map (fun asm -> $"{asm.Name}.dll")
@@ -58,14 +56,12 @@ let parseAndCheckSingleFile (input) =
         )
         |> Async.RunSynchronously
 
-    checker.ParseAndCheckProject projOptions
-    |> Async.RunSynchronously
+    checker.ParseAndCheckProject projOptions |> Async.RunSynchronously
 
 let getDeclarations (results: FSharpCheckProjectResults) =
     results.Diagnostics |> shouldBeEmpty
 
-    results.AssemblyContents.ImplementationFiles[0]
-        .Declarations
+    results.AssemblyContents.ImplementationFiles[0].Declarations
 
 let runFuncUIAnalysis sourceCode =
     let livePreviewFuncs = ResizeArray()
@@ -78,15 +74,18 @@ let runFuncUIAnalysis sourceCode =
     |> parseAndCheckSingleFile
     |> getDeclarations
     |> List.iter (
-        FuncUIAnalysis.visitDeclaration
-            { OnLivePreviewFunc = fun v vs -> livePreviewFuncs.Add(v, vs)
-              OnInvalidLivePreviewFunc = fun v vs -> invalidLivePreviewFuncs.Add(v, vs)
-              OnInvalidStringCall =
+        FuncUIAnalysis.visitDeclaration {
+            OnLivePreviewFunc = fun v vs -> livePreviewFuncs.Add(v, vs)
+            OnInvalidLivePreviewFunc = fun v vs -> invalidLivePreviewFuncs.Add(v, vs)
+            OnInvalidStringCall =
                 fun ex range m typeArgs argExprs -> invalidStringCalls.Add(ex, range, m, typeArgs, argExprs)
-              OnNotSuppurtPattern = fun ex e -> notSuppurtPattern.Add(ex, e) }
+            OnNotSuppurtPattern = fun ex e -> notSuppurtPattern.Add(ex, e)
+        }
     )
 
-    {| livePreviewFuncs = livePreviewFuncs
-       invalidLivePreviewFuncs = invalidLivePreviewFuncs
-       invalidStringCalls = invalidStringCalls
-       notSuppurtPattern = notSuppurtPattern |}
+    {|
+        livePreviewFuncs = livePreviewFuncs
+        invalidLivePreviewFuncs = invalidLivePreviewFuncs
+        invalidStringCalls = invalidStringCalls
+        notSuppurtPattern = notSuppurtPattern
+    |}

@@ -23,43 +23,57 @@ let projectUrl = $"https://github.com/{gitUserName}/Avalonia.FuncUI.LiveView"
 
 let release = ReleaseNotes.load "RELEASE_NOTES.md"
 
-type ProjSetting =
-    { Name: string }
+type ProjSetting = {
+    Name: string
+} with
+
     member this.Path = srcPath @@ this.Name
     member this.PackageId = $"{gitUserName}.{this.Name}"
 
-let analyzerProjSetting = { Name = "Avalonia.FuncUI.LiveView.Analyzer" }
+let analyzerProjSetting = {
+    Name = "Avalonia.FuncUI.LiveView.Analyzer"
+}
+
 let liveViewProjSetting = { Name = "Avalonia.FuncUI.LiveView" }
 
 module Paket =
     open PaketTemplate
 
-    let private baseParams =
-        { DefaultPaketTemplateParams with
+    let private baseParams = {
+        DefaultPaketTemplateParams with
             TemplateType = Project
             Version = Some release.NugetVersion
             ReleaseNotes = release.Notes
             Description = projectDescription
             Authors = authors
             ProjectUrl = Some projectUrl
-            Files = [ Include(".." </> ".." </> "LICENSE.md", "") ] }
+            Files = [ Include(".." </> ".." </> "LICENSE.md", "") ]
+    }
 
     let settings =
         let toTemplateFilePath projectPath = Some(projectPath @@ "paket.template")
 
-        [ {| projSetting = analyzerProjSetting
-             templateParams =
-              { baseParams with
-                  TemplateFilePath = toTemplateFilePath analyzerProjSetting.Path
-                  Id = Some analyzerProjSetting.PackageId
-                  Files =
-                      baseParams.Files
-                      @ [ Include("bin" </> "Release" </> "net6.0" </> "publish", "lib" </> "net6.0") ] } |}
-          {| projSetting = liveViewProjSetting
-             templateParams =
-              { baseParams with
-                  TemplateFilePath = toTemplateFilePath liveViewProjSetting.Path
-                  Id = Some liveViewProjSetting.PackageId } |} ]
+        [
+            {|
+                projSetting = analyzerProjSetting
+                templateParams = {
+                    baseParams with
+                        TemplateFilePath = toTemplateFilePath analyzerProjSetting.Path
+                        Id = Some analyzerProjSetting.PackageId
+                        Files =
+                            baseParams.Files
+                            @ [ Include("bin" </> "Release" </> "net6.0" </> "publish", "lib" </> "net6.0") ]
+                }
+            |}
+            {|
+                projSetting = liveViewProjSetting
+                templateParams = {
+                    baseParams with
+                        TemplateFilePath = toTemplateFilePath liveViewProjSetting.Path
+                        Id = Some liveViewProjSetting.PackageId
+                }
+            |}
+        ]
 
 module Nuspec =
     open System.Xml.Linq
@@ -71,9 +85,7 @@ module Nuspec =
         let ns localName =
             XName.Get(localName, "http://schemas.microsoft.com/packaging/2011/10/nuspec.xsd")
 
-        let unzipedPath =
-            outputPath
-            </> $"{proj.PackageId}.{release.NugetVersion}"
+        let unzipedPath = outputPath </> $"{proj.PackageId}.{release.NugetVersion}"
 
         let nupkgPath = $"{unzipedPath}.nupkg"
 
@@ -114,27 +126,30 @@ let initTargets () =
 
     Target.create "CleanDebug" (fun _ -> !! "src/**/Debug" ++ outputPath |> Shell.cleanDirs)
 
-    Target.create "CleanRelease" (fun _ ->
-        !! "src/**/Release" ++ outputPath
-        |> Shell.cleanDirs)
+    Target.create "CleanRelease" (fun _ -> !! "src/**/Release" ++ outputPath |> Shell.cleanDirs)
 
 
     Target.create "BuildDebug" (fun _ ->
         slnPath
-        |> DotNet.build (fun setParams -> { setParams with Configuration = DotNet.Debug }))
+        |> DotNet.build (fun setParams -> {
+            setParams with
+                Configuration = DotNet.Debug
+        }))
 
     Target.create "BuildRelease" (fun _ ->
         slnPath
-        |> DotNet.build (fun setParams -> { setParams with Configuration = DotNet.Release }))
+        |> DotNet.build (fun setParams -> {
+            setParams with
+                Configuration = DotNet.Release
+        }))
 
     Target.create "TestRelease" (fun _ ->
         slnPath
-        |> DotNet.test (fun p -> 
-            {p with
+        |> DotNet.test (fun p -> {
+            p with
                 NoBuild = true
                 Configuration = DotNet.BuildConfiguration.Release
-            })
-    )
+        }))
 
     Target.create "Pack" (fun _ ->
         for setting in Paket.settings do
@@ -142,25 +157,25 @@ let initTargets () =
             PaketTemplate.create (fun _ -> setting.templateParams)
 
             setting.projSetting.Path
-            |> DotNet.publish (fun opts ->
-                { opts with
+            |> DotNet.publish (fun opts -> {
+                opts with
                     Configuration = DotNet.Release
                     SelfContained = Some false
-                    Framework = Some "net6.0" })
+                    Framework = Some "net6.0"
+            })
 
-            Paket.pack (fun p ->
-                { p with
+            Paket.pack (fun p -> {
+                p with
                     ToolType = ToolType.CreateLocalTool()
                     TemplateFile = Option.toObj setting.templateParams.TemplateFilePath
                     OutputPath = outputPath
                     MinimumFromLockFile = true
-                    IncludeReferencedProjects = true })
+                    IncludeReferencedProjects = true
+            })
 
             Nuspec.addLicense setting.projSetting)
 
-    Target.create "ClearLocalAnalyzer" (fun _ ->
-        !!outputPath ++ localanalyzerPath
-        |> Shell.cleanDirs)
+    Target.create "ClearLocalAnalyzer" (fun _ -> !!outputPath ++ localanalyzerPath |> Shell.cleanDirs)
 
     Target.create "SetLocalAnalyzer" (fun _ ->
         let analyzerId = analyzerProjSetting.PackageId
@@ -195,6 +210,7 @@ let main argv =
     |> Context.FakeExecutionContext.Create false "build.fsx"
     |> Context.RuntimeContext.Fake
     |> Context.setExecutionContext
+
     initTargets ()
     Target.runOrDefaultWithArguments "Default"
 

@@ -28,9 +28,7 @@ let references =
 
     let getDeps asmName =
 
-        let asm =
-            Path.Combine (asmDirctoryPath,asmName)
-            |> Reflection.Assembly.LoadFile
+        let asm = Path.Combine(asmDirctoryPath, asmName) |> Reflection.Assembly.LoadFile
 
         asm.GetReferencedAssemblies()
         |> Seq.map (fun asm -> $"{asm.Name}.dll")
@@ -58,7 +56,8 @@ let references =
     |> Seq.toArray
 
 open FSharp.Compiler.Interactive.Shell
-let createSession() =
+
+let createSession () =
     let argv = Environment.GetCommandLineArgs()
     let sbOut = new Text.StringBuilder()
     let sbErr = new Text.StringBuilder()
@@ -66,22 +65,26 @@ let createSession() =
     let outStream = new StringWriter(sbOut)
     let errStream = new StringWriter(sbErr)
     let fsiConfig = FsiEvaluationSession.GetDefaultConfiguration()
+
     FsiEvaluationSession.Create(
         fsiConfig,
-        [| yield "fsi.exe"
-           yield! argv
-           yield "--noninteractive"
-           yield "--nologo"
-           yield "--gui-"
-           yield "--debug+"
-           // 参照が F# インタラクティブ プロセスによってロックされないようにする。
-           yield "--shadowcopyreferences+"
-        //    yield "-d:PREVIEW"
-           yield! references |],
+        [|
+            yield "fsi.exe"
+            yield! argv
+            yield "--noninteractive"
+            yield "--nologo"
+            yield "--gui-"
+            yield "--debug+"
+            // 参照が F# インタラクティブ プロセスによってロックされないようにする。
+            yield "--shadowcopyreferences+"
+            //    yield "-d:PREVIEW"
+            yield! references
+        |],
         inStream,
         outStream,
         errStream
     )
+
 let parseAndCheckSingleFile (input) =
     let file = Path.ChangeExtension(Path.GetTempFileName(), "fsx")
     File.WriteAllText(file, input)
@@ -95,8 +98,7 @@ let parseAndCheckSingleFile (input) =
         )
         |> Async.RunSynchronously
 
-    checker.ParseAndCheckProject(projOptions)
-    |> Async.RunSynchronously
+    checker.ParseAndCheckProject(projOptions) |> Async.RunSynchronously
 
 let input =
     """
@@ -147,5 +149,4 @@ module Counter =
 let checkProjectResults: FSharpCheckProjectResults = parseAndCheckSingleFile (input)
 
 let declarations =
-    checkProjectResults.AssemblyContents.ImplementationFiles[0]
-        .Declarations
+    checkProjectResults.AssemblyContents.ImplementationFiles[0].Declarations
