@@ -5,7 +5,7 @@ framework: net6.0
 
 group Main
     nuget coverlet.collector
-    nuget FSharp.Compiler.Service
+    nuget FSharp.Compiler.Service 43.7.200.0
     nuget FSharp.Analyzers.SDK
     nuget FSharp.Core content: none
     nuget FsUnit.xUnit
@@ -23,6 +23,23 @@ group Main
     nuget Microsoft.NET.Test.Sdk
     nuget xunit
     nuget xunit.runner.visualstudio
+
+group PreviewApp
+    source https://api.nuget.org/v3/index.json
+    storage: none
+    framework: net6.0
+    
+    nuget FSharp.Compiler.Service 43.7.200.0
+    nuget Ionide.ProjInfo
+    nuget Ionide.ProjInfo.FCS
+    nuget Ionide.ProjInfo.ProjectSystem
+    nuget Ionide.ProjInfo.Sln
+    nuget Microsoft.Build copy_local: false
+    nuget Microsoft.Build.Framework copy_local: false
+    nuget Microsoft.Build.Utilities.Core copy_local: false
+    nuget Microsoft.Build.Tasks.Core copy_local: false
+    nuget Nuget.Frameworks copy_local: false
+
 
 
 group Build

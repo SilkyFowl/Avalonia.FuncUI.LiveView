@@ -4,6 +4,11 @@
     // 詳細情報は次を確認してください: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
     "configurations": [
+    {
+        "name": ".NET Core Attach",
+        "type": "coreclr",
+        "request": "attach"
+    },
         {
             "name": "Sample",
             "type": "coreclr",
@@ -26,6 +31,28 @@
             "request": "launch",
             "preLaunchTask": "Build: solution",
             "program": "${workspaceFolder}/src/Sample/bin/Debug/net6.0/Sample.dll",
+            "args": [],
+            "cwd": "${workspaceFolder}",
+            "console": "internalConsole",
+            // "requireExactSource": false,
+            // "stopAtEntry": false,
+            // "justMyCode": false,
+            "env": {
+                "FUNCUI_LIVEPREVIEW": "1"
+            },
+            "linux": {
+                "env": {
+                    "LANG": "en_US.UTF-8",
+                    "FUNCUI_LIVEPREVIEW": "1"
+                }
+            }
+        },
+        {
+            "name": "PreviewApp",
+            "type": "coreclr",
+            "request": "launch",
+            "preLaunchTask": "Build: solution",
+            "program": "${workspaceFolder}/src/Avalonia.FuncUI.LiveView.PreviewApp/bin/Debug/net6.0/Avalonia.FuncUI.LiveView.PreviewApp.dll",
             "args": [],
             "cwd": "${workspaceFolder}",
             "console": "internalConsole",

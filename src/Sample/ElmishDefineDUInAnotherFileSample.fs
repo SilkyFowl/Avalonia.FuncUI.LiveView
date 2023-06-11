@@ -25,9 +25,9 @@ let view (state: State) dispatch =
                 Button.horizontalAlignment HorizontalAlignment.Stretch
             ]
 
-
+ 
             Button.create [
-                Button.content "Unset Watermark"
+                Button.content "Unset Watermark........"
                 Button.onClick (fun _ -> SetWatermark "" |> dispatch)
                 Button.horizontalAlignment HorizontalAlignment.Stretch
             ]
@@ -35,7 +35,7 @@ let view (state: State) dispatch =
     ]
 
 
-type Host() as this =
+type Host() as this = 
     inherit Hosts.HostControl()
 
     do

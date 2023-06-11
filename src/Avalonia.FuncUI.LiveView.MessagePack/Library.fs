@@ -21,7 +21,9 @@ module Settings =
 [<MessagePackObject>]
 type MsgPack = {
     [<Key(0)>]
-    ContentMsg: string
+    Content: string[]
+    [<Key(1)>]
+    Path: string
 }
 
 module internal MsgPack =
@@ -61,10 +63,14 @@ module Server =
 
     /// `serializeAsync`を実行する。
     /// `SerializedStreamError`に該当する例外した場合、復旧処理として`acceptTcpClientAsync`を実行する。
-    let inline trySerializeAsync cont listener client token { Content = content } =
+    let inline trySerializeAsync cont listener client token (msg: LiveViewAnalyzerMsg) =
         async {
             try
-                do! MsgPack.serializeAsync client token { ContentMsg = content }
+                do!
+                    MsgPack.serializeAsync client token {
+                        Content = msg.Content
+                        Path = msg.Path
+                    }
 
                 return! Choice2Of2 client |> cont
             with SerializedStreamError e ->
@@ -72,7 +78,7 @@ module Server =
         }
 
     /// `TcpListener`を起動して、クライアントの接続を待ち受ける。
-    let inline body ipAddress port token (inbox: MailboxProcessor<Msg>) =
+    let inline body ipAddress port token (inbox: MailboxProcessor<LiveViewAnalyzerMsg>) =
         async {
             let listener = TcpListener(ipAddress, port)
 
@@ -150,9 +156,12 @@ module Client =
 
                 match ValueOption.ofNullable result with
                 | ValueSome buff ->
-                    let { ContentMsg = content } = MsgPack.deserialize buff
+                    let msgPack = MsgPack.deserialize buff
 
-                    onReceive { Content = content }
+                    onReceive {
+                        LiveViewAnalyzerMsg.Content = msgPack.Content
+                        Path = msgPack.Path
+                    }
 
                 | ValueNone -> ()
         }

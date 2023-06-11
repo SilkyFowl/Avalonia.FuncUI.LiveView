@@ -1,0 +1,17 @@
+group Main
+    Avalonia.Desktop
+    Avalonia.Diagnostics
+    Avalonia.Themes.Fluent
+    Avalonia.FuncUI
+    Avalonia.FuncUI.Elmish
+    FSharp.Analyzers.SDK
+group PreviewApp
+    Ionide.ProjInfo
+    Ionide.ProjInfo.FCS
+    Ionide.ProjInfo.ProjectSystem
+    Ionide.ProjInfo.Sln
+    Microsoft.Build
+    Microsoft.Build.Framework
+    Microsoft.Build.Utilities.Core
+    Microsoft.Build.Tasks.Core
+    Nuget.Frameworks

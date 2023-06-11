@@ -66,7 +66,8 @@ let funcUiAnalyzer: Analyzer =
             // エラーがなければPreviewを実行
             if Seq.isEmpty errorMessages then
                 {
-                    Content = String.concat Environment.NewLine ctx.Content
+                    Content = ctx.Content
+                    Path = ctx.FileName
                 }
                 |> server.Post
 

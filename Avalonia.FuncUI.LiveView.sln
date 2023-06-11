@@ -27,6 +27,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{77D972B7
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Avalonia.FuncUI.LiveView.Core.Tests", "tests\Avalonia.FuncUI.LiveView.Core.Tests\Avalonia.FuncUI.LiveView.Core.Tests.fsproj", "{20DD3B4D-46C8-4F78-B114-6ED2CCAA1433}"
 EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Avalonia.FuncUI.LiveView.PreviewApp", "src\Avalonia.FuncUI.LiveView.PreviewApp\Avalonia.FuncUI.LiveView.PreviewApp.fsproj", "{57039C50-CDDF-4CF7-A48E-456BC9C44594}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -64,6 +66,10 @@ Global
 		{58DC7613-7B55-4C0C-929A-ACFD312E894B}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{58DC7613-7B55-4C0C-929A-ACFD312E894B}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{58DC7613-7B55-4C0C-929A-ACFD312E894B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{57039C50-CDDF-4CF7-A48E-456BC9C44594}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{57039C50-CDDF-4CF7-A48E-456BC9C44594}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{57039C50-CDDF-4CF7-A48E-456BC9C44594}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{57039C50-CDDF-4CF7-A48E-456BC9C44594}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{AA59F86F-40EC-4935-928E-ACE854A73DE4} = {DB8DF710-E6E6-4722-99D4-514834AEEB16}
@@ -72,5 +78,6 @@ Global
 		{012E7FAA-B6D4-4FCE-B9C9-F795C53FEA46} = {DB8DF710-E6E6-4722-99D4-514834AEEB16}
 		{5C2F7CB8-7EC7-4C46-855C-0D9D2B195EA5} = {DB8DF710-E6E6-4722-99D4-514834AEEB16}
 		{20DD3B4D-46C8-4F78-B114-6ED2CCAA1433} = {77D972B7-9F97-4C02-959F-C95D4B35CD61}
+		{57039C50-CDDF-4CF7-A48E-456BC9C44594} = {DB8DF710-E6E6-4722-99D4-514834AEEB16}
 	EndGlobalSection
 EndGlobal

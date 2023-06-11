@@ -5,284 +5,327 @@ open System.IO
 open Avalonia
 open Avalonia.Controls
 open Avalonia.Media
-open Avalonia.Layout
 open Avalonia.FuncUI
 open Avalonia.FuncUI.Types
 open Avalonia.FuncUI.DSL
-
-open Avalonia.FuncUI.LiveView.Core.Types
-open Avalonia.FuncUI.LiveView.MessagePack
-
-type StateStore = {
-    Msg: IWritable<Msg>
-    EvalResult: IWritable<list<string * Control>>
-    EvalWarings: IWritable<obj[]>
-    Status: IWritable<LogMessage>
-    TempScriptFileInfo: FileInfo
-}
-
-module StateStore =
-    open Avalonia.FuncUI.VirtualDom
-    let private fsiSession = FsiSession.create ()
-
-    /// `state`の情報に基づいてEvalする。
-    let evalInteraction state =
-        FsiSession.evalInteraction
-            fsiSession
-            state.Status.Set
-            state.TempScriptFileInfo
-            state.Msg.Current
-            state.EvalWarings
-            state.EvalResult
-
-    /// `StateStore`を初期化する。
-    let init () =
-        let initText =
-            $"""
-module Counter =
-    open Avalonia.FuncUI
-    open Avalonia.Controls
-    open Avalonia.FuncUI.DSL
-    open Avalonia.Layout
-    open Avalonia.Media
-
-    let view =
-        Component.create("Counter",fun ctx ->
-            let state = ctx.useState 0
-            DockPanel.create [
-                DockPanel.verticalAlignment VerticalAlignment.Center
-                DockPanel.horizontalAlignment HorizontalAlignment.Center
-                DockPanel.children [
-                    Button.create [
-                        Button.width 64
-                        Button.horizontalAlignment HorizontalAlignment.Center
-                        Button.horizontalContentAlignment HorizontalAlignment.Center
-                        Button.content "Reset"
-                        Button.onClick (fun _ -> state.Set 0)
-                        Button.dock Dock.Bottom
-                    ]
-                    Button.create [
-                        Button.width 64
-                        Button.horizontalAlignment HorizontalAlignment.Center
-                        Button.horizontalContentAlignment HorizontalAlignment.Center
-                        Button.content "-"
-                        Button.onClick (fun _ -> state.Current - 1 |> state.Set)
-                        Button.dock Dock.Bottom
-                    ]
-                    Button.create [
-                        Button.width 64
-                        Button.horizontalAlignment HorizontalAlignment.Center
-                        Button.horizontalContentAlignment HorizontalAlignment.Center
-                        Button.content "+"
-                        Button.onClick (fun _ -> state.Current + 1 |> state.Set)
-                        Button.dock Dock.Bottom
-                    ]
-                    TextBlock.create [
-                        TextBlock.dock Dock.Top
-                        TextBlock.foreground Brushes.White
-                        TextBlock.fontSize 48.0
-                        TextBlock.horizontalAlignment HorizontalAlignment.Center
-                        TextBlock.text (string state.Current)
-                    ]
-                ]
-            ]
-        )
-            """
-
-        let initResult =
-            TextBlock.create [
-                TextBlock.verticalAlignment VerticalAlignment.Center
-                TextBlock.horizontalAlignment HorizontalAlignment.Center
-                TextBlock.text "Results are displayed here."
-            ]
-            |> VirtualDom.create
-
-        {
-            Msg = new State<_> { Content = initText }
-            EvalResult = new State<_>([ "init", initResult ])
-            EvalWarings = new State<_>([||])
-            Status = new State<_>(LogInfo "")
-            TempScriptFileInfo = Path.ChangeExtension(Path.GetTempFileName(), "fsx") |> FileInfo
-        }
-
 open Avalonia.FuncUI.Hosts
 
+open Avalonia.FuncUI.LiveView.MessagePack
+
 [<AutoOpen>]
-module StyledElement =
-    open Avalonia.Styling
+module private ViewHelper =
+    type IComponentContext with
 
-    type StyledElement with
+        member this.useAsync<'signal>(init: Async<'signal>) : IWritable<Deferred<_, _>> =
+            let state = this.useState (Deferred.Waiting, true)
 
-        /// 参考:
-        static member styles(styleSeq: list<(Selector -> Selector) * list<IAttr<'a>>>) =
-            let styles = Styles()
+            this.useEffect (
+                handler =
+                    (fun _ ->
+                        match state.Current with
+                        | Deferred.Waiting ->
+                            state.Set Deferred.InProgress
 
-            for (selector, setters) in styleSeq do
-                let s = Style(fun x -> selector x)
+                            Async.StartImmediate(
+                                async {
+                                    let! result = Async.Catch init
 
-                for attr in setters do
-                    match attr.Property with
-                    | Some p ->
-                        match p.Accessor with
-                        | InstanceProperty x -> failwith "Can't support instance property"
-                        | AvaloniaProperty x -> s.Setters.Add(Setter(x, p.Value))
-                    | None -> ()
+                                    match result with
+                                    | Choice1Of2 value -> state.Set(Deferred.Resolved(Ok value))
+                                    | Choice2Of2 exn -> state.Set(Deferred.Resolved(Error exn))
+                                }
+                            )
 
-                styles.Add s
-
-            StyledElement.styles styles
-
-module LiveView =
-
-    open Avalonia.Styling
-
-    let view shared client =
-
-        Component(fun ctx ->
-
-            // sharedの購読
-            let evalText =
-                ctx.usePassedRead (shared.Msg |> State.readMap (fun m -> m.Content), true)
-
-            let evalResult = ctx.usePassed (shared.EvalResult)
-            let evalWarnings = ctx.usePassed (shared.EvalWarings)
-            let status = ctx.usePassed shared.Status
-
-            /// `true`ならEvalTextが更新されたら自動でEvalする。
-            let autoEval = ctx.useState true
-            /// `true`ならEvalTextを表示する。
-            let showEvalText = ctx.useState false
-
-            ctx.trackDisposable client
-
-            /// Evalを実行する。
-            let evalInteractionAsync _ =
-                StateStore.evalInteraction shared |> ignore
-
-            ctx.useEffect (
-                (fun _ ->
-                    evalText.Observable
-                    |> Observable.subscribe (fun _ ->
-                        if autoEval.Current then
-                            evalInteractionAsync ())),
-                [ EffectTrigger.AfterInit ]
+                        | _ -> ()),
+                triggers = [ EffectTrigger.AfterInit ]
             )
 
-            let rootGridName = "live-preview-root"
+            state
 
-            ctx.attrs [
-                Component.styles [
-                    (fun (x: Selector) -> x.Name(rootGridName).Child()),
-                    [ Layoutable.margin 8; Layoutable.verticalAlignment VerticalAlignment.Center ]
+    type PreviewConterntBorder() =
+        inherit Border()
+
+        let getLayoutZoneHeitht (border:Border) =
+            let margin = border.Margin
+            let borderThickness = border.BorderThickness
+            let padding = border.Padding
+
+            margin.Top + margin.Bottom
+            + borderThickness.Top + borderThickness.Bottom
+            + padding.Top + padding.Bottom
+
+        let mutable backupDesiredSize = ValueNone
+
+        /// When the child DesiredSize is 0, return the backup DesiredSize.
+        /// To avoid the behavior that DesiredSize becomes 0 for a moment when replacing the Preview result.
+        override this.MeasureOverride availableSize =
+            match this.Child, backupDesiredSize with
+            | null, ValueNone -> base.MeasureOverride availableSize
+            | null, ValueSome oldAvailableSize -> oldAvailableSize
+            | :? Component as child, ValueNone ->
+                child.Measure availableSize
+            
+                if child.DesiredSize.Height <= getLayoutZoneHeitht child then
+                    base.MeasureOverride availableSize
+                    
+                else
+                    backupDesiredSize <- ValueSome child.DesiredSize
+                    child.DesiredSize
+            | :? Component as child, ValueSome desiredSize ->
+                child.Measure availableSize
+
+                if child.DesiredSize.Height <= getLayoutZoneHeitht child then
+                    desiredSize
+                else
+                    backupDesiredSize <- ValueSome child.DesiredSize
+                    child.DesiredSize
+            | _ -> base.MeasureOverride availableSize
+
+module LiveView =
+    open PreviewService
+    open Avalonia.FuncUI.Elmish.ElmishHook
+    open Avalonia.Layout
+    open Avalonia.Media.Immutable
+
+    module private Store =
+        let previewConterntBorderBackground = new State<IBrush>(Brushes.Transparent)
+        let previewItemViewBackground = new State<IBrush>(Brushes.Transparent)
+
+    let inline private extractObj (o: obj) : IView =
+        match o with
+        | :? IView as view -> view
+        | :? Control as view -> ContentControl.create [ ContentControl.content view ]
+        | other -> TextBlock.create [ TextBlock.text $"%A{other}" ]
+
+    let inline private extractExn (ex: exn) : IView =
+        let ex =
+            match ex with
+            | :? Reflection.TargetInvocationException as ex -> ex.InnerException
+            | _ -> ex
+
+        StackPanel.create [
+            StackPanel.children [
+                TextBox.create [ TextBox.foreground Brushes.Red; TextBox.text $"%A{ex.GetType()}" ]
+                TextBox.create [ TextBox.foreground Brushes.Red; TextBox.text $"%s{ex.Message}" ]
+                TextBox.create [
+                    TextBox.text $"%s{ex.StackTrace}"
+                    TextBox.textWrapping TextWrapping.WrapWithOverflow
                 ]
             ]
+        ]
 
-            Grid.create [
-                Grid.name rootGridName
-                Grid.rowDefinitions "Auto,*,4,*,Auto"
-                Grid.columnDefinitions "Auto,*,Auto"
-                Grid.children [
-                    CheckBox.create [
-                        CheckBox.row 0
-                        CheckBox.column 0
-                        CheckBox.content "Show EvalText"
-                        CheckBox.isChecked showEvalText.Current
-                        CheckBox.onChecked (fun _ -> showEvalText.Set true)
-                        CheckBox.onUnchecked (fun _ -> showEvalText.Set false)
-                    ]
-                    TextBox.create [
-                        if showEvalText.Current then
-                            TextBox.row 1
-                            TextBox.column 0
-                            TextBox.columnSpan 3
-                            TextBox.acceptsReturn true
-                            TextBox.textWrapping TextWrapping.Wrap
-                            TextBox.text evalText.Current
+    let private previewItemView viewId (asyncView: Async<IView>) =
+        Component.create (
+            viewId,
+            fun ctx ->
+                let asyncView = ctx.useAsync asyncView
+                let previewItemViewBackground = ctx.usePassedRead Store.previewItemViewBackground
 
-                            if not <| Array.isEmpty evalWarnings.Current then
-                                TextBox.errors evalWarnings.Current
-                        else
-                            TextBox.isVisible false
-                    ]
+                ctx.attrs [
+                    Component.margin 8
+                    Component.horizontalAlignment HorizontalAlignment.Center
+                    Component.verticalAlignment VerticalAlignment.Center
+                    Component.background previewItemViewBackground.Current ]
 
-                    GridSplitter.create [
-                        if showEvalText.Current then
-                            GridSplitter.row 2
-                            GridSplitter.column 0
-                            GridSplitter.columnSpan 3
-                        else
-                            GridSplitter.isVisible false
-                    ]
-                    ScrollViewer.create [
-                        if showEvalText.Current then
-                            ScrollViewer.row 3
-                        else
-                            ScrollViewer.row 1
-                            ScrollViewer.rowSpan 3
-                        ScrollViewer.margin (4, 4)
-                        ScrollViewer.padding (4, 0)
-                        ScrollViewer.verticalAlignment VerticalAlignment.Top
-                        ScrollViewer.column 0
-                        ScrollViewer.columnSpan 3
-                        ScrollViewer.column 0
-                        ScrollViewer.content (
-                            DockPanel.create [
-                                DockPanel.children [
-                                    for (name, content) in evalResult.Current do
-                                        Border.create [
-                                            Border.dock Dock.Top
-                                            Border.borderThickness 2
-                                            Border.child (
-                                                Grid.create [
-                                                    Grid.rowDefinitions "Auto,Auto,Auto"
-                                                    Grid.children [
-                                                        TextBlock.create [
-                                                            TextBlock.row 0
-                                                            TextBlock.fontSize 20
-                                                            TextBlock.margin 4
-                                                            TextBlock.fontWeight FontWeight.SemiBold
-                                                            TextBlock.text name
-                                                        ]
-                                                        Border.create [ Border.row 1; Border.height 2 ]
-                                                        Border.create [ Border.row 2; Border.child content ]
-                                                    ]
-                                                ]
-                                            )
-                                        ]
+                match asyncView.Current with
+                | Deferred.Waiting
+                | Deferred.HasNotStartedYet(_)
+                | Deferred.InProgress ->
+                    // Dummy View
+                    Border.create [ Border.isVisible false ]
+                | Deferred.Resolved(Ok view) -> view
+                | Deferred.Resolved(Error ex) -> extractExn ex
+
+        )
+
+    let private tabItemContentView (path: string) (evalState) (previewConterntBorderBackground: IBrush) =
+        // TODO: code view
+        let defaultContent text =
+            async { return TextBlock.create [ TextBlock.text text ] :> IView }
+
+        let time, contents =
+            match evalState with
+            | InProgress(ValueSome { views = views; timestamp = timestamp })
+            | Success({ views = views; timestamp = timestamp })
+            | Failed(_, ValueSome { views = views; timestamp = timestamp }) ->
+                timestamp,
+                Map.toList views
+                |> List.map ((fun (key, viewFn) -> key, viewFn extractObj extractExn))
+            | InProgress ValueNone -> DateTime.Now, [ "InProgress", defaultContent "InProgress" ]
+            | Failed(_, ValueNone) -> DateTime.Now, [ "Failed", defaultContent "Failed" ]
+
+        ScrollViewer.create [
+            ScrollViewer.content (
+                ItemsControl.create [
+                    ItemsControl.borderThickness 1
+                    ItemsControl.borderBrush Brushes.Gray
+                    ItemsControl.viewItems [
+                        for name, content in contents do
+                            Grid.create [
+                                Grid.rowDefinitions "Auto,Auto"
+                                Grid.children [
+                                    TextBlock.create [
+                                        TextBlock.row 0
+                                        TextBlock.fontSize 20
+                                        TextBlock.margin (4, 4, 4, 8)
+                                        TextBlock.fontWeight FontWeight.SemiBold
+                                        TextBlock.text name
+                                    ]
+                                    let viewKey =
+                                        let timeStr = time.ToString "MM-dd-yy-H:mm:ss.fff"
+                                        $"tabItemContentView-{path}-{name}-{timeStr}"
+
+                                    View.createGeneric<PreviewConterntBorder> [
+                                        Border.row 1
+                                        Border.background previewConterntBorderBackground
+                                        previewItemView viewKey content |> Border.child
+                                    ]
                                 ]
                             ]
-                        )
                     ]
-                    CheckBox.create [
-                        CheckBox.row 4
-                        CheckBox.column 0
-                        CheckBox.margin 4
-                        CheckBox.content "Auto EvalText"
-                        CheckBox.isChecked autoEval.Current
-                        CheckBox.onChecked (fun _ -> autoEval.Set true)
-                        CheckBox.onUnchecked (fun _ -> autoEval.Set false)
-                    ]
-                    Button.create [
-                        Button.row 4
-                        TextBox.column 1
-                        Button.horizontalAlignment HorizontalAlignment.Left
-                        Button.content "eval manualy"
-                        Button.onClick evalInteractionAsync
-                    ]
-                    TextBlock.create [ TextBlock.row 5; TextBlock.column 2; TextBlock.text $"{status.Current}" ]
                 ]
-            ])
+            )
+        ]
 
-type LiveViewWindow() =
+
+    let private tabItemHeaderView (path: string) (evalState) =
+        let fileName = Path.GetFileName path
+
+        match evalState with
+        | InProgress _ -> TextBlock.create [ TextBlock.text $"[Eval...]{fileName}" ]
+        | Success _ -> TextBlock.create [ TextBlock.text $"{fileName}" ]
+        | Failed _ -> TextBlock.create [ TextBlock.text $"[!!]{fileName}"; TextBlock.hasErrors true ]
+
+    let private gridLineBrush =
+        DrawingBrush(
+            GeometryDrawing(
+                Pen = Pen(brush = Brushes.Gray, thickness = 0.5),
+                Geometry =
+                    GeometryGroup(
+                        Children = GeometryCollection(seq { RectangleGeometry(Rect(0, 0, 10, 10)) }),
+                        FillRule = FillRule.EvenOdd
+
+                    )
+            ),
+            TileMode = TileMode.Tile,
+            SourceRect = RelativeRect(0, 0, 10, 10, RelativeUnit.Absolute),
+            DestinationRect = RelativeRect(0, 0, 10, 10, RelativeUnit.Absolute)
+        )
+
+    let create id attrs =
+        let getTopLevelBackground control =
+            TopLevel.GetTopLevel control
+            |> Option.ofObj
+            |> Option.bind (fun tl ->
+                match Option.ofObj tl.Background with
+                | Some(:? SolidColorBrush as cb) -> Some cb.Color
+                | _ -> None)
+            |> Option.defaultValue Colors.Transparent
+
+        let fsiSession = new FsiSession.FsSession()
+        let syncContext = Threading.AvaloniaSynchronizationContext()
+
+        let mapProgram =
+            Elmish.Program.withSubscription (subscription fsiSession syncContext)
+
+        Component.create (
+            id,
+            fun ctx ->
+                let model, dispatch = ctx.useElmish (init, update, mapProgram)
+                let evalStateMap = model.evalStateMap
+                let selectedEvalStateKey = ctx.useState<string option> (None, false)
+
+                let previewConterntBorderBackground =
+                    ctx.usePassed Store.previewConterntBorderBackground
+
+                let previewItemViewBackground = ctx.usePassed Store.previewItemViewBackground
+
+                ctx.useEffect (
+                    (fun () ->
+                        previewConterntBorderBackground.Set gridLineBrush
+
+                        getTopLevelBackground ctx.control
+                        |> ImmutableSolidColorBrush
+                        |> previewItemViewBackground.Set
+
+                        ctx.trackDisposable fsiSession
+
+                        Client.init
+                            (SetLogMessage >> dispatch)
+                            Settings.iPAddress
+                            Settings.port
+                            (LiveViewAnalyzerMsg >> dispatch)),
+                    [ EffectTrigger.AfterInit ]
+                )
+
+                ctx.attrs [ yield! attrs ]
+
+                Grid.create [
+                    Grid.rowDefinitions "*,Auto,Auto"
+                    Grid.columnDefinitions "Auto,*,Auto"
+                    Grid.children [
+                        TabControl.create [
+                            TabControl.row 0
+                            TabControl.columnSpan 3
+                            TabControl.onSelectedIndexChanged (
+                                (fun idx ->
+                                    Map.toList evalStateMap
+                                    |> List.tryItem idx
+                                    |> Option.map fst
+                                    |> selectedEvalStateKey.Set),
+                                OnChangeOf evalStateMap
+                            )
+                            TabControl.viewItems [
+                                for path, evalState in Map.toList evalStateMap do
+                                    TabItem.create [
+                                        TabItem.header (tabItemHeaderView path evalState)
+                                        TabItem.content (
+                                            tabItemContentView path evalState previewConterntBorderBackground.Current
+                                        )
+                                    ]
+                            ]
+                        ]
+                        CheckBox.create [
+                            CheckBox.row 1
+                            CheckBox.column 0
+                            CheckBox.margin 8
+                            CheckBox.content "Auto update preview content."
+                            CheckBox.isChecked model.autoUpdate
+                            CheckBox.onChecked (fun _ -> SetAutoUpdate true |> dispatch)
+                            CheckBox.onUnchecked (fun _ -> SetAutoUpdate false |> dispatch)
+
+                        ]
+                        Button.create [
+                            Button.row 1
+                            Button.column 2
+                            Button.margin 8
+                            Button.horizontalAlignment HorizontalAlignment.Left
+                            Button.content "eval manualy"
+                            Button.isEnabled (
+                                match model.evalInteractionDeferred, selectedEvalStateKey.Current with
+                                | Waiting, Some _ -> true
+                                | _ -> false
+                            )
+                            Button.onClick (fun _ ->
+                                selectedEvalStateKey.Current
+                                |> Option.iter (fun key -> EvalInteraction(key, StartRepuested) |> dispatch))
+                        ]
+                        TextBlock.create [
+                            TextBlock.row 2
+                            TextBlock.column 0
+                            TextBlock.columnSpan 3
+                            TextBlock.margin 8
+                            TextBlock.text $"{model.logMessage}"
+                        ]
+                    ]
+                ]
+        )
+
+type LiveViewWindow() as this =
     inherit HostWindow(Title = "LiveView", Width = 800, Height = 600)
 
-    /// `Interactive`のStore。
-    /// ※本来、Storeはアプリケーション一つだけであるのが望ましい。
-    let shared = StateStore.init ()
-
-    let client =
-        Client.init shared.Status.Set Settings.iPAddress Settings.port shared.Msg.Set
-
     do
-        base.Content <- LiveView.view shared client
-        base.AttachDevTools()
+        this.Content <- Component(fun ctx -> LiveView.create "liveViewWindow-view" [])
+#if DEBUG
+        this.AttachDevTools()
+#endif
