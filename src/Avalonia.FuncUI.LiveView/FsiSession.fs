@@ -1,7 +1,8 @@
-/// 参考
+namespace Avalonia.FuncUI.LiveView
+
+/// Ref
 /// https://fsharp.github.io/fsharp-compiler-docs/fcs/interactive.html
 /// https://github.com/fsprojects/Avalonia.FuncUI/issues/147
-namespace Avalonia.FuncUI.LiveView
 
 module internal FsiSession =
     open System
