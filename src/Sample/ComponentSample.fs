@@ -67,8 +67,10 @@ let counter numState attrs =
 
 module Previewer =
     open Avalonia.FuncUI.Types
+    open Avalonia.Collections 
+    open System.Collections.Generic
 
-    let colorSetting id color attrs =
+    let colorSetting id color enableBackGround attrs =
         Component.create (
             $"colorSetting-{id}",
             fun ctx ->
@@ -86,10 +88,12 @@ module Previewer =
                     |> ctx.useState
 
                 let color = ctx.usePassed color
+                let enableBackGround = ctx.usePassedRead enableBackGround
 
                 ctx.attrs [ yield! attrs ]
 
                 ComboBox.create [
+                    ComboBox.isEnabled enableBackGround.Current
                     ComboBox.dataItems colors.Current
                     ComboBox.selectedItem color.Current
                     ComboBox.onSelectedItemChanged (function
@@ -119,28 +123,187 @@ module Previewer =
                 ]
         )
 
-    let gridLineBrush =
+    let gridLineBrush gridStep =
         DrawingBrush(
             GeometryDrawing(
                 Pen = Pen(brush = Brushes.Gray, thickness = 0.5),
                 Geometry =
                     GeometryGroup(
-                        Children = GeometryCollection(seq { RectangleGeometry(Rect(0, 0, 10, 10)) }),
+                        Children = GeometryCollection(seq { RectangleGeometry(Rect(0, 0, gridStep, gridStep)) }),
                         FillRule = FillRule.EvenOdd
 
                     )
             ),
             TileMode = TileMode.Tile,
-            SourceRect = RelativeRect(0, 0, 10, 10, RelativeUnit.Absolute),
-            DestinationRect = RelativeRect(0, 0, 10, 10, RelativeUnit.Absolute)
+            SourceRect = RelativeRect(0, 0, gridStep, gridStep, RelativeUnit.Absolute),
+            DestinationRect = RelativeRect(0, 0, gridStep, gridStep, RelativeUnit.Absolute)
         )
+
+    let inline initList<'list, 'x when 'list: (new: unit -> 'list) and 'list: (member AddRange: IEnumerable<'x> -> unit)>
+        ls
+        =
+        let collection = new 'list ()
+        collection.AddRange ls
+        collection
+
+    module DrawingBrush =
+        let gridLine (stepInfo: list<float * Pen>) =
+            let lcmOfList lst =
+                let lcm a b =
+                    let rec gcd a b = if b = 0. then a else gcd b (a % b)
+                    abs (a * b) / gcd a b
+
+                List.fold lcm 1. lst
+
+
+            let getPtMap offsets =
+                let offsets = offsets |> List.sortDescending |> List.distinct
+                let lcm = lcmOfList offsets
+
+                let pts =
+                    [
+                        for offset in offsets do
+                            for i = 0. to (lcm / offset) do
+                                offset, i * offset
+                    ]
+                    |> List.distinctBy snd
+                    |> List.sortBy snd
+
+                Map [
+                    for offset in offsets do
+                        offset, pts |> List.filter (fun (key, _) -> key = offset) |> List.map snd
+                ]
+
+            let hFigure length y =
+                PathFigure(
+                    IsClosed = false,
+                    StartPoint = Point(0, y),
+                    Segments = initList [ LineSegment(Point = Point(length, y)) ]
+                )
+
+            let vFigure length x =
+                PathFigure(
+                    IsClosed = false,
+                    StartPoint = Point(x, 0),
+                    Segments = initList [ LineSegment(Point = Point(x, length)) ]
+                )
+
+            let vhFigures length offsets =
+                initList [
+                    for offset in offsets do
+                        hFigure length offset
+                        vFigure length offset
+                ]
+
+            let vhLineDrawing length offsets pen =
+                GeometryDrawing(Pen = pen, Geometry = PathGeometry(Figures = vhFigures length offsets))
+
+            let lcm, ptMap =
+                let pts = List.map fst stepInfo
+                lcmOfList pts, getPtMap pts
+
+            DrawingBrush(
+                DrawingGroup(
+                    Children =
+                        initList [
+                            for offset, pen in stepInfo do
+                                vhLineDrawing lcm ptMap[offset] pen
+                        ]
+                ),
+                TileMode = TileMode.Tile,
+                SourceRect = RelativeRect(0, 0, lcm, lcm, RelativeUnit.Absolute),
+                DestinationRect = RelativeRect(0, 0, lcm, lcm, RelativeUnit.Absolute),
+                Transform = TranslateTransform(80,10)
+            )
+        
+        let brush =
+            gridLine [
+                10, Pen(Brush.Parse "#838383ff", thickness = 0.5)
+                50, Pen(Brush.Parse "#8d8d8d", thickness = 0.8,dashStyle = DashStyle.Dash)
+                100, Pen(Brush.Parse "#7e7e7e", thickness = 0.8)
+            ]
+
+    let grid gridStep =
+        let lcmOfList lst =
+            let lcm a b =
+                let rec gcd a b = if b = 0 then a else gcd b (a % b)
+                abs (a * b) / gcd a b
+
+            List.fold lcm 1 lst
+
+
+        let getPtMap offsets =
+            let offsets = offsets |> List.sortDescending |> List.distinct
+            let lcm = lcmOfList offsets
+
+            let pts =
+                [
+                    for offset in offsets do
+                        for i = 0 to (lcm / offset) do
+                            offset, i * offset
+                ]
+                |> List.distinctBy snd
+                |> List.sortBy snd
+
+            Map [
+                for offset in offsets do
+                    offset, pts |> List.filter (fun (key, _) -> key = offset) |> List.map snd
+            ]
+
+        let hFigure length y =
+            PathFigure(
+                IsClosed = false,
+                StartPoint = Point(0, y),
+                Segments = initList [ LineSegment(Point = Point(length, y)) ]
+            )
+
+        let vFigure length x =
+            PathFigure(
+                IsClosed = false,
+                StartPoint = Point(x, 0),
+                Segments = initList [ LineSegment(Point = Point(x, length)) ]
+            )
+
+        let vhFigures length offsets =
+            initList [
+                for offset in offsets do
+                    hFigure length offset
+                    vFigure length offset
+            ]
+
+        let vhLineDrawing length offsets pen =
+            GeometryDrawing(Pen = pen, Geometry = PathGeometry(Figures = vhFigures length offsets))
+
+        let lcm = lcmOfList [ 4; 5; 10 ] // 20
+
+        // pts
+        // |> List.map(fun pt -> List.init (lcm / pt) (fun i ->pt, (i + 1) * pt) )
+
+        DrawingBrush(
+            DrawingGroup(
+                Children =
+                    initList [
+                        Pen(Brush.Parse "#ffffff", thickness = 0.8) |> vhLineDrawing lcm [ 0; 20 ]
+                        Pen(Brush.Parse "#f38b8b", thickness = 0.5) |> vhLineDrawing lcm [ 10 ]
+                        Pen(Brush.Parse "#2e2e2e", thickness = 1, dashStyle = DashStyle([ 6; 1 ], 0))
+                        |> vhLineDrawing lcm [ 5; 15 ]
+                        Pen(Brush.Parse "#0a4864", thickness = 0.5, dashStyle = DashStyle.Dot)
+                        |> vhLineDrawing lcm [ 4; 8; 12; 16 ]
+                    ]
+            ),
+            TileMode = TileMode.Tile,
+            SourceRect = RelativeRect(0, 0, lcm, lcm, RelativeUnit.Absolute),
+            DestinationRect = RelativeRect(0, 0, lcm, lcm, RelativeUnit.Absolute)
+
+        )
+
 
     let create id (view: IView) =
         let viewId = $"previewer-{id}"
- 
+
         Component.create (
             viewId,
-            fun ctx -> 
+            fun ctx ->
                 let backgroundColor =
                     TopLevel.GetTopLevel ctx.control
                     |> Option.ofObj
@@ -150,14 +313,16 @@ module Previewer =
                         | _ -> None)
                     |> Option.defaultValue Colors.Transparent
                     |> ctx.useState
-                
-                let enableBackGround = ctx.useState true
+
+                let enableBackGround = ctx.useState false
 
 
                 ctx.attrs [
                     Component.horizontalAlignment HorizontalAlignment.Stretch
                     Component.verticalAlignment VerticalAlignment.Stretch
-                    Component.background gridLineBrush
+                    // Component.background (gridLineBrush 20)
+                    // Component.background (grid 20)
+                    Component.background (DrawingBrush.brush)
                 ]
 
                 Grid.create [
@@ -167,27 +332,32 @@ module Previewer =
                     Grid.horizontalAlignment HorizontalAlignment.Center
                     Grid.verticalAlignment VerticalAlignment.Center
                     Grid.children [
-                        CheckBox.create [
-                            CheckBox.isChecked enableBackGround.Current
-                            CheckBox.onChecked(fun e -> enableBackGround.Set true)
-                            CheckBox.onUnchecked(fun e -> enableBackGround.Set false)
+                        StackPanel.create [
+                            StackPanel.row 1
+                            StackPanel.columnSpan 3
+                            StackPanel.margin 8
+                            StackPanel.spacing 8
+                            StackPanel.orientation Orientation.Horizontal
+                            StackPanel.children [
+                                CheckBox.create [
+                                    CheckBox.row 1
+                                    CheckBox.content $"backgroundColor"
+                                    CheckBox.isChecked enableBackGround.Current
+                                    CheckBox.onChecked (fun e -> enableBackGround.Set true)
+                                    CheckBox.onUnchecked (fun e -> enableBackGround.Set false)
+                                ]
+
+                                colorSetting viewId backgroundColor enableBackGround [ Border.row 1; Border.column 2 ]
+
+                            ]
                         ]
-                        TextBlock.create [
-                            TextBlock.row 1
-                            TextBlock.column 1
-                            TextBlock.margin 8
-                            TextBlock.horizontalAlignment HorizontalAlignment.Center
-                            TextBlock.verticalAlignment VerticalAlignment.Center
-                            TextBlock.text $"backgroundColor"
-                        ]
-                        colorSetting viewId backgroundColor [ Border.row 1; Border.column 2 ]
                         Border.create [
                             Border.margin 8
-                            Border.columnSpan 2
+                            Border.columnSpan 3
                             Border.child view
                             if enableBackGround.Current then
                                 Border.background backgroundColor.Current
-                        ]
+                        ]                        
                     ]
 
                 ]
@@ -219,9 +389,10 @@ let draft2 () =
         "draft2",
         fun ctx ->
             let num = ctx.usePassed Store.num
-
-
-
+            
+            // draft Path...
+            let p = PathGeometry.Parse "M0,10 h100 m0,10 h-100 m0,10 h100 m0,10 h-100"
+            // List.ofSeq p.Figures |> List.iter (printfn "%A")
 
             Border.create [
                 Border.borderThickness 0.5
@@ -245,6 +416,26 @@ let draft2 () =
                             TextBlock.verticalAlignment VerticalAlignment.Center
                             TextBlock.fontSize 22
                             TextBlock.text $"Bar:{num.Current * 3}"
+                        ]
+                        Canvas.create [
+                            Path.height 100
+                            Path.width 100
+                            Canvas.background Brushes.Gray
+                            Canvas.children [
+                                Path.create [
+                                    Path.stroke Brushes.White
+                                    Path.strokeThickness 0.5
+                                    Path.opacity 0.7
+                                    Path.data "M0,10 h100 m0,10 h-100 m0,10 h100 m0,10 h-100"
+                                ]
+                                Path.create [
+                                    Path.stroke Brushes.Black
+                                    Path.strokeThickness 8
+                                    Path.strokeDashArray [ 1.; 4. ]
+                                    Path.opacity 0.7
+                                    Path.data "M0,0 h100 m0,50 h-100"
+                                ]
+                            ]
                         ]
                     ]
                 ]

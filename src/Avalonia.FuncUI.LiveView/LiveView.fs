@@ -14,6 +14,85 @@ open Avalonia.FuncUI.LiveView.MessagePack
 
 [<AutoOpen>]
 module private ViewHelper =
+    open System.Collections.Generic
+
+    let inline initList<'list, 'x when 'list: (new: unit -> 'list) and 'list: (member AddRange: IEnumerable<'x> -> unit)>
+        ls
+        =
+        let collection = new 'list ()
+        collection.AddRange ls
+        collection
+
+    module GridLineBrush =
+        let create (stepInfo: list<float * Pen>) =
+            let lcmOfList lst =
+                let lcm a b =
+                    let rec gcd a b = if b = 0. then a else gcd b (a % b)
+                    abs (a * b) / gcd a b
+
+                List.fold lcm 1. lst
+
+
+            let getPtMap offsets =
+                let offsets = offsets |> List.sortDescending |> List.distinct
+                let lcm = lcmOfList offsets
+
+                let pts =
+                    [
+                        for offset in offsets do
+                            for i = 0. to (lcm / offset) do
+                                offset, i * offset
+                    ]
+                    |> List.distinctBy snd
+                    |> List.sortBy snd
+
+                Map [
+                    for offset in offsets do
+                        offset, pts |> List.filter (fun (key, _) -> key = offset) |> List.map snd
+                ]
+
+            let hFigure length y =
+                PathFigure(
+                    IsClosed = false,
+                    StartPoint = Point(0, y),
+                    Segments = initList [ LineSegment(Point = Point(length, y)) ]
+                )
+
+            let vFigure length x =
+                PathFigure(
+                    IsClosed = false,
+                    StartPoint = Point(x, 0),
+                    Segments = initList [ LineSegment(Point = Point(x, length)) ]
+                )
+
+            let vhFigures length offsets =
+                initList [
+                    for offset in offsets do
+                        hFigure length offset
+                        vFigure length offset
+                ]
+
+            let vhLineDrawing length offsets pen =
+                GeometryDrawing(Pen = pen, Geometry = PathGeometry(Figures = vhFigures length offsets))
+
+            let lcm, ptMap =
+                let pts = List.map fst stepInfo
+                lcmOfList pts, getPtMap pts
+
+            DrawingBrush(
+                DrawingGroup(
+                    Children =
+                        initList [
+                            for offset, pen in stepInfo do
+                                vhLineDrawing lcm ptMap[offset] pen
+                        ]
+                ),
+                TileMode = TileMode.Tile,
+                SourceRect = RelativeRect(0, 0, lcm, lcm, RelativeUnit.Absolute),
+                DestinationRect = RelativeRect(0, 0, lcm, lcm, RelativeUnit.Absolute),
+                Transform = TranslateTransform(0, 0)
+            )
+
     type IComponentContext with
 
         member this.useAsync<'signal>(init: Async<'signal>) : IWritable<Deferred<_, _>> =
@@ -45,14 +124,17 @@ module private ViewHelper =
     type PreviewConterntBorder() =
         inherit Border()
 
-        let getLayoutZoneHeitht (border:Border) =
+        let getLayoutZoneHeitht (border: Border) =
             let margin = border.Margin
             let borderThickness = border.BorderThickness
             let padding = border.Padding
 
-            margin.Top + margin.Bottom
-            + borderThickness.Top + borderThickness.Bottom
-            + padding.Top + padding.Bottom
+            margin.Top
+            + margin.Bottom
+            + borderThickness.Top
+            + borderThickness.Bottom
+            + padding.Top
+            + padding.Bottom
 
         let mutable backupDesiredSize = ValueNone
 
@@ -64,10 +146,10 @@ module private ViewHelper =
             | null, ValueSome oldAvailableSize -> oldAvailableSize
             | :? Component as child, ValueNone ->
                 child.Measure availableSize
-            
+
                 if child.DesiredSize.Height <= getLayoutZoneHeitht child then
                     base.MeasureOverride availableSize
-                    
+
                 else
                     backupDesiredSize <- ValueSome child.DesiredSize
                     child.DesiredSize
@@ -88,8 +170,13 @@ module LiveView =
     open Avalonia.Media.Immutable
 
     module private Store =
-        let previewConterntBorderBackground = new State<IBrush>(Brushes.Transparent)
-        let previewItemViewBackground = new State<IBrush>(Brushes.Transparent)
+        module PreviewConterntBorder =
+
+            let background = new State<IBrush>(Brushes.Transparent)
+
+        module PreviewItemView =
+            let background = new State<IBrush>(Brushes.Transparent)
+            let enableBackground = new State<bool> true
 
     let inline private extractObj (o: obj) : IView =
         match o with
@@ -119,13 +206,17 @@ module LiveView =
             viewId,
             fun ctx ->
                 let asyncView = ctx.useAsync asyncView
-                let previewItemViewBackground = ctx.usePassedRead Store.previewItemViewBackground
+                let background = ctx.usePassedRead Store.PreviewItemView.background
+                let enableBackground = ctx.usePassedRead Store.PreviewItemView.enableBackground
+
 
                 ctx.attrs [
                     Component.margin 8
                     Component.horizontalAlignment HorizontalAlignment.Center
                     Component.verticalAlignment VerticalAlignment.Center
-                    Component.background previewItemViewBackground.Current ]
+                    if enableBackground.Current then
+                        Component.background background.Current
+                ]
 
                 match asyncView.Current with
                 | Deferred.Waiting
@@ -157,8 +248,6 @@ module LiveView =
         ScrollViewer.create [
             ScrollViewer.content (
                 ItemsControl.create [
-                    ItemsControl.borderThickness 1
-                    ItemsControl.borderBrush Brushes.Gray
                     ItemsControl.viewItems [
                         for name, content in contents do
                             Grid.create [
@@ -167,7 +256,7 @@ module LiveView =
                                     TextBlock.create [
                                         TextBlock.row 0
                                         TextBlock.fontSize 20
-                                        TextBlock.margin (4, 4, 4, 8)
+                                        TextBlock.margin 8
                                         TextBlock.fontWeight FontWeight.SemiBold
                                         TextBlock.text name
                                     ]
@@ -196,31 +285,14 @@ module LiveView =
         | Success _ -> TextBlock.create [ TextBlock.text $"{fileName}" ]
         | Failed _ -> TextBlock.create [ TextBlock.text $"[!!]{fileName}"; TextBlock.hasErrors true ]
 
-    let private gridLineBrush =
-        DrawingBrush(
-            GeometryDrawing(
-                Pen = Pen(brush = Brushes.Gray, thickness = 0.5),
-                Geometry =
-                    GeometryGroup(
-                        Children = GeometryCollection(seq { RectangleGeometry(Rect(0, 0, 10, 10)) }),
-                        FillRule = FillRule.EvenOdd
-
-                    )
-            ),
-            TileMode = TileMode.Tile,
-            SourceRect = RelativeRect(0, 0, 10, 10, RelativeUnit.Absolute),
-            DestinationRect = RelativeRect(0, 0, 10, 10, RelativeUnit.Absolute)
-        )
-
     let create id attrs =
-        let getTopLevelBackground control =
-            TopLevel.GetTopLevel control
-            |> Option.ofObj
-            |> Option.bind (fun tl ->
-                match Option.ofObj tl.Background with
-                | Some(:? SolidColorBrush as cb) -> Some cb.Color
-                | _ -> None)
-            |> Option.defaultValue Colors.Transparent
+        let getTopLevelBackgroundObservable control =
+            let topLevel = TopLevel.GetTopLevel control
+
+            topLevel.GetObservable TopLevel.BackgroundProperty
+            |> Observable.map (function
+                | null -> Brushes.Transparent :> IBrush
+                | bg -> bg)
 
         let fsiSession = new FsiSession.FsSession()
         let syncContext = Threading.AvaloniaSynchronizationContext()
@@ -236,17 +308,40 @@ module LiveView =
                 let selectedEvalStateKey = ctx.useState<string option> (None, false)
 
                 let previewConterntBorderBackground =
-                    ctx.usePassed Store.previewConterntBorderBackground
+                    ctx.usePassed Store.PreviewConterntBorder.background
 
-                let previewItemViewBackground = ctx.usePassed Store.previewItemViewBackground
+                let gridLineStepInfo =
+                    ctx.useState (
+                        [
+                            10., Pen(Brush.Parse "#838383ff", thickness = 0.5)
+                            50., Pen(Brush.Parse "#8d8d8d", thickness = 0.8, dashStyle = DashStyle.Dash)
+                            100., Pen(Brush.Parse "#7e7e7e", thickness = 0.8)
+                        ],
+                        false
+                    )
+
+                let previewItemViewBackground = ctx.usePassed Store.PreviewItemView.background
+
+                let enablePreviewItemViewBackground =
+                    ctx.usePassed Store.PreviewItemView.enableBackground
 
                 ctx.useEffect (
                     (fun () ->
-                        previewConterntBorderBackground.Set gridLineBrush
+                        GridLineBrush.create gridLineStepInfo.Current
+                        |> previewConterntBorderBackground.Set),
+                    [ EffectTrigger.AfterInit; EffectTrigger.AfterChange gridLineStepInfo ]
+                )
 
-                        getTopLevelBackground ctx.control
-                        |> ImmutableSolidColorBrush
-                        |> previewItemViewBackground.Set
+
+
+                ctx.useEffect (
+                    (fun () ->
+                        GridLineBrush.create gridLineStepInfo.Current
+                        |> previewConterntBorderBackground.Set
+
+                        getTopLevelBackgroundObservable ctx.control
+                        |> Observable.subscribe previewItemViewBackground.Set
+                        |> ctx.trackDisposable
 
                         ctx.trackDisposable fsiSession
 
@@ -285,15 +380,26 @@ module LiveView =
                                     ]
                             ]
                         ]
-                        CheckBox.create [
-                            CheckBox.row 1
-                            CheckBox.column 0
-                            CheckBox.margin 8
-                            CheckBox.content "Auto update preview content."
-                            CheckBox.isChecked model.autoUpdate
-                            CheckBox.onChecked (fun _ -> SetAutoUpdate true |> dispatch)
-                            CheckBox.onUnchecked (fun _ -> SetAutoUpdate false |> dispatch)
-
+                        StackPanel.create [
+                            StackPanel.row 1
+                            StackPanel.column 0
+                            StackPanel.margin 8
+                            StackPanel.spacing 8
+                            StackPanel.orientation Orientation.Horizontal
+                            StackPanel.children [
+                                CheckBox.create [
+                                    CheckBox.content "auto update"
+                                    CheckBox.isChecked model.autoUpdate
+                                    CheckBox.onChecked (fun _ -> SetAutoUpdate true |> dispatch)
+                                    CheckBox.onUnchecked (fun _ -> SetAutoUpdate false |> dispatch)
+                                ]
+                                CheckBox.create [
+                                    CheckBox.content "fill background"
+                                    CheckBox.isChecked enablePreviewItemViewBackground.Current
+                                    CheckBox.onChecked (fun _ -> enablePreviewItemViewBackground.Set true)
+                                    CheckBox.onUnchecked (fun _ -> enablePreviewItemViewBackground.Set false)
+                                ]
+                            ]
                         ]
                         Button.create [
                             Button.row 1
