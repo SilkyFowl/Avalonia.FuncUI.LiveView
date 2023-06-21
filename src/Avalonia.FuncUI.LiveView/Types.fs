@@ -21,6 +21,14 @@ module Utils =
                 member _.Dispose() : unit = onDispose ()
             }
 
+        let empty =
+            { new IDisposable with
+                member _.Dispose() = ()
+            }
+        
+        let dispose (disposable:IDisposable) =
+            disposable.Dispose()
+
 module PreviewService =
     open System
     open System.Threading
@@ -250,14 +258,14 @@ module PreviewService =
         | SetLogMessage logMessage -> { model with logMessage = logMessage }, []
         | SetAutoUpdate autoEval -> { model with autoUpdate = autoEval }, []
 
-    type IFsSession =
+    type IPreviewSession =
         abstract addOrUpdateFsCode: path: string -> content: string[] -> unit
         abstract evalScriptNonThrowing: path: string -> content: string[] -> Result<EvaledViewsInfo, EvalFalled>
 
 
     let evalInteractionEffect
         syncContext
-        (session: IFsSession)
+        (session: IPreviewSession)
         { path = path; content = content }
         (cts: CancellationTokenSource)
         : Elmish.Effect<Msg> =

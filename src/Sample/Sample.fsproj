@@ -6,6 +6,7 @@
   <ItemGroup>
     <Compile Include="Types.fs" />
     <Compile Include="ComponentSample.fs" />
+    <Compile Include="FilePickerSample.fs" />
     <Compile Include="ElmishDefineDUInAnotherFileSample.fs" />
     <Compile Include="ElmishSample.fs" />
     <Compile Include="Program.fs" />

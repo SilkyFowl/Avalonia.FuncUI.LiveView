@@ -9,18 +9,6 @@ open Avalonia.FuncUI.Hosts
 open Avalonia.FuncUI.LiveView
 
 
-type MainWindow() as this =
-    inherit HostWindow()
-
-    do
-        base.Title <- "Sample"
-        base.Width <- 400.0
-        base.Height <- 400.0
-        base.Content <- Views.view ()
-#if DEBUG
-        this.AttachDevTools()
-#endif
-
 type App() =
     inherit Application()
 
@@ -31,9 +19,11 @@ type App() =
 
 
     override this.OnFrameworkInitializationCompleted() =
+        
         match this.ApplicationLifetime with
         | :? IClassicDesktopStyleApplicationLifetime as desktopLifetime ->
-            desktopLifetime.MainWindow <- MainWindow()
+            desktopLifetime.MainWindow <- LiveViewWindow()
+
         | _ -> ()
 
 module Program =

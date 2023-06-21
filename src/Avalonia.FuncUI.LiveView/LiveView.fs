@@ -13,7 +13,7 @@ open Avalonia.FuncUI.Hosts
 open Avalonia.FuncUI.LiveView.MessagePack
 
 [<AutoOpen>]
-module private ViewHelper =
+module internal ViewHelper =
     open System.Collections.Generic
 
     let inline initList<'list, 'x when 'list: (new: unit -> 'list) and 'list: (member AddRange: IEnumerable<'x> -> unit)>
@@ -218,6 +218,8 @@ module LiveView =
                         Component.background background.Current
                 ]
 
+                ctx.useEffect ((fun _ -> ()), [ EffectTrigger.AfterRender ])
+
                 match asyncView.Current with
                 | Deferred.Waiting
                 | Deferred.HasNotStartedYet(_)
@@ -285,7 +287,7 @@ module LiveView =
         | Success _ -> TextBlock.create [ TextBlock.text $"{fileName}" ]
         | Failed _ -> TextBlock.create [ TextBlock.text $"[!!]{fileName}"; TextBlock.hasErrors true ]
 
-    let create id attrs =
+    let create session id attrs =
         let getTopLevelBackgroundObservable control =
             let topLevel = TopLevel.GetTopLevel control
 
@@ -294,11 +296,9 @@ module LiveView =
                 | null -> Brushes.Transparent :> IBrush
                 | bg -> bg)
 
-        let fsiSession = new FsiSession.FsSession()
         let syncContext = Threading.AvaloniaSynchronizationContext()
 
-        let mapProgram =
-            Elmish.Program.withSubscription (subscription fsiSession syncContext)
+        let mapProgram = Elmish.Program.withSubscription (subscription session syncContext)
 
         Component.create (
             id,
@@ -342,8 +342,6 @@ module LiveView =
                         getTopLevelBackgroundObservable ctx.control
                         |> Observable.subscribe previewItemViewBackground.Set
                         |> ctx.trackDisposable
-
-                        ctx.trackDisposable fsiSession
 
                         Client.init
                             (SetLogMessage >> dispatch)
@@ -427,11 +425,155 @@ module LiveView =
                 ]
         )
 
+module LiveViewMenu =
+    open Avalonia.Controls.ApplicationLifetimes
+    open Avalonia.Platform.Storage
+    open Avalonia.Layout
+    open System.Runtime.Loader
+    open System.Reflection
+
+    let openDllPicker ctr =
+        task {
+            let provier = TopLevel.GetTopLevel(ctr).StorageProvider
+            let! location = provier.TryGetWellKnownFolderAsync(WellKnownFolder.Documents)
+
+            let! result =
+                provier.OpenFilePickerAsync(
+                    FilePickerOpenOptions(
+                        Title = "Open...",
+                        SuggestedStartLocation = location,
+                        AllowMultiple = false,
+                        FileTypeFilter = [
+                            FilePickerFileType(
+                                "Binary Log",
+                                Patterns = [ "*.binlog"; "*.buildlog" ],
+                                MimeTypes = [ "application/binlog"; "application/buildlog" ],
+                                AppleUniformTypeIdentifiers = [ "public.data" ]
+                            )
+                        ]
+                    )
+                )
+
+            match List.ofSeq result with
+            | [ picked ] -> return Some picked
+            | _ -> return None
+        }
+
+    let centerText text =
+        TextBlock.create [ TextBlock.textAlignment TextAlignment.Center; TextBlock.text text ]
+
+    let menuView onReloadProjct onCloseProjct attrs =
+        Menu.create [
+            yield! attrs
+            Menu.viewItems [
+                MenuItem.create [
+                    MenuItem.header "File"
+                    MenuItem.viewItems [
+                        MenuItem.create [ MenuItem.header "Reload Project"; MenuItem.onClick onReloadProjct ]
+                        MenuItem.create [ MenuItem.header "Close Project"; MenuItem.onClick onCloseProjct ]
+                    ]
+                ]
+            ]
+        ]
+
+    let create id attrs =
+
+
+        Component.create (
+            $"live-view-menu-{id}",
+            fun ctx ->
+                let binlogPath = ctx.useState ""
+                let projs = ctx.useState<ProjArgsInfo list> []
+
+                ctx.useEffect (
+                    (fun () -> MSBuildBinLog.getFscArgs binlogPath.Current |> Seq.toList |> projs.Set),
+                    [ EffectTrigger.AfterChange binlogPath ]
+                )
+
+                let selectedProj = ctx.useState None
+                let session = ctx.useState None
+
+                let defaultMargin = 8
+                let buttonWidth = 100
+
+                ctx.attrs [ yield! attrs ]
+
+                let initSession _ =
+                    match selectedProj.Current with
+                    | Some p -> task { new FsiPreviewSession(p) |> Some |> session.Set } |> ignore
+                    | None -> ()
+
+                let closeProjct _ =
+                    match session.Current with
+                    | Some s -> IDisposable.dispose s
+                    | None -> ()
+
+                    session.Set None
+
+                let reloadProjct = ignore >> closeProjct >> initSession
+
+                DockPanel.create [
+                    DockPanel.margin defaultMargin
+                    DockPanel.children [
+                        menuView reloadProjct closeProjct [ Menu.dock Dock.Top ]
+                        StackPanel.create [
+                            StackPanel.margin defaultMargin
+                            StackPanel.dock Dock.Top
+                            StackPanel.spacing 4
+                            StackPanel.orientation Orientation.Horizontal
+                            StackPanel.children [
+                                Button.create [
+                                    Button.content (centerText "Load Binlog")
+                                    Button.width buttonWidth
+                                    Button.onClick (fun e ->
+                                        task {
+                                            match! openDllPicker ctx.control with
+                                            | Some picked -> binlogPath.Set(picked.Path.AbsolutePath)
+                                            | None -> ()
+                                        }
+                                        |> ignore)
+                                ]
+                                TextBox.create [ TextBox.text binlogPath.Current ]
+                            ]
+                        ]
+                        StackPanel.create [
+                            StackPanel.margin defaultMargin
+                            StackPanel.dock Dock.Top
+                            StackPanel.spacing 4
+                            StackPanel.orientation Orientation.Horizontal
+                            StackPanel.children [
+                                Button.create [
+                                    Button.content (centerText "Load Project")
+                                    Button.width buttonWidth
+                                    Button.isEnabled (Option.isSome selectedProj.Current)
+                                    Button.onClick (initSession)
+                                ]
+                                ComboBox.create [
+                                    ComboBox.dock Dock.Top
+                                    ComboBox.dataItems projs.Current
+                                    ComboBox.itemTemplate (
+                                        DataTemplateView<ProjArgsInfo>.create (fun p ->
+                                            TextBlock.create [ TextBlock.text p.Name ])
+                                    )
+                                    ComboBox.onSelectedItemChanged (function
+                                        | :? ProjArgsInfo as p -> selectedProj.Set(Some p)
+                                        | _ -> selectedProj.Set None)
+                                ]
+                            ]
+                        ]
+                        match session.Current with
+                        | Some s -> LiveView.create s "liveViewWindow-view" []
+                        | None -> centerText "Avalonia FuncUI LivePreview"
+                    ]
+
+                ]
+        )
+
 type LiveViewWindow() as this =
     inherit HostWindow(Title = "LiveView", Width = 800, Height = 600)
 
     do
-        this.Content <- Component(fun ctx -> LiveView.create "liveViewWindow-view" [])
+        this.Content <- Component(fun ctx -> LiveViewMenu.create "liveViewWindow-view" [])
 #if DEBUG
         this.AttachDevTools()
 #endif

@@ -67,7 +67,7 @@ let counter numState attrs =
 
 module Previewer =
     open Avalonia.FuncUI.Types
-    open Avalonia.Collections 
+    open Avalonia.Collections
     open System.Collections.Generic
 
     let colorSetting id color enableBackGround attrs =
@@ -213,13 +213,13 @@ module Previewer =
                 TileMode = TileMode.Tile,
                 SourceRect = RelativeRect(0, 0, lcm, lcm, RelativeUnit.Absolute),
                 DestinationRect = RelativeRect(0, 0, lcm, lcm, RelativeUnit.Absolute),
-                Transform = TranslateTransform(80,10)
+                Transform = TranslateTransform(80, 10)
             )
-        
+
         let brush =
             gridLine [
                 10, Pen(Brush.Parse "#838383ff", thickness = 0.5)
-                50, Pen(Brush.Parse "#8d8d8d", thickness = 0.8,dashStyle = DashStyle.Dash)
+                50, Pen(Brush.Parse "#8d8d8d", thickness = 0.8, dashStyle = DashStyle.Dash)
                 100, Pen(Brush.Parse "#7e7e7e", thickness = 0.8)
             ]
 
@@ -357,11 +357,9 @@ module Previewer =
                             Border.child view
                             if enableBackGround.Current then
                                 Border.background backgroundColor.Current
-                        ]                        
+                        ]
                     ]
-
                 ]
-
         )
 
 
@@ -380,6 +378,23 @@ module Previewer =
         Border.create [ Border.child (create "preview" view) ]
 
 
+[<LivePreview>]
+let draft () =
+    Component.create (
+        "draft",
+        fun ctx ->
+            Menu.create [
+                Menu.viewItems [
+                    MenuItem.create [
+                        MenuItem.header "File"
+                        MenuItem.viewItems [
+                            MenuItem.create [ MenuItem.header "Open Project" ]
+                            MenuItem.create [ MenuItem.header "Close Project." ]
+                        ]
+                    ]
+                ]
+            ]
+    )
 
 
 
@@ -389,7 +404,7 @@ let draft2 () =
         "draft2",
         fun ctx ->
             let num = ctx.usePassed Store.num
-            
+
             // draft Path...
             let p = PathGeometry.Parse "M0,10 h100 m0,10 h-100 m0,10 h100 m0,10 h-100"
             // List.ofSeq p.Figures |> List.iter (printfn "%A")

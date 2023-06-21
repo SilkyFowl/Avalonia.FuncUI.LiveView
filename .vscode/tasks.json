@@ -8,9 +8,7 @@
 			],
 			"command" : "dotnet",
 			"args": [
-				"run",
-				"--project",
-				"${workspaceFolder}/build"
+				"build"
 			],
 			"group": "build",
 			"label": "Build: solution",

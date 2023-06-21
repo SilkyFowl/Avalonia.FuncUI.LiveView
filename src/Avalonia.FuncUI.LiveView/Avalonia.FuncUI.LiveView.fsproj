@@ -6,6 +6,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Types.fs" />
+    <Compile Include="MSBuildBinLog.fs" />
     <Compile Include="FsiSession.fs" />
     <Compile Include="LiveView.fs" />
   </ItemGroup>

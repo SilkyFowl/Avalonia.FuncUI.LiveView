@@ -1,30 +1,31 @@
 namespace Avalonia.FuncUI.LiveView
 
+open System
+open System.IO
+open System.Text
+
+open PreviewService
+
 /// Ref
 /// https://fsharp.github.io/fsharp-compiler-docs/fcs/interactive.html
 /// https://github.com/fsprojects/Avalonia.FuncUI/issues/147
 
 module internal FsiSession =
-    open System
     open System.Collections.Concurrent
-    open System.IO
     open System.Reflection
-    open System.Text
     open System.Text.RegularExpressions
 
 
     open FSharp.Compiler.Interactive.Shell
     open FSharp.Compiler.IO
 
-    open Avalonia.FuncUI
     open Avalonia.FuncUI.Types
-    open Avalonia.FuncUI.DSL
     open Avalonia.FuncUI.LiveView.Core.Types
-    open PreviewService
 
     let defaultFileSystem = FileSystem
 
     type LivePreviewFileSystem() =
+
         let files = new ConcurrentDictionary<string, string>()
 
         member _.AddOrUpdateFsCode fileName content =
@@ -119,47 +120,38 @@ module internal FsiSession =
 
     FileSystem <- livePreviewFileSystem
 
-    let private init () =
-        let argv = Environment.GetCommandLineArgs()
-        let sbOut = new StringBuilder()
-        let sbErr = new StringBuilder()
-        let inStream = new StringReader("")
-        let outStream = new StringWriter(sbOut)
-        let errStream = new StringWriter(sbErr)
+
+    let init inStream outStream errStream info =
         let fsiConfig = FsiEvaluationSession.GetDefaultConfiguration()
 
-        /// Generate arguments to load this app's assembly and dependent assemblies in F# Interactive.
-        let references =
-            let asm = Assembly.GetEntryAssembly()
+        let session =
+            FsiEvaluationSession.Create(
+                fsiConfig,
+                [|
+                    yield "fsi.exe"
+                    yield "--noninteractive"
+                    yield "--nologo"
+                    yield "--gui-"
+                    yield "--debug+"
+                    // Ensure that references are not locked by the F# interactive process.
+                    yield "--shadowcopyreferences+"
+                    yield "-d:LIVEPREVIEW"
+                |],
+                inStream,
+                outStream,
+                errStream,
+                true
+            )
 
-            let deps = asm.GetReferencedAssemblies() |> Seq.map (fun asm -> asm.Name)
+        String.concat "\n" [
+            for r in ProjArgsInfo.getReferenceArgs info do
+                let path = r.Replace("-r:", "")
+                $"#r @\"{path}\""
+            $"#r @\"{info.TargetPath}\""
+        ]
+        |> session.EvalInteraction
 
-            let path = (Directory.GetParent asm.Location).FullName
-
-            Directory.EnumerateFiles(path, "*.dll")
-            |> Seq.filter (fun p -> Seq.contains (Path.GetFileNameWithoutExtension p) deps)
-            |> Seq.map (fun p -> $"-r:{Path.GetFileName p}")
-            |> Seq.append (Seq.singleton $"-r:{asm.GetName().Name}")
-
-        FsiEvaluationSession.Create(
-            fsiConfig,
-            [|
-                yield "fsi.exe"
-                yield! argv
-                yield "--noninteractive"
-                yield "--nologo"
-                yield "--gui-"
-                yield "--debug+"
-                // Ensure that references are not locked by the F# interactive process.
-                yield "--shadowcopyreferences+"
-                yield "-d:LIVEPREVIEW"
-                yield! references
-            |],
-            inStream,
-            outStream,
-            errStream
-        )
-
+        session
 
     let getLivePreviews (fsiSession: FsiEvaluationSession) =
         let isLivePreviewFunc (m: MethodInfo) =
@@ -221,14 +213,24 @@ module internal FsiSession =
                 timestamp = DateTime.Now
             }
 
-    type FsSession() =
-        let session = init ()
+type FsiPreviewSession(info: ProjArgsInfo) =
+    let sbOut = new StringBuilder()
+    let sbErr = new StringBuilder()
+    let inStream = new StringReader("")
+    let outStream = new StringWriter(sbOut)
+    let errStream = new StringWriter(sbErr)
 
-        interface IFsSession with
-            member _.addOrUpdateFsCode path content = addOrUpdateFsCode path content
 
-            member _.evalScriptNonThrowing path content =
-                evalScriptNonThrowing session path content
+    let session =
 
-        interface IDisposable with
-            member _.Dispose() = (session :> IDisposable).Dispose()
+        FsiSession.init inStream outStream errStream info
+
+    interface IPreviewSession with
+        member _.addOrUpdateFsCode path content =
+            FsiSession.addOrUpdateFsCode path content
+
+        member _.evalScriptNonThrowing path content =
+            FsiSession.evalScriptNonThrowing session path content
+
+    interface IDisposable with
+        member _.Dispose() = (session :> IDisposable).Dispose()
