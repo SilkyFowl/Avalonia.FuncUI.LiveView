@@ -1,5 +1,6 @@
 module Avalonia.FuncUI.LiveView.FuncUIAnalysis
 
+open System.IO
 open System.Reflection
 open type System.Reflection.BindingFlags
 
@@ -47,12 +48,13 @@ let stringArgDSLFuncMap =
         | [| t |] when t = typeof<IAttr> -> Some()
         | _ -> None
 
-    let controlTypes =
-        [| "Avalonia.Controls"; "Avalonia.Base" |]
-        |> Array.map (fun name -> Assembly.Load(name).GetExportedTypes())
-        |> Array.concat
-
     let dslAssembly = Assembly.Load "Avalonia.FuncUI"
+
+    do
+        FileInfo(Assembly.GetExecutingAssembly().Location).Directory.EnumerateFiles "Avalonia.*.dll"
+        |> Seq.toArray
+        |> Seq.iter (fun fi -> Assembly.LoadFile fi.FullName |> ignore)
+
 
     dslAssembly.GetExportedTypes()
     |> Array.choose (fun ty ->
@@ -60,10 +62,15 @@ let stringArgDSLFuncMap =
             ty.GetMethods(Public ||| Static)
             |> Array.choose (function
                 | FsStaticMember name & StringParam & ReturnIAttr as m ->
-                    let controlType =
-                        controlTypes |> Array.find (fun ty -> ty.Name = m.DeclaringType.Name)
+                    let typeParameters =
+                        m.GetGenericArguments()
+                        |> Array.map (fun t ->
+                            t.GetGenericParameterConstraints()
+                            |> Array.tryHead
+                            |> Option.defaultWith (fun () ->
+                                failwith $"{m.ReflectedType}.{name}: Faild to find getGeneric type tarameter."))
 
-                    let m' = m.MakeGenericMethod [| controlType |]
+                    let m' = m.MakeGenericMethod typeParameters
 
                     let invoke (str: string) = m'.Invoke((), [| box str |]) |> ignore
 

@@ -5,15 +5,15 @@ framework: net6.0
 
 group Main
     nuget coverlet.collector
-    nuget FSharp.Compiler.Service 43.7.200.0
-    nuget FSharp.Analyzers.SDK
+    nuget FSharp.Compiler.Service 43.7.300.0
+    nuget FSharp.Analyzers.SDK 0.12.0
     nuget FSharp.Core content: none
     nuget FsUnit.xUnit
 
-    nuget Avalonia.FuncUI 0.6.0-preview9.1
-    nuget Avalonia.FuncUI.Elmish 0.6.0-preview9.1
+    nuget Avalonia.FuncUI 1.0.0-rc1.1.0
+    nuget Avalonia.FuncUI.Elmish 1.0.0-rc1.1.0
 
-    nuget Avalonia != 11.0.0-preview6
+    nuget Avalonia != 11.0.0-rc1.1
     nuget Avalonia.Desktop prerelease
     nuget Avalonia.Diagnostics prerelease
     nuget Avalonia.Themes.Fluent prerelease

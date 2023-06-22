@@ -116,6 +116,9 @@ module internal FsiSession =
             member _.IsStableFileHeuristic(path) =
                 defaultFileSystem.IsStableFileHeuristic(path)
 
+            member _.ChangeExtensionShim(path: string, extension: string) : string =
+                defaultFileSystem.ChangeExtensionShim(path, extension)
+
     let livePreviewFileSystem = LivePreviewFileSystem()
 
     FileSystem <- livePreviewFileSystem

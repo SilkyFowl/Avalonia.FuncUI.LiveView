@@ -115,7 +115,6 @@ module Nuspec =
         ZipFile.CreateFromDirectory(unzipedPath, nupkgPath)
         Shell.deleteDir unzipedPath
 
-#nowarn "20"
 
 let initTargets () =
     Target.initEnvironment ()
@@ -190,7 +189,7 @@ let initTargets () =
     // --------------------------------------- Targets Dependencies ---------------------------------------
     // ****************************************************************************************************
 
-    "CleanDebug" ==> "BuildDebug" ==> "Default"
+    "CleanDebug" ==> "BuildDebug" ==> "Default" |> ignore
 
     "CleanRelease"
     ==> "ClearLocalAnalyzer"
@@ -198,6 +197,7 @@ let initTargets () =
     ==> "TestRelease"
     ==> "Pack"
     ==> "SetLocalAnalyzer"
+    |> ignore
 
 //-----------------------------------------------------------------------------
 // Target Start
