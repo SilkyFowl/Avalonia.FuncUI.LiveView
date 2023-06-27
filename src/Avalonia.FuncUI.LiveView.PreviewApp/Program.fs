@@ -1,30 +1,89 @@
 ﻿namespace Avalonia.FuncUI.LiveView
 
-open System
 open Avalonia
 open Avalonia.Controls.ApplicationLifetimes
-open Avalonia.Controls
-open Avalonia.Themes.Fluent
-open Avalonia.FuncUI.Hosts
+open Avalonia.Styling
+
 open Avalonia.FuncUI.LiveView
+open Avalonia.FuncUI
+
+open FsConfig
+open Avalonia.Controls
 
 
 type App() =
     inherit Application()
 
+    let disposables = ResizeArray()
+
+    let setting: IWritable<Setting> =
+        match Setting.getSetting () with
+        | Ok setting -> new State<_>(setting)
+        | Error err ->
+            match err with
+            | NotFound name -> failwithf "Setting variable %s not found" name
+            | BadValue(name, value) -> failwithf "Setting variable %s has invalid value %s" name value
+            | NotSupported msg -> failwith msg
+
+    /// Change Theme as follows:
+    /// 1. Close all currently open windows.
+    /// 1. Change Theme.
+    /// 1. Display a new MainWindow that has the same size and location as current one.
+    let setTheme (t: Themes) =
+        let app = Application.Current
+
+        match app.ApplicationLifetime with
+        | :? IClassicDesktopStyleApplicationLifetime as lifetime ->
+            let currentShutdownMode = lifetime.ShutdownMode
+            // ShutdownMode is temporarily changed because all windows need to be closed.
+            lifetime.ShutdownMode <- ShutdownMode.OnExplicitShutdown
+
+            let oldWindow = lifetime.MainWindow
+
+            List.ofSeq lifetime.Windows
+            |> List.filter (fun w -> w <> oldWindow)
+            |> List.iter (fun w -> w.Close())
+
+            /// New window, not opened until changes Theme.
+            let newWindow =
+                MainWindow(setting, Width = oldWindow.Width, Height = oldWindow.Height, Position = oldWindow.Position)
+
+            oldWindow.Close()
+
+            // Close all currently opened Windows and then change Theme.
+            Themes.set t app
+
+            lifetime.MainWindow <- newWindow
+            newWindow.Show()
+
+            // Restore ShutdownMode.
+            lifetime.ShutdownMode <- currentShutdownMode
+        | _ -> ()
+
+    let onExit (e: ControlledApplicationLifetimeExitEventArgs) =
+        printfn $"setting on Exit : {setting.Current}"
+        disposables |> Seq.iter IDisposable.dispose
 
     override this.Initialize() =
-        this.Styles.Add(FluentTheme())
-        this.RequestedThemeVariant <- Styling.ThemeVariant.Dark
+        Themes.init this
+        Themes.set setting.Current.theme this
+        this.RequestedThemeVariant <- ThemeVariant.Dark
 
+        setting
+        |> State.readMap (fun s -> s.theme)
+        |> State.readUnique
+        |> IReadable.subscribe setTheme
+        |> disposables.Add
 
     override this.OnFrameworkInitializationCompleted() =
-        
+
         match this.ApplicationLifetime with
         | :? IClassicDesktopStyleApplicationLifetime as desktopLifetime ->
-            desktopLifetime.MainWindow <- LiveViewWindow()
-
+            desktopLifetime.MainWindow <- MainWindow(setting)
+            desktopLifetime.Exit |> Observable.add onExit
         | _ -> ()
+
+        base.OnFrameworkInitializationCompleted()
 
 module Program =
 

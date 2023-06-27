@@ -5,9 +5,11 @@ framework: net6.0
 
 group Main
     nuget coverlet.collector
+    nuget FsConfig
     nuget FSharp.Compiler.Service 43.7.300.0
     nuget FSharp.Analyzers.SDK 0.11.0
     nuget FSharp.Core content: none
+    nuget FSharp.SystemTextJson 1.1.23
     nuget FsUnit.xUnit
 
     nuget Avalonia.FuncUI 1.0.0-rc1.1.0
@@ -17,9 +19,11 @@ group Main
     nuget Avalonia.Desktop prerelease
     nuget Avalonia.Diagnostics prerelease
     nuget Avalonia.Themes.Fluent prerelease
+    nuget Avalonia.Themes.Simple prerelease
     nuget Avalonia.Angle.Windows.Natives ~> 2.1.0.0
     nuget MessagePack
     nuget MessagePack.FSharpExtensions
+    nuget Microsoft.Extensions.Configuration.Json
     nuget Microsoft.NET.Test.Sdk
     nuget MSBuild.StructuredLogger
     nuget Microsoft.Build.Framework 17.3.2
