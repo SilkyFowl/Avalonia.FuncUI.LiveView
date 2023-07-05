@@ -4,7 +4,6 @@ storage: none
 framework: net6.0
 
 group Main
-    nuget coverlet.collector
     nuget FsConfig
     nuget FSharp.Compiler.Service 43.7.300.0
     nuget FSharp.Analyzers.SDK 0.11.0
@@ -24,12 +23,16 @@ group Main
     nuget MessagePack
     nuget MessagePack.FSharpExtensions
     nuget Microsoft.Extensions.Configuration.Json
-    nuget Microsoft.NET.Test.Sdk
     nuget MSBuild.StructuredLogger
     nuget Microsoft.Build.Framework 17.3.2
-    nuget xunit
-    nuget xunit.runner.visualstudio
+    nuget Microsoft.NET.Test.Sdk 17.5.0
+    nuget coverlet.collector 3.2.0 version_in_path: true
+    nuget xunit 2.4.2
+    nuget xunit.runner.visualstudio 2.4.5 version_in_path: true
 
+group PreviewApp
+    source https://api.nuget.org/v3/index.json
+    nuget Microsoft.Build.Locator
 
 group Build
   source https://api.nuget.org/v3/index.json

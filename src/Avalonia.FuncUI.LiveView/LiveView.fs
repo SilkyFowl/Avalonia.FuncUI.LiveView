@@ -10,11 +10,14 @@ open Avalonia.FuncUI.Types
 open Avalonia.FuncUI.DSL
 open Avalonia.FuncUI.Hosts
 
+open Avalonia.FuncUI.LiveView.Types.LiveView
+open Avalonia.FuncUI.LiveView.Types.PreviewApp
 open Avalonia.FuncUI.LiveView.MessagePack
 
 [<AutoOpen>]
 module internal ViewHelper =
     open System.Collections.Generic
+    open Avalonia.Interactivity
 
     let inline initList<'list, 'x when 'list: (new: unit -> 'list) and 'list: (member AddRange: IEnumerable<'x> -> unit)>
         ls
@@ -22,6 +25,20 @@ module internal ViewHelper =
         let collection = new 'list ()
         collection.AddRange ls
         collection
+
+    let inline (|Source|_|) (e: RoutedEventArgs) : 't option =
+        match e.Source with
+        | :? 't as v -> Some v
+        | _ -> None
+
+    [<RequireQualifiedAccess>]
+    module CheckBox =
+        open Avalonia.Controls
+
+        let inline (|IsChecked|_|) e =
+            match e with
+            | Source(cb: CheckBox) -> Option.ofNullable cb.IsChecked
+            | _ -> None
 
     module GridLineBrush =
         let create (stepInfo: list<float * Pen>) =
@@ -96,22 +113,22 @@ module internal ViewHelper =
     type IComponentContext with
 
         member this.useAsync<'signal>(init: Async<'signal>) : IWritable<Deferred<_, _>> =
-            let state = this.useState (Deferred.Waiting, true)
+            let state = this.useState (Waiting, true)
 
             this.useEffect (
                 handler =
                     (fun _ ->
                         match state.Current with
-                        | Deferred.Waiting ->
-                            state.Set Deferred.InProgress
+                        | Waiting ->
+                            state.Set InProgress
 
                             Async.StartImmediate(
                                 async {
                                     let! result = Async.Catch init
 
                                     match result with
-                                    | Choice1Of2 value -> state.Set(Deferred.Resolved(Ok value))
-                                    | Choice2Of2 exn -> state.Set(Deferred.Resolved(Error exn))
+                                    | Choice1Of2 value -> state.Set(Resolved(Ok value))
+                                    | Choice2Of2 exn -> state.Set(Resolved(Error exn))
                                 }
                             )
 
@@ -120,6 +137,32 @@ module internal ViewHelper =
             )
 
             state
+
+        member inline this.useEffectDebounceTime(handler, triggers: list<EffectTrigger>, dueTime) =
+            let createTimer () = new Threading.PeriodicTimer(dueTime)
+            let timer = this.useState (createTimer (), false)
+
+            this.useEffect (
+                (fun () ->
+                    timer.Current.Dispose()
+                    let newTimer = createTimer ()
+
+                    task {
+                        match! newTimer.WaitForNextTickAsync() with
+                        | true -> handler ()
+                        | false -> ()
+                    }
+                    |> ignore
+
+                    timer.Set newTimer),
+                triggers
+            )
+
+        member inline this.useMap(value: IReadable<'t>, mapper, ?renderOnChange) =
+            let renderOnChange = defaultArg renderOnChange true
+            let value' = this.useStateLazy ((fun _ -> mapper value.Current), renderOnChange)
+            this.useEffect ((fun () -> mapper value.Current |> value'.Set), [ EffectTrigger.AfterChange value ])
+            value'
 
     type PreviewConterntBorder() =
         inherit Border()
@@ -168,6 +211,7 @@ module LiveView =
     open Avalonia.FuncUI.Elmish.ElmishHook
     open Avalonia.Layout
     open Avalonia.Media.Immutable
+    open Types.Analyzer
 
     module private Store =
         module PreviewConterntBorder =
@@ -221,13 +265,13 @@ module LiveView =
                 ctx.useEffect ((fun _ -> ()), [ EffectTrigger.AfterRender ])
 
                 match asyncView.Current with
-                | Deferred.Waiting
-                | Deferred.HasNotStartedYet(_)
-                | Deferred.InProgress ->
+                | Waiting
+                | HasNotStartedYet(_)
+                | InProgress ->
                     // Dummy View
                     Border.create [ Border.isVisible false ]
-                | Deferred.Resolved(Ok view) -> view
-                | Deferred.Resolved(Error ex) -> extractExn ex
+                | Resolved(Ok view) -> view
+                | Resolved(Error ex) -> extractExn ex
 
         )
 
@@ -238,14 +282,14 @@ module LiveView =
 
         let time, contents =
             match evalState with
-            | InProgress(ValueSome { views = views; timestamp = timestamp })
-            | Success({ views = views; timestamp = timestamp })
-            | Failed(_, ValueSome { views = views; timestamp = timestamp }) ->
+            | EvalState.inProgress (ValueSome { views = views; timestamp = timestamp })
+            | EvalState.success ({ views = views; timestamp = timestamp })
+            | EvalState.failed (_, ValueSome { views = views; timestamp = timestamp }) ->
                 timestamp,
                 Map.toList views
                 |> List.map ((fun (key, viewFn) -> key, viewFn extractObj extractExn))
-            | InProgress ValueNone -> DateTime.Now, [ "InProgress", defaultContent "InProgress" ]
-            | Failed(_, ValueNone) -> DateTime.Now, [ "Failed", defaultContent "Failed" ]
+            | EvalState.inProgress ValueNone -> DateTime.Now, [ "InProgress", defaultContent "InProgress" ]
+            | EvalState.failed (_, ValueNone) -> DateTime.Now, [ "Failed", defaultContent "Failed" ]
 
         ScrollViewer.create [
             ScrollViewer.content (
@@ -278,16 +322,26 @@ module LiveView =
             )
         ]
 
-
     let private tabItemHeaderView (path: string) (evalState) =
         let fileName = Path.GetFileName path
 
         match evalState with
-        | InProgress _ -> TextBlock.create [ TextBlock.text $"[Eval...]{fileName}" ]
-        | Success _ -> TextBlock.create [ TextBlock.text $"{fileName}" ]
-        | Failed _ -> TextBlock.create [ TextBlock.text $"[!!]{fileName}"; TextBlock.hasErrors true ]
+        | EvalState.inProgress _ -> TextBlock.create [ TextBlock.text $"[Eval...]{fileName}" ]
+        | EvalState.success _ -> TextBlock.create [ TextBlock.text $"{fileName}" ]
+        | EvalState.failed _ -> TextBlock.create [ TextBlock.text $"[!!]{fileName}"; TextBlock.hasErrors true ]
 
-    let create session id attrs =
+    [<AutoOpen>]
+    module ClientState =
+        open System.Threading
+
+    let create
+        (setting: IWritable<Setting>)
+        (client: IReadable<IAnalyzerClient>)
+        proj
+        (model: IWritable<Model>)
+        id
+        attrs
+        =
         let getTopLevelBackgroundObservable control =
             let topLevel = TopLevel.GetTopLevel control
 
@@ -298,12 +352,14 @@ module LiveView =
 
         let syncContext = Threading.AvaloniaSynchronizationContext()
 
+        let session = new FsiPreviewSession(proj)
         let mapProgram = Elmish.Program.withSubscription (subscription session syncContext)
 
         Component.create (
             id,
             fun ctx ->
-                let model, dispatch = ctx.useElmish (init, update, mapProgram)
+                let model = ctx.usePassed model
+                let model, dispatch = ctx.useElmish (model, update, mapProgram)
                 let evalStateMap = model.evalStateMap
                 let selectedEvalStateKey = ctx.useState<string option> (None, false)
 
@@ -326,39 +382,65 @@ module LiveView =
                     ctx.usePassed Store.PreviewItemView.enableBackground
 
                 ctx.useEffect (
+                    (fun () -> enablePreviewItemViewBackground.Set setting.Current.enablePreviewItemViewBackground),
+                    [ EffectTrigger.AfterInit; EffectTrigger.AfterChange setting ]
+                )
+
+                ctx.useEffect (
                     (fun () ->
                         GridLineBrush.create gridLineStepInfo.Current
                         |> previewConterntBorderBackground.Set),
                     [ EffectTrigger.AfterInit; EffectTrigger.AfterChange gridLineStepInfo ]
                 )
 
+                let client = ctx.usePassedRead client
 
+                let autoUpdateDebounceTime =
+                    ctx.useMap (setting, (fun s -> s.autoUpdateDebounceTime), false)
+
+                let pendingMsg = ctx.useState (None, false)
+
+                ctx.useEffectDebounceTime (
+                    (fun () -> pendingMsg.Current |> Option.iter (LiveViewAnalyzerMsg >> dispatch)),
+                    [ EffectTrigger.AfterInit; EffectTrigger.AfterChange pendingMsg ],
+                    autoUpdateDebounceTime.Current
+                )
 
                 ctx.useEffect (
                     (fun () ->
+                        client.Current.OnReceivedMsg
+                        |> Observable.subscribe (fun receivedMsg ->
+                            match pendingMsg.Current with
+                            | Some pendingMsg when pendingMsg.Path <> receivedMsg.Path ->
+                                LiveViewAnalyzerMsg pendingMsg |> dispatch
+                            | _ -> ()
+
+                            Some receivedMsg |> pendingMsg.Set)),
+                    [ EffectTrigger.AfterInit; EffectTrigger.AfterChange client ]
+                )
+
+                ctx.useEffect (
+                    (fun () ->
+                        ctx.trackDisposable session
+
                         GridLineBrush.create gridLineStepInfo.Current
                         |> previewConterntBorderBackground.Set
 
                         getTopLevelBackgroundObservable ctx.control
                         |> Observable.subscribe previewItemViewBackground.Set
-                        |> ctx.trackDisposable
-
-                        Client.init
-                            (SetLogMessage >> dispatch)
-                            Settings.iPAddress
-                            Settings.port
-                            (LiveViewAnalyzerMsg >> dispatch)),
+                        |> ctx.trackDisposable),
                     [ EffectTrigger.AfterInit ]
                 )
 
                 ctx.attrs [ yield! attrs ]
 
                 Grid.create [
-                    Grid.rowDefinitions "*,Auto,Auto"
+                    Grid.rowDefinitions "*,Auto"
                     Grid.columnDefinitions "Auto,*,Auto"
                     Grid.children [
                         TabControl.create [
                             TabControl.row 0
+                            TabControl.rowSpan 2
                             TabControl.columnSpan 3
                             TabControl.onSelectedIndexChanged (
                                 (fun idx ->
@@ -378,31 +460,10 @@ module LiveView =
                                     ]
                             ]
                         ]
-                        StackPanel.create [
-                            StackPanel.row 1
-                            StackPanel.column 0
-                            StackPanel.margin 8
-                            StackPanel.spacing 8
-                            StackPanel.orientation Orientation.Horizontal
-                            StackPanel.children [
-                                CheckBox.create [
-                                    CheckBox.content "auto update"
-                                    CheckBox.isChecked model.autoUpdate
-                                    CheckBox.onChecked (fun _ -> SetAutoUpdate true |> dispatch)
-                                    CheckBox.onUnchecked (fun _ -> SetAutoUpdate false |> dispatch)
-                                ]
-                                CheckBox.create [
-                                    CheckBox.content "fill background"
-                                    CheckBox.isChecked enablePreviewItemViewBackground.Current
-                                    CheckBox.onChecked (fun _ -> enablePreviewItemViewBackground.Set true)
-                                    CheckBox.onUnchecked (fun _ -> enablePreviewItemViewBackground.Set false)
-                                ]
-                            ]
-                        ]
                         Button.create [
                             Button.row 1
                             Button.column 2
-                            Button.margin 8
+                            Button.margin (8, 8, 24, 8)
                             Button.horizontalAlignment HorizontalAlignment.Left
                             Button.content "eval manualy"
                             Button.isEnabled (
@@ -414,166 +475,6 @@ module LiveView =
                                 selectedEvalStateKey.Current
                                 |> Option.iter (fun key -> EvalInteraction(key, StartRepuested) |> dispatch))
                         ]
-                        TextBlock.create [
-                            TextBlock.row 2
-                            TextBlock.column 0
-                            TextBlock.columnSpan 3
-                            TextBlock.margin 8
-                            TextBlock.text $"{model.logMessage}"
-                        ]
                     ]
                 ]
         )
-
-module LiveViewMenu =
-    open Avalonia.Controls.ApplicationLifetimes
-    open Avalonia.Platform.Storage
-    open Avalonia.Layout
-    open System.Runtime.Loader
-    open System.Reflection
-
-    let openDllPicker ctr =
-        task {
-            let provier = TopLevel.GetTopLevel(ctr).StorageProvider
-            let! location = provier.TryGetWellKnownFolderAsync(WellKnownFolder.Documents)
-
-            let! result =
-                provier.OpenFilePickerAsync(
-                    FilePickerOpenOptions(
-                        Title = "Open...",
-                        SuggestedStartLocation = location,
-                        AllowMultiple = false,
-                        FileTypeFilter = [
-                            FilePickerFileType(
-                                "Binary Log",
-                                Patterns = [ "*.binlog"; "*.buildlog" ],
-                                MimeTypes = [ "application/binlog"; "application/buildlog" ],
-                                AppleUniformTypeIdentifiers = [ "public.data" ]
-                            )
-                        ]
-                    )
-                )
-
-            match List.ofSeq result with
-            | [ picked ] -> return Some picked
-            | _ -> return None
-        }
-
-    let centerText text =
-        TextBlock.create [ TextBlock.textAlignment TextAlignment.Center; TextBlock.text text ]
-
-    let menuView onReloadProjct onCloseProjct attrs =
-        Menu.create [
-            yield! attrs
-            Menu.viewItems [
-                MenuItem.create [
-                    MenuItem.header "File"
-                    MenuItem.viewItems [
-                        MenuItem.create [ MenuItem.header "Reload Project"; MenuItem.onClick onReloadProjct ]
-                        MenuItem.create [ MenuItem.header "Close Project"; MenuItem.onClick onCloseProjct ]
-                    ]
-                ]
-            ]
-        ]
-
-    let create id attrs =
-
-
-        Component.create (
-            $"live-view-menu-{id}",
-            fun ctx ->
-                let binlogPath = ctx.useState ""
-                let projs = ctx.useState<ProjArgsInfo list> []
-
-                ctx.useEffect (
-                    (fun () -> MSBuildBinLog.getFscArgs binlogPath.Current |> Seq.toList |> projs.Set),
-                    [ EffectTrigger.AfterChange binlogPath ]
-                )
-
-                let selectedProj = ctx.useState None
-                let session = ctx.useState None
-
-                let defaultMargin = 8
-                let buttonWidth = 100
-
-                ctx.attrs [ yield! attrs ]
-
-                let initSession _ =
-                    match selectedProj.Current with
-                    | Some p -> task { new FsiPreviewSession(p) |> Some |> session.Set } |> ignore
-                    | None -> ()
-
-                let closeProjct _ =
-                    match session.Current with
-                    | Some s -> IDisposable.dispose s
-                    | None -> ()
-
-                    session.Set None
-
-                let reloadProjct = ignore >> closeProjct >> initSession
-
-                DockPanel.create [
-                    DockPanel.margin defaultMargin
-                    DockPanel.children [
-                        menuView reloadProjct closeProjct [ Menu.dock Dock.Top ]
-                        StackPanel.create [
-                            StackPanel.margin defaultMargin
-                            StackPanel.dock Dock.Top
-                            StackPanel.spacing 4
-                            StackPanel.orientation Orientation.Horizontal
-                            StackPanel.children [
-                                Button.create [
-                                    Button.content (centerText "Load Binlog")
-                                    Button.width buttonWidth
-                                    Button.onClick (fun e ->
-                                        task {
-                                            match! openDllPicker ctx.control with
-                                            | Some picked -> binlogPath.Set(picked.Path.AbsolutePath)
-                                            | None -> ()
-                                        }
-                                        |> ignore)
-                                ]
-                                TextBox.create [ TextBox.text binlogPath.Current ]
-                            ]
-                        ]
-                        StackPanel.create [
-                            StackPanel.margin defaultMargin
-                            StackPanel.dock Dock.Top
-                            StackPanel.spacing 4
-                            StackPanel.orientation Orientation.Horizontal
-                            StackPanel.children [
-                                Button.create [
-                                    Button.content (centerText "Load Project")
-                                    Button.width buttonWidth
-                                    Button.isEnabled (Option.isSome selectedProj.Current)
-                                    Button.onClick (initSession)
-                                ]
-                                ComboBox.create [
-                                    ComboBox.dock Dock.Top
-                                    ComboBox.dataItems projs.Current
-                                    ComboBox.itemTemplate (
-                                        DataTemplateView<ProjArgsInfo>.create (fun p ->
-                                            TextBlock.create [ TextBlock.text p.Name ])
-                                    )
-                                    ComboBox.onSelectedItemChanged (function
-                                        | :? ProjArgsInfo as p -> selectedProj.Set(Some p)
-                                        | _ -> selectedProj.Set None)
-                                ]
-                            ]
-                        ]
-                        match session.Current with
-                        | Some s -> LiveView.create s "liveViewWindow-view" []
-                        | None -> centerText "Avalonia FuncUI LivePreview"
-                    ]
-
-                ]
-        )
-
-type LiveViewWindow() as this =
-    inherit HostWindow(Title = "LiveView", Width = 800, Height = 600)
-
-    do
-        this.Content <- Component(fun ctx -> LiveViewMenu.create "liveViewWindow-view" [])
-#if DEBUG
-        this.AttachDevTools()
-#endif

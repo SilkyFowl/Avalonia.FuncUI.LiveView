@@ -1,5 +1,7 @@
 {
     "autoUpdate": true,
+    "autoUpdateDebounceTime": "00:00:00.50",
     "enablePreviewItemViewBackground": true,
-    "theme": "Fluent"
+    "theme": "Fluent",
+    "buildinThemeVariant": "Default"
 }

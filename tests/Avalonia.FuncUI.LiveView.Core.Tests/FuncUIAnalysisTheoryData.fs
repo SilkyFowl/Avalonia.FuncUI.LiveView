@@ -16,7 +16,7 @@ open System
 open Avalonia.FuncUI
 open Avalonia.FuncUI.DSL
 open Avalonia.Controls
-open Avalonia.FuncUI.LiveView.Core.Types
+open Avalonia.FuncUI.LiveView
 """
 
 let private counterViewCodeSnippet =

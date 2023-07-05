@@ -1,18 +1,8 @@
 namespace Avalonia.FuncUI.LiveView
 
-type ProjArgsInfo = {
-    Name: string
-    ProjectDirectory: string
-    TargetPath: string
-    TargetFramework: string
-    DotnetHostPath: string
-    DotnetFscCompilerPath: string
-    Args: string[]
-}
+open Avalonia.FuncUI.LiveView.Types.PreviewApp
 
-module ProjArgsInfo =
-    let getReferenceArgs info =
-        info.Args |> Array.filter (fun s -> s.StartsWith "-r:")
+
 
 module MSBuildBinLog =
     type private OptionBuilder() =

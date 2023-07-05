@@ -1,18 +1,12 @@
 namespace Avalonia.FuncUI.LiveView
 
+open Avalonia.FuncUI.LiveView.Types
+open Avalonia.FuncUI.LiveView.Types.LiveView
+open Avalonia.FuncUI.LiveView.Types.LiveView.PreviewService
+
+
 [<AutoOpen>]
 module Utils =
-    type Deferred<'args, 'result> =
-        | Waiting
-        | HasNotStartedYet of 'args
-        | InProgress
-        | Resolved of 'result
-
-    type AsyncOperationStatus<'t> =
-        | StartRepuested
-        | Started
-        | Finished of 't
-
     module IDisposable =
         open System
 
@@ -25,75 +19,37 @@ module Utils =
             { new IDisposable with
                 member _.Dispose() = ()
             }
-        
-        let dispose (disposable:IDisposable) =
-            disposable.Dispose()
+
+        let dispose (disposable: IDisposable) = disposable.Dispose()
 
 module PreviewService =
     open System
     open System.Threading
 
-    open FSharp.Compiler.Diagnostics
-
-    open Avalonia.FuncUI.Types
-    open Core.Types
-
-    type EvalInteractionParam = { path: string; content: string[] }
-
-    type ExtractFunc = (obj -> IView) -> (exn -> IView) -> Async<IView>
-
-    type EvaledViewsInfo = {
-        views: Map<string, ExtractFunc>
-        diagnostic: FSharpDiagnostic[]
-        content: string[]
-        timestamp: DateTime
-    }
-
-    type EvalFalled = {
-        exn: exn
-        diagnostic: FSharpDiagnostic[]
-        content: string[]
-        timestamp: DateTime
-    }
-
-    type EvalInteractionResult = Result<EvaledViewsInfo, EvalFalled>
-
-    type EvalState =
-        | InProgress of currentInfo: EvaledViewsInfo voption
-        | Success of info: EvaledViewsInfo
-        | Failed of failed: EvalFalled * currentInfo: EvaledViewsInfo voption
-
     module EvalState =
         let start state =
             match state with
-            | Some(Success old) -> InProgress(ValueSome old)
-            | Some(InProgress old)
-            | Some(Failed(_, old)) -> InProgress old
-            | None -> InProgress ValueNone
+            | Some(EvalState.success old) -> EvalState.inProgress(ValueSome old)
+            | Some(EvalState.inProgress old)
+            | Some(EvalState.failed(_, old)) -> EvalState.inProgress old
+            | None -> EvalState.inProgress ValueNone
 
         let applyResult (result: EvalInteractionResult) state =
             match result, state with
-            | Ok info, _ -> Success info
-            | Error failed, Some(Success old) -> Failed(failed, ValueSome old)
-            | Error failed, Some(InProgress old)
-            | Error failed, Some(Failed(_, old)) -> Failed(failed, old)
-            | Error failed, None -> Failed(failed, ValueNone)
+            | Ok info, _ -> EvalState.success info
+            | Error failed, Some(EvalState.success old) -> EvalState.failed(failed, ValueSome old)
+            | Error failed, Some(EvalState.inProgress old)
+            | Error failed, Some(EvalState.failed(_, old)) -> EvalState.failed(failed, old)
+            | Error failed, None -> EvalState.failed(failed, ValueNone)
 
         let (|CurrentContent|_|) =
             function
-            | Success { content = content } -> Some content
-            | InProgress(ValueSome { content = content })
-            | Failed(_, ValueSome { content = content }) -> Some content
-            | InProgress ValueNone -> None
-            | Failed(_, ValueNone) -> None
+            | EvalState.success { content = content } -> Some content
+            | EvalState.inProgress(ValueSome { content = content })
+            | EvalState.failed(_, ValueSome { content = content }) -> Some content
+            | EvalState.inProgress ValueNone -> None
+            | EvalState.failed(_, ValueNone) -> None
 
-    type Model = {
-        evalPendingMsgs: list<EvalInteractionParam>
-        evalStateMap: Map<string, EvalState>
-        evalInteractionDeferred: Deferred<EvalInteractionParam, EvalInteractionResult>
-        logMessage: LogMessage
-        autoUpdate: bool
-    }
 
     module Model =
         module EvalStateMap =
@@ -158,7 +114,7 @@ module PreviewService =
                 loop [] model.evalPendingMsgs
 
 
-        let receiveLiveViewAnalyzerMsg model (msg: LiveViewAnalyzerMsg) =
+        let  receiveLiveViewAnalyzerMsg model (msg: LiveViewAnalyzerMsg) =
             let shouldUpdate = EvalStateMap.containEqual msg.Path msg.Content model |> not
 
             if shouldUpdate then
@@ -203,12 +159,12 @@ module PreviewService =
                       }
                     | None -> {
                         model with
-                            logMessage = LogError "eval parameter not found."
+                            logMessage = LogMessage.error "eval parameter not found."
                       }
             else
                 {
                     model with
-                        logMessage = LogError "eval is running. Please wait a moment."
+                        logMessage = LogMessage.error "eval is running. Please wait a moment."
                 }
 
         let applyEvalInteractionResult model key result =
@@ -227,22 +183,21 @@ module PreviewService =
                     evalStateMap = evalStateMap'
               }
 
-    type Msg =
-        | LiveViewAnalyzerMsg of LiveViewAnalyzerMsg
-        | EvalInteraction of key: string * AsyncOperationStatus<EvalInteractionResult>
-        | SetLogMessage of LogMessage
-        | SetAutoUpdate of bool
 
-    let init () =
+
+    let init () : (Model * Elmish.Effect<Msg> list) =
         {
             evalPendingMsgs = []
             evalStateMap = Map.empty
             evalInteractionDeferred = Waiting
-            logMessage = LogInfo "init"
+            logMessage = LogMessage.info "init"
             autoUpdate = true
         },
-        []
+        Elmish.Cmd.Empty
 
+    let initWith mapper () : (Model * Elmish.Effect<Msg> list) =
+
+        init () |> mapper
 
     let update msg model =
         match msg with
@@ -258,11 +213,6 @@ module PreviewService =
         | SetLogMessage logMessage -> { model with logMessage = logMessage }, []
         | SetAutoUpdate autoEval -> { model with autoUpdate = autoEval }, []
 
-    type IPreviewSession =
-        abstract addOrUpdateFsCode: path: string -> content: string[] -> unit
-        abstract evalScriptNonThrowing: path: string -> content: string[] -> Result<EvaledViewsInfo, EvalFalled>
-
-
     let evalInteractionEffect
         syncContext
         (session: IPreviewSession)
@@ -272,8 +222,8 @@ module PreviewService =
         fun dispatch ->
             Async.StartImmediate(
                 async {
-                    let logInfo = LogInfo >> SetLogMessage >> dispatch
-                    let logError = LogError >> SetLogMessage >> dispatch
+                    let logInfo = LogMessage.info >> SetLogMessage >> dispatch
+                    let logError = LogMessage.error >> SetLogMessage >> dispatch
                     let time = DateTime.Now.ToString "T"
                     EvalInteraction(path, Started) |> dispatch
                     logInfo $"{time} Eval Start..."

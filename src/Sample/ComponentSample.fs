@@ -8,13 +8,22 @@ open Avalonia.Controls.Shapes
 open Avalonia.Media
 open Avalonia.Media.Imaging
 open Avalonia.Layout
-open Avalonia.FuncUI.LiveView.Core.Types
+open Avalonia.FuncUI.LiveView
 open Avalonia.Controls.Primitives
 open Avalonia.Controls
 open Avalonia.Input
 open Avalonia.Markup.Xaml.Converters
 open Avalonia.Media.Immutable
 open Avalonia.FuncUI.Builder
+open System
+
+type ColorPicker with
+
+    static member create attrs = ViewBuilder.Create<ColorPicker> attrs
+
+
+    static member color<'t when 't :> ColorPicker> color =
+        AttrBuilder<'t>.CreateProperty(ColorPicker.ColorProperty, color, ValueNone)
 
 let counter numState attrs =
 
@@ -348,7 +357,19 @@ module Previewer =
                                 ]
 
                                 colorSetting viewId backgroundColor enableBackGround [ Border.row 1; Border.column 2 ]
-
+                                Button.create [
+                                    Button.flyout (
+                                        Flyout.create [
+                                            Flyout.placement PlacementMode.RightEdgeAlignedBottom
+                                            Flyout.showMode FlyoutShowMode.Standard
+                                            Flyout.content (
+                                                ColorPicker.create [ ColorPicker.color backgroundColor.Current ]
+                                            )
+                                        ]
+                                    )
+                                    Button.content (TextBlock.create [ TextBlock.text $"{backgroundColor.Current}" ])
+                                ]
+                                ColorPicker.create [ ColorPicker.color backgroundColor.Current ]
                             ]
                         ]
                         Border.create [
@@ -458,8 +479,50 @@ let draft2 () =
             ]
     )
 
+type IComponentContext with
+
+    member inline this.useEffectdeDounceTime(handler, triggers: list<EffectTrigger>, dueTime) =
+        let createTimer () = new Threading.PeriodicTimer(dueTime)
+        let timer = this.useState (createTimer (), false)
+
+        this.useEffect (
+            (fun () ->
+                timer.Current.Dispose()
+                let newTimer = createTimer ()
+
+                task {
+                    match! newTimer.WaitForNextTickAsync() with
+                    | true -> handler ()
+                    | false -> ()
+                }
+                |> ignore
+
+                timer.Set newTimer),
+            triggers
+        )
+
 [<LivePreview>]
-let draft3 () = counter Store.num []
+let draft3 () =
+    Component.create (
+        "draft-3",
+        fun ctx ->
+            let num = ctx.usePassed Store.num
+            let debounceNum = ctx.useState num.Current
+
+            ctx.useEffectdeDounceTime (
+                (fun () ->
+                        debounceNum.Set(num.Current * 2)),
+                [ EffectTrigger.AfterInit; EffectTrigger.AfterChange num ],
+                TimeSpan.FromSeconds 5
+            )
+
+            StackPanel.create [
+                StackPanel.children [
+                    counter num []
+                    TextBlock.create [ TextBlock.text $"debounce: {debounceNum.Current}" ]
+                ]
+            ]
+    )
 
 [<LivePreview>]
 let dtaft4 () =

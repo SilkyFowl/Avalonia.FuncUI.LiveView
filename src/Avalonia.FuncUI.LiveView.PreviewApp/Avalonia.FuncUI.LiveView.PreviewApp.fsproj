@@ -8,6 +8,7 @@
     <PackageOutputPath>./nupkg</PackageOutputPath>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="MSBuildBinLog.fs" />
     <Compile Include="Views.fs" />
     <Compile Include="Program.fs" />
     <Content Include="settings.default.json" CopyToOutputDirectory="PreserveNewest" />

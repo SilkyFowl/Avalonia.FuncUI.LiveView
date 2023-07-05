@@ -1,4 +1,4 @@
-group Main
-    Avalonia.Desktop
-    FSharp.Compiler.Service
-    Avalonia.FuncUI
+Avalonia.Desktop
+FSharp.Compiler.Service
+Avalonia.FuncUI
+FSharp.Core

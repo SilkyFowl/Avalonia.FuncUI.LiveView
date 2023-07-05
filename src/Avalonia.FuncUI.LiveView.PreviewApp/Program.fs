@@ -9,12 +9,19 @@ open Avalonia.FuncUI
 
 open FsConfig
 open Avalonia.Controls
-
+open Types.PreviewApp
+open Avalonia.FuncUI.LiveView.MessagePack
 
 type App() =
     inherit Application()
 
     let disposables = ResizeArray()
+
+    let client = new State<_>(Client.init ())
+
+    let model = PreviewService.initState ()
+
+    let currentProj = new State<_>(None)
 
     let setting: IWritable<Setting> =
         match Setting.getSetting () with
@@ -46,7 +53,15 @@ type App() =
 
             /// New window, not opened until changes Theme.
             let newWindow =
-                MainWindow(setting, Width = oldWindow.Width, Height = oldWindow.Height, Position = oldWindow.Position)
+                MainWindow(
+                    setting,
+                    client,
+                    model,
+                    currentProj,
+                    Width = oldWindow.Width,
+                    Height = oldWindow.Height,
+                    Position = oldWindow.Position
+                )
 
             oldWindow.Close()
 
@@ -60,6 +75,7 @@ type App() =
             lifetime.ShutdownMode <- currentShutdownMode
         | _ -> ()
 
+
     let onExit (e: ControlledApplicationLifetimeExitEventArgs) =
         printfn $"setting on Exit : {setting.Current}"
         disposables |> Seq.iter IDisposable.dispose
@@ -67,7 +83,8 @@ type App() =
     override this.Initialize() =
         Themes.init this
         Themes.set setting.Current.theme this
-        this.RequestedThemeVariant <- ThemeVariant.Dark
+        this.RequestedThemeVariant <- BuildinThemeVariantCase.toThemeVariant setting.Current.buildinThemeVariant
+
 
         setting
         |> State.readMap (fun s -> s.theme)
@@ -75,11 +92,18 @@ type App() =
         |> IReadable.subscribe setTheme
         |> disposables.Add
 
+        setting
+        |> State.readMap (fun s -> s.buildinThemeVariant)
+        |> State.readUnique
+        |> State.readMap BuildinThemeVariantCase.toThemeVariant
+        |> IReadable.subscribe (fun tb -> this.RequestedThemeVariant <- tb)
+        |> disposables.Add
+
     override this.OnFrameworkInitializationCompleted() =
 
         match this.ApplicationLifetime with
         | :? IClassicDesktopStyleApplicationLifetime as desktopLifetime ->
-            desktopLifetime.MainWindow <- MainWindow(setting)
+            desktopLifetime.MainWindow <- MainWindow(setting, client, model, currentProj)
             desktopLifetime.Exit |> Observable.add onExit
         | _ -> ()
 

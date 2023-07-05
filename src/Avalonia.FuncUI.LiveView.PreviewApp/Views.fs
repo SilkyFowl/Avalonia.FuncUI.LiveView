@@ -1,9 +1,12 @@
 namespace Avalonia.FuncUI.LiveView
 
+open Avalonia
+open Avalonia.Styling
 open Avalonia.FuncUI.Hosts
 open Avalonia.FuncUI
-open Avalonia
 open FsConfig
+
+open Avalonia.FuncUI.LiveView.Types.PreviewApp
 
 [<AutoOpen>]
 module internal Helper =
@@ -68,14 +71,8 @@ module internal Helper =
             | Source(cb: CheckBox) -> Option.ofNullable cb.IsChecked
             | _ -> None
 
-type Themes =
-    | Fluent
-    | Simple
-
 module Themes =
-    open Avalonia
     open Avalonia.Themes.Fluent
-    open Avalonia.Styling
     open Avalonia.Themes.Simple
 
     open FSharp.Reflection
@@ -111,7 +108,6 @@ module Themes =
         |> Seq.iteri (fun i style -> application.Styles[i] <- style)
 
 module Application =
-    open Avalonia
     open Avalonia.Controls
     open Avalonia.Controls.ApplicationLifetimes
 
@@ -128,20 +124,27 @@ module Application =
         | _ -> ()
 
 
-type Setting = {
-    autoUpdate: bool
-    enablePreviewItemViewBackground: bool
-    theme: Themes
-}
+module BuildinThemeVariantCase =
+    open FSharp.Reflection
+
+    let allCases =
+        FSharpType.GetUnionCases(typeof<BuildinThemeVariantCase>)
+        |> Array.map (fun info -> FSharpValue.MakeUnion(info, [||]) :?> BuildinThemeVariantCase)
+
+    let toThemeVariant t =
+        match t with
+        | Default -> ThemeVariant.Default
+        | Dark -> ThemeVariant.Dark
+        | Light -> ThemeVariant.Light
+
 
 module Setting =
+    open System
     open System.IO
+    open System.Runtime.InteropServices
     open System.Text.Json
     open System.Text.Json.Serialization
     open Microsoft.Extensions.Configuration
-    open System.Runtime.InteropServices
-    open FsConfig
-    open System
 
     [<Literal>]
     let DefaultSettingJsonFile = "settings.default.json"
@@ -183,76 +186,353 @@ module Setting =
         AppConfig(configurationRoot).Get<Setting>()
 
 
-module View =
+module PreviewService =
+    open Avalonia.FuncUI.LiveView.Types
+    open Avalonia.FuncUI.LiveView.Types.LiveView
+
+    let initState () =
+        new State<Model>(
+            {
+                evalPendingMsgs = []
+                evalStateMap = Map.empty
+                evalInteractionDeferred = Waiting
+                logMessage = LogMessage.info "init"
+                autoUpdate = true
+            }
+        )
+
+module SelectProjectView =
     open Avalonia.Controls
     open Avalonia.FuncUI.DSL
     open Avalonia.Layout
-    open Avalonia.Interactivity
+    open Avalonia.Platform.Storage
+    open Avalonia.Media
 
-    let create setting =
-        Component(fun ctx ->
-            let setting = ctx.usePassed (setting)
-            let autoUpdate = setting.Map(fun s -> s.autoUpdate)
+    let openDllPicker ctr =
+        task {
+            let provier = TopLevel.GetTopLevel(ctr).StorageProvider
+            let! location = provier.TryGetWellKnownFolderAsync(WellKnownFolder.Documents)
 
-            let enablePreviewItemViewBackground =
-                setting.Map(fun s -> s.enablePreviewItemViewBackground)
+            let! result =
+                provier.OpenFilePickerAsync(
+                    FilePickerOpenOptions(
+                        Title = "Open...",
+                        SuggestedStartLocation = location,
+                        AllowMultiple = false,
+                        FileTypeFilter = [
+                            FilePickerFileType(
+                                "Binary Log",
+                                Patterns = [ "*.binlog"; "*.buildlog" ],
+                                MimeTypes = [ "application/binlog"; "application/buildlog" ],
+                                AppleUniformTypeIdentifiers = [ "public.data" ]
+                            )
+                        ]
+                    )
+                )
 
+            match List.ofSeq result with
+            | [ picked ] -> return Some picked
+            | _ -> return None
+        }
 
-            let selectedThemeIdx =
-                Themes.allCases |> Array.findIndex (fun t -> t = setting.Current.theme)
+    let centerText text =
+        TextBlock.create [ TextBlock.textAlignment TextAlignment.Center; TextBlock.text text ]
 
-            DockPanel.create [
-                DockPanel.children [
-                    StackPanel.create [
-                        StackPanel.dock Dock.Bottom
-                        StackPanel.row 1
-                        StackPanel.column 0
-                        StackPanel.margin 8
-                        StackPanel.spacing 8
-                        StackPanel.orientation Orientation.Horizontal
-                        StackPanel.children [
-                            CheckBox.create [
-                                CheckBox.content "auto update"
-                                CheckBox.isChecked autoUpdate.Current
-                                CheckBox.onIsCheckedChanged (function
-                                    | CheckBox.IsChecked newValue ->
-                                        setting.Set {
-                                            setting.Current with
-                                                autoUpdate = newValue
+    let create id onLoadProject attrs =
+        Component.create (
+            $"select-project-view-$%s{id}",
+            fun ctx ->
+                let binlogPath = ctx.useState ""
+                let projs: IWritable<ProjArgsInfo list> = ctx.useState []
+                let selectedProj = ctx.useState None
+
+                ctx.useEffect (
+                    (fun () -> MSBuildBinLog.getFscArgs binlogPath.Current |> Seq.toList |> projs.Set),
+                    [ EffectTrigger.AfterChange binlogPath ]
+                )
+
+                ctx.attrs [ yield! attrs ]
+
+                let defaultMargin = 8
+                let buttonWidth = 100
+
+                let stackPanelAttrs = [
+                    StackPanel.margin defaultMargin
+                    StackPanel.dock Dock.Top
+                    StackPanel.spacing 4
+                    StackPanel.orientation Orientation.Horizontal
+                ]
+
+                DockPanel.create [
+                    DockPanel.margin defaultMargin
+                    DockPanel.lastChildFill false
+                    DockPanel.children [
+                        StackPanel.create [
+                            yield! stackPanelAttrs
+                            StackPanel.children [
+                                Button.create [
+                                    Button.content (centerText "Load Binlog")
+                                    Button.width buttonWidth
+                                    Button.onClick (fun e ->
+                                        task {
+                                            match! openDllPicker ctx.control with
+                                            | Some picked -> binlogPath.Set(picked.Path.AbsolutePath)
+                                            | None -> ()
                                         }
-                                    | _ -> ())
+                                        |> ignore)
+                                ]
+                                TextBox.create [ TextBox.text binlogPath.Current ]
                             ]
-                            CheckBox.create [
-                                CheckBox.content "fill background"
-                                CheckBox.isChecked enablePreviewItemViewBackground.Current
-                                CheckBox.onIsCheckedChanged (function
-                                    | CheckBox.IsChecked newValue ->
-                                        setting.Set {
-                                            setting.Current with
-                                                enablePreviewItemViewBackground = newValue
-                                        }
-                                    | _ -> ())
-                            ]
-                            ComboBox.create [
-                                ComboBox.dataItems Themes.allCases
-                                ComboBox.selectedIndex selectedThemeIdx
-                                ComboBox.onSelectedItemChanged (function
-                                    | :? Themes as newValue when newValue <> setting.Current.theme ->
-                                        setting.Set {
-                                            setting.Current with
-                                                theme = newValue
-                                        }
-                                    | _ -> ())
+                        ]
+                        StackPanel.create [
+                            yield! stackPanelAttrs
+                            StackPanel.children [
+                                Button.create [
+                                    Button.content (centerText "Load Project")
+                                    Button.width buttonWidth
+                                    Button.isEnabled (Option.isSome selectedProj.Current)
+                                    Button.onClick (fun _ ->
+                                        match selectedProj.Current with
+                                        | Some proj -> onLoadProject proj
+                                        | None -> ())
+                                ]
+                                ComboBox.create [
+                                    ComboBox.dock Dock.Top
+                                    ComboBox.dataItems projs.Current
+                                    ComboBox.itemTemplate (
+                                        DataTemplateView<ProjArgsInfo>.create (fun p ->
+                                            TextBlock.create [ TextBlock.text p.Name ])
+                                    )
+                                    ComboBox.onSelectedItemChanged (function
+                                        | :? ProjArgsInfo as p -> selectedProj.Set(Some p)
+                                        | _ -> selectedProj.Set None)
+                                ]
                             ]
                         ]
                     ]
                 ]
+        )
+
+module TimeSpanUpDown =
+    open System
+    open System.Text.RegularExpressions
+    open System.ComponentModel.DataAnnotations
+    open Avalonia.Controls
+    open Avalonia.FuncUI.DSL
+    open Avalonia.Layout
+
+    [<Literal>]
+    let TimeSpanFormat = @"hh\:mm\:ss\.fff"
+
+    let allowedPatterns = Regex("[\d:\.]")
+
+    let create id value spinTickTime content attrs =
+        Component.create (
+            $"timeSpanUpDown-%s{id}",
+            fun ctx ->
+                let value: IWritable<TimeSpan> = ctx.usePassed value
+                let spinTickTime: IWritable<TimeSpan> = ctx.usePassed (spinTickTime, false)
+
+                let errors: IWritable<ValidationResult list> = ctx.useState []
+                let hasErrors = not errors.Current.IsEmpty
+
+                ctx.attrs [ yield! attrs ]
+
+                ButtonSpinner.create [
+                    ButtonSpinner.onSpin (fun e ->
+                        match e.Direction with
+                        | SpinDirection.Increase -> value.Current + spinTickTime.Current |> value.Set
+                        | SpinDirection.Decrease -> value.Current - spinTickTime.Current |> value.Set
+                        | _ -> ())
+                    ButtonSpinner.content (
+                        StackPanel.create [
+                            StackPanel.orientation Orientation.Horizontal
+                            StackPanel.spacing 4
+                            StackPanel.children [
+                                content
+                                TextBox.create [
+                                    TextBox.text $"{value.Current.ToString TimeSpanFormat}"
+                                    TextBox.hasErrors hasErrors
+                                    TextBox.onTextInput (fun e ->
+                                        if not (allowedPatterns.IsMatch e.Text) then
+                                            e.Handled <- true)
+                                    TextBox.onTextChanged (fun text ->
+                                        try
+                                            TimeSpan.Parse text |> value.Set
+                                            errors.Set []
+                                        with e ->
+                                            errors.Set [ ValidationResult e.Message ])
+                                ]
+                            ]
+                        ]
+                    )
+                ]
+        )
+
+module View =
+    open System
+    open System.Threading
+
+    open Avalonia.Controls
+    open Avalonia.Layout
+
+    open Avalonia.FuncUI.DSL
+    open Avalonia.FuncUI.Types
+
+    open Avalonia.FuncUI.LiveView.Types.Analyzer
+    type Model = Types.LiveView.Model
+
+    type IComponentContext with
+
+        member inline this.useMap(value: IReadable<'t>, mapper, ?renderOnChange) =
+            let renderOnChange = defaultArg renderOnChange true
+            let value' = this.useStateLazy ((fun _ -> mapper value.Current), renderOnChange)
+            this.useEffect ((fun () -> mapper value.Current |> value'.Set), [ EffectTrigger.AfterChange value ])
+            value'
+
+        member inline this.usePassedClient(client: IWritable<IAnalyzerClient>) =
+
+            let client = this.usePassed client
+
+            this.useEffect (
+                (fun () ->
+                    if not client.Current.IsConnected then
+                        let cts = new CancellationTokenSource()
+
+                        backgroundTask {
+                            do! client.Current.ConnectAsync cts.Token
+                            client.Current.StartReceive()
+
+                            this.forceRender ()
+                        }
+                        |> ignore
+
+                        this.trackDisposable client
+                        this.trackDisposable cts),
+                [ EffectTrigger.AfterInit ]
+            )
+
+            client
+
+    let create setting client model currentProj =
+        Component(fun ctx ->
+            let setting = ctx.usePassed (setting, false)
+
+            let model: IWritable<Model> = ctx.usePassed (model, false)
+            let autoUpdate = ctx.useMap (setting, (fun s -> s.autoUpdate), false)
+
+            ctx.useEffect (
+                (fun () ->
+                    model.Set {
+                        model.Current with
+                            autoUpdate = autoUpdate.Current
+                    }),
+                [ EffectTrigger.AfterChange autoUpdate ]
+            )
+
+            let enablePreviewItemViewBackground =
+                ctx.useMap (setting, (fun s -> s.enablePreviewItemViewBackground), false)
+
+            let autoUpdateDebounceTime =
+                ctx.useMap (setting, (fun s -> s.autoUpdateDebounceTime), false)
+
+            let spinTickTime = ctx.useState (TimeSpan.FromMilliseconds 100, false)
+
+            let selectedThemeIdx =
+                Themes.allCases |> Array.findIndex (fun t -> t = setting.Current.theme)
+
+            let client = ctx.usePassedClient client
+
+            let currentProj = ctx.usePassed currentProj
+
+            let settingViews: IView list = [
+                ComboBox.create [
+                    ComboBox.dataItems Themes.allCases
+                    ComboBox.selectedIndex selectedThemeIdx
+                    ComboBox.onSelectedItemChanged (function
+                        | :? Themes as newValue when newValue <> setting.Current.theme ->
+                            setting.Set {
+                                setting.Current with
+                                    theme = newValue
+                            }
+                        | _ -> ())
+                ]
+                ComboBox.create [
+                    ComboBox.dataItems BuildinThemeVariantCase.allCases
+                    ComboBox.selectedItem setting.Current.buildinThemeVariant
+                    ComboBox.onSelectedItemChanged (function
+                        | :? BuildinThemeVariantCase as newValue when newValue <> setting.Current.buildinThemeVariant ->
+                            setting.Set {
+                                setting.Current with
+                                    buildinThemeVariant = newValue
+                            }
+                        | _ -> ())
+                ]
+                CheckBox.create [
+                    CheckBox.content "auto update"
+                    CheckBox.isChecked autoUpdate.Current
+                    CheckBox.onIsCheckedChanged (function
+                        | CheckBox.IsChecked newValue ->
+                            setting.Set {
+                                setting.Current with
+                                    autoUpdate = newValue
+                            }
+                        | _ -> ())
+                ]
+                TimeSpanUpDown.create
+                    "preview-app"
+                    autoUpdateDebounceTime
+                    spinTickTime
+                    (TextBlock.create [
+                        TextBlock.verticalAlignment VerticalAlignment.Center
+                        TextBlock.text "debounce time"
+                    ])
+                    []
+
+                CheckBox.create [
+                    CheckBox.content "fill background"
+                    CheckBox.isChecked enablePreviewItemViewBackground.Current
+                    CheckBox.onIsCheckedChanged (function
+                        | CheckBox.IsChecked newValue ->
+                            setting.Set {
+                                setting.Current with
+                                    enablePreviewItemViewBackground = newValue
+                            }
+                        | _ -> ())
+                ]
+            ]
+
+            DockPanel.create [
+                DockPanel.children [
+                    TextBlock.create [
+                        TextBlock.dock Dock.Bottom
+                        TextBlock.margin 8
+                        TextBlock.text $"{model.Current.logMessage}"
+                    ]
+                    StackPanel.create [
+                        StackPanel.dock Dock.Bottom
+                        StackPanel.margin 8
+                        StackPanel.spacing 8
+                        StackPanel.orientation Orientation.Horizontal
+                        StackPanel.children settingViews
+                    ]
+                    match currentProj.Current with
+                    | _ when not client.Current.IsConnected -> TextBlock.create [ TextBlock.text "not Connected.." ]
+                    | None ->
+                        SelectProjectView.create "preview-app" (Some >> currentProj.Set) [
+
+                        ]
+                    | Some proj ->
+                        LiveView.create setting client proj model "preview-app" [
+
+                        ]
+                ]
             ])
 
-type MainWindow(setting) as this =
+type MainWindow(setting, client, model, currentProj) as this =
     inherit HostWindow(Title = "LiveView", Width = 800, Height = 600)
 
-    let view = View.create setting
+    let view = View.create setting client model currentProj
 
     do
         this.Content <- view

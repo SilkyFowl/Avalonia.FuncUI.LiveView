@@ -8,27 +8,51 @@ module Menu =
     open Avalonia.FuncUI
     open Avalonia.FuncUI.DSL
     open Avalonia.FuncUI.LiveView
-    open Avalonia.FuncUI.LiveView.Core.Types
+    open Avalonia.FuncUI.LiveView.Types.PreviewApp
     open Avalonia.Layout
     open Avalonia.Platform.Storage
     open Avalonia.Media
     open Avalonia.FuncUI.Types
- 
+
+    let openDllPicker ctr =
+        task {
+            let provier = TopLevel.GetTopLevel(ctr).StorageProvider
+            let! location = provier.TryGetWellKnownFolderAsync(WellKnownFolder.Documents)
+
+            let! result =
+                provier.OpenFilePickerAsync(
+                    FilePickerOpenOptions(
+                        Title = "Open...",
+                        SuggestedStartLocation = location,
+                        AllowMultiple = false,
+                        FileTypeFilter = [
+                            FilePickerFileType(
+                                "Binary Log",
+                                Patterns = [ "*.binlog"; "*.buildlog" ],
+                                MimeTypes = [ "application/binlog"; "application/buildlog" ],
+                                AppleUniformTypeIdentifiers = [ "public.data" ]
+                            )
+                        ]
+                    )
+                )
+
+            match List.ofSeq result with
+            | [ picked ] -> return Some picked
+            | _ -> return None
+        }
+
     let create id =
         Component.create (
             $"live-view-menu-{id}",
             fun ctx ->
-                let binlogPath = ctx.useState @"C:\workspace\work\Avalonia.FuncUI.LiveView\o2.binlog"
-                let loadProjInfo binlog ()=
-                    let file = FileInfo binlogPath.Current
-                    if file.Exists && file.Extension = ".binlog" then
-                        MSBuildBinLog.getFscArgs file.FullName
-                        |> Seq.toList
-                    else []
+                let binlogPath = ctx.useState @""
 
-                let projs =
-                    loadProjInfo binlogPath.Current 
-                    |>ctx.useStateLazy
+                let loadProjInfo binlog () =
+                    let file = FileInfo binlogPath.Current
+
+                    if file.Exists && file.Extension = ".binlog" then [] else []
+
+                let projs = loadProjInfo binlogPath.Current |> ctx.useStateLazy
                 let selectedProj = ctx.useState None
 
                 ctx.useEffect (
@@ -36,16 +60,15 @@ module Menu =
                         let file = FileInfo binlogPath.Current
 
                         if file.Exists && file.Extension = ".binlog" then
-                            MSBuildBinLog.getFscArgs file.FullName |> Seq.toList |> projs.Set),
+                            ()),
                     [ EffectTrigger.AfterInit; EffectTrigger.AfterChange binlogPath ]
                 )
 
 
                 let buttonWidth = 100
+
                 let centerText text =
-                    TextBlock.create  [
-                                        TextBlock.textAlignment TextAlignment.Center
-                                        TextBlock.text text]
+                    TextBlock.create [ TextBlock.textAlignment TextAlignment.Center; TextBlock.text text ]
 
                 DockPanel.create [
                     DockPanel.margin 8
@@ -58,10 +81,10 @@ module Menu =
                             StackPanel.children [
                                 Button.create [
                                     Button.width buttonWidth
-                                    Button.content (centerText"Load Binlog")
+                                    Button.content (centerText "Load Binlog")
                                     Button.onClick (fun e ->
                                         task {
-                                            match! LiveViewMenu.openDllPicker ctx.control with
+                                            match! openDllPicker ctx.control with
                                             | Some picked -> binlogPath.Set(picked.Path.AbsolutePath)
                                             | None -> ()
                                         }
@@ -77,13 +100,13 @@ module Menu =
                             StackPanel.orientation Orientation.Horizontal
                             StackPanel.children [
                                 Button.create [
-                                    
+
                                     Button.content (centerText "Load Project")
                                     Button.width buttonWidth
                                     Button.isEnabled (Option.isSome selectedProj.Current)
                                     Button.onClick (fun e ->
                                         task {
-                                            match! LiveViewMenu.openDllPicker ctx.control with
+                                            match! openDllPicker ctx.control with
                                             | Some picked -> binlogPath.Set(picked.Path.AbsolutePath)
                                             | None -> ()
                                         }
@@ -96,10 +119,9 @@ module Menu =
                                         DataTemplateView<ProjArgsInfo>.create (fun p ->
                                             TextBlock.create [ TextBlock.text p.Name ])
                                     )
-                                    ComboBox.onSelectedItemChanged(function
-                                    | :? ProjArgsInfo as p -> selectedProj.Set (Some p)
-                                    | _ -> ()
-                                    )
+                                    ComboBox.onSelectedItemChanged (function
+                                        | :? ProjArgsInfo as p -> selectedProj.Set(Some p)
+                                        | _ -> ())
                                 ]
                             ]
                         ]

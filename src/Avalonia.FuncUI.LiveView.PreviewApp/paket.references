@@ -1,11 +1,12 @@
-group Main
-    Avalonia.Desktop
-    Avalonia.Diagnostics
-    Avalonia.Themes.Fluent
-    Avalonia.Themes.Simple
-    Avalonia.FuncUI
-    Avalonia.FuncUI.Elmish
-    FSharp.Analyzers.SDK
-    FSharp.SystemTextJson
-    FsConfig
-    Microsoft.Extensions.Configuration.Json
+Avalonia.Desktop
+Avalonia.Diagnostics
+Avalonia.Themes.Fluent
+Avalonia.Themes.Simple
+Avalonia.FuncUI
+Avalonia.FuncUI.Elmish
+FSharp.SystemTextJson
+FsConfig
+Microsoft.Extensions.Configuration.Json
+FSharp.Core
+group PreviewApp
+Microsoft.Build.Locator

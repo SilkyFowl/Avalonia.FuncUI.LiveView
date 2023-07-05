@@ -4,23 +4,26 @@ open System
 open System.IO
 open System.Text
 
-open PreviewService
+open Avalonia.FuncUI.Types
+open Avalonia.FuncUI.LiveView.Types.LiveView.PreviewService
+open Avalonia.FuncUI.LiveView.Types.PreviewApp
+
+
+module ProjArgsInfo =
+    let getReferenceArgs info =
+        info.Args |> Array.filter (fun s -> s.StartsWith "-r:")
 
 /// Ref
 /// https://fsharp.github.io/fsharp-compiler-docs/fcs/interactive.html
 /// https://github.com/fsprojects/Avalonia.FuncUI/issues/147
-
 module internal FsiSession =
     open System.Collections.Concurrent
     open System.Reflection
     open System.Text.RegularExpressions
 
-
-    open FSharp.Compiler.Interactive.Shell
     open FSharp.Compiler.IO
+    open FSharp.Compiler.Interactive.Shell
 
-    open Avalonia.FuncUI.Types
-    open Avalonia.FuncUI.LiveView.Core.Types
 
     let defaultFileSystem = FileSystem
 

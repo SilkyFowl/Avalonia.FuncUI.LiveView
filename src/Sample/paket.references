@@ -1,6 +1,6 @@
-group Main
-    Avalonia.Desktop
-    Avalonia.Diagnostics
-    Avalonia.Themes.Fluent
-    Avalonia.FuncUI
-    Avalonia.FuncUI.Elmish
+Avalonia.Desktop
+Avalonia.Diagnostics
+Avalonia.Themes.Fluent
+Avalonia.FuncUI
+Avalonia.FuncUI.Elmish
+FSharp.Core

@@ -63,7 +63,7 @@ NUGET
       Avalonia (>= 11.0.0-rc1.1)
       Avalonia.FreeDesktop (>= 11.0.0-rc1.1)
       Avalonia.Skia (>= 11.0.0-rc1.1)
-    coverlet.collector (6.0)
+    coverlet.collector (3.2.0) - version_in_path: true
     Elmish (4.0.2)
     FsConfig (4.0)
       FSharp.Core (>= 6.0)
@@ -168,9 +168,9 @@ NUGET
     Microsoft.NET.StringTools (17.6.3)
       System.Memory (>= 4.5.5)
       System.Runtime.CompilerServices.Unsafe (>= 6.0)
-    Microsoft.NET.Test.Sdk (17.6.2)
-      Microsoft.CodeCoverage (>= 17.6.2)
-      Microsoft.TestPlatform.TestHost (>= 17.6.2)
+    Microsoft.NET.Test.Sdk (17.5)
+      Microsoft.CodeCoverage (>= 17.5)
+      Microsoft.TestPlatform.TestHost (>= 17.5)
     Microsoft.NETCore.Platforms (7.0.3)
     Microsoft.TestPlatform.ObjectModel (17.6.2)
       NuGet.Frameworks (>= 6.5)
@@ -246,7 +246,7 @@ NUGET
     xunit.extensibility.execution (2.4.2)
       NETStandard.Library (>= 1.6.1)
       xunit.extensibility.core (2.4.2)
-    xunit.runner.visualstudio (2.4.5)
+    xunit.runner.visualstudio (2.4.5) - version_in_path: true
 
 GROUP Build
 STORAGE: NONE
@@ -485,3 +485,8 @@ NUGET
     System.Threading.Tasks.Dataflow (7.0)
     System.Windows.Extensions (7.0)
       System.Drawing.Common (>= 7.0)
+
+GROUP PreviewApp
+NUGET
+  remote: https://api.nuget.org/v3/index.json
+    Microsoft.Build.Locator (1.5.5)

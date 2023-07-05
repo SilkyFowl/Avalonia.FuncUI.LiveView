@@ -3,21 +3,50 @@
 open System
 open Avalonia.FuncUI.LiveView
 open Avalonia.FuncUI.LiveView.MessagePack
-open Avalonia.FuncUI.LiveView.Core.Types
+open Avalonia.FuncUI.LiveView.Types
 open FSharp.Analyzers.SDK
+open System.Threading
 
-let server = Server.init Settings.iPAddress Settings.port
+module AnalyzerServer =
+    let private initServer () =
+        let initServer = Server.init ()
+        let cts = new CancellationTokenSource()
+        initServer.WaitForConnectionAsync cts.Token |> ignore
+        initServer
 
-// `fsautocomplete`が終了するときにサーバも終了する。
-AppDomain.CurrentDomain.ProcessExit.Add(fun _ -> server.Dispose())
+    let private onMsgEvent = new Event<LiveViewAnalyzerMsg>()
+
+    let triggerMsg = onMsgEvent.Trigger
+    let private onMsg = onMsgEvent.Publish
+
+    let mutable private server = initServer ()
+
+    let private sub =
+        onMsg
+        |> Observable.filter (fun _ -> server.IsConnected)
+        |> Observable.subscribe (fun msg ->
+            task {
+                let! ct = Async.CancellationToken
+                let! result = server.TryPostAsync ct msg
+                result |> Result.defaultWith (fun ex ->
+                    server.Dispose()
+                    server <- initServer ())
+            }
+            |> ignore)
+
+    // When `fsautocomplete` terminates, server also terminates.
+    AppDomain.CurrentDomain.ProcessExit.Add(fun _ ->
+        sub.Dispose()
+        server.Dispose())
 
 let private nl = Environment.NewLine
 
-/// AnalyzerでIDEによるF#コードの編集にフックできる。
-/// これを利用してLiveViewを実現する。
+/// Analyzer can hook into F# code editing by the IDE.
+/// LiveView can be realized using this.
 [<Analyzer "FuncUiAnalyzer">]
 let funcUiAnalyzer: Analyzer =
     fun ctx ->
+        /// Count of functions with `LivePreviewAttribute` in code
         let livePreviewFuncs = ResizeArray()
         let errorMessages = ResizeArray()
         let notSuppurtPatternMessages = ResizeArray()
@@ -59,16 +88,14 @@ let funcUiAnalyzer: Analyzer =
             }
         )
 
-        if livePreviewFuncs.Count > 0 then
-            // FuncUIAnalyzer自体のエラーはPreview対象がある時のみカウントする。
-            errorMessages.AddRange notSuppurtPatternMessages
+        let errors =
+            List.distinct [ yield! errorMessages; yield! notSuppurtPatternMessages ]
 
-            // エラーがなければPreviewを実行
-            if Seq.isEmpty errorMessages then
-                {
-                    Content = ctx.Content
-                    Path = ctx.FileName
-                }
-                |> server.Post
 
-        Seq.distinct errorMessages |> Seq.toList
+        if livePreviewFuncs.Count > 0 && errors.IsEmpty then
+            AnalyzerServer.triggerMsg {
+                Content = ctx.Content
+                Path = ctx.FileName
+            }
+
+        errors

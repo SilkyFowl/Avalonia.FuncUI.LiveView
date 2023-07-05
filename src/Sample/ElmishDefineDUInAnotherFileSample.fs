@@ -6,7 +6,7 @@ open Avalonia.FuncUI
 open Avalonia.FuncUI.DSL
 open Avalonia.FuncUI.Elmish
 open Avalonia.FuncUI.Builder
-open Avalonia.FuncUI.LiveView.Core.Types
+open Avalonia.FuncUI.LiveView
 open Sample.ElmishModule
 
 let view (state: State) dispatch =
