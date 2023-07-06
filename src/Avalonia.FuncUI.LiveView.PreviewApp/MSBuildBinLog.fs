@@ -2,7 +2,12 @@ namespace Avalonia.FuncUI.LiveView
 
 open Avalonia.FuncUI.LiveView.Types.PreviewApp
 
-
+module MSBuildLocator =
+    open Microsoft.Build.Locator
+    let registerInstanceMaxVersion() =
+        MSBuildLocator.QueryVisualStudioInstances()
+        |> Seq.maxBy(fun i -> i.Version)
+        |> MSBuildLocator.RegisterInstance
 
 module MSBuildBinLog =
     type private OptionBuilder() =

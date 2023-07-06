@@ -3,6 +3,4 @@ Avalonia.Diagnostics
 Avalonia.FuncUI
 Avalonia.FuncUI.Elmish
 FSharp.Compiler.Service
-MSBuild.StructuredLogger
-Microsoft.Build.Framework
 FSharp.Core

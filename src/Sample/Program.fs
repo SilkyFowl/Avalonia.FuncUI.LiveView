@@ -1,12 +1,9 @@
 ﻿namespace Sample
 
-open System
 open Avalonia
 open Avalonia.Controls.ApplicationLifetimes
-open Avalonia.Controls
 open Avalonia.Themes.Fluent
 open Avalonia.FuncUI.Hosts
-open Avalonia.FuncUI.LiveView
 
 type MainWindow() as this =
     inherit HostWindow()

@@ -24,6 +24,7 @@ module internal FsiSession =
     open FSharp.Compiler.IO
     open FSharp.Compiler.Interactive.Shell
 
+    open Avalonia.FuncUI.LiveView.Attribute
 
     let defaultFileSystem = FileSystem
 

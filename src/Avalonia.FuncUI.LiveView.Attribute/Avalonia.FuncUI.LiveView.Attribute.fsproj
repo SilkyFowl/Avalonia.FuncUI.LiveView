@@ -5,11 +5,7 @@
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="Types.fs" />
-    <Compile Include="FuncUIAnalysis.fs" />
-  </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\Avalonia.FuncUI.LiveView.Attribute\Avalonia.FuncUI.LiveView.Attribute.fsproj" />
+    <Compile Include="Library.fs" />
   </ItemGroup>
   <Import Project="..\..\.paket\Paket.Restore.targets" />
 </Project>

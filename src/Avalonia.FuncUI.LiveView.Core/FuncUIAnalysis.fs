@@ -10,6 +10,7 @@ open FSharp.Compiler.Text
 
 open Avalonia.Skia
 open Avalonia.FuncUI.Types
+open Avalonia.FuncUI.LiveView.Attribute
 
 type FuncUIAnalysisHander = {
     OnLivePreviewFunc: FSharpMemberOrFunctionOrValue -> list<list<FSharpMemberOrFunctionOrValue>> -> unit
@@ -133,7 +134,11 @@ let (|LivePreviewFunc|_|) m =
 
     let hasLivePreviewAttribute (m: FSharpMemberOrFunctionOrValue) =
         m.Attributes
-        |> Seq.exists (fun attr -> attr.AttributeType.CompiledName = "LivePreviewAttribute")
+        |> Seq.exists (fun attr ->
+            let livePreviewAttr = typeof<LivePreviewAttribute>
+
+            attr.AttributeType.FullName = livePreviewAttr.FullName
+            && attr.AttributeType.Assembly.QualifiedName = livePreviewAttr.Assembly.FullName)
 
     match m with
     | FSharpImplementationFileDeclaration.MemberOrFunctionOrValue(v, vs, e) when hasLivePreviewAttribute v ->

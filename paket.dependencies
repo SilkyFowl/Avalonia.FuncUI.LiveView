@@ -1,7 +1,7 @@
 source https://api.nuget.org/v3/index.json
 
 storage: none
-framework: net6.0
+framework: netstandard2.0, netstandard2.1,  net6.0, net7.0
 
 group Main
     nuget FsConfig
@@ -11,8 +11,8 @@ group Main
     nuget FSharp.SystemTextJson 1.1.23
     nuget FsUnit.xUnit
 
-    nuget Avalonia.FuncUI 1.0.0-rc1.1.0
-    nuget Avalonia.FuncUI.Elmish 1.0.0-rc1.1.0
+    nuget Avalonia.FuncUI 1.0.0-rc1.1.1
+    nuget Avalonia.FuncUI.Elmish 1.0.0-rc1.1.1
 
     nuget Avalonia != 11.0.0-rc1.1
     nuget Avalonia.Desktop prerelease
@@ -24,19 +24,17 @@ group Main
     nuget MessagePack.FSharpExtensions
     nuget Microsoft.Extensions.Configuration.Json
     nuget MSBuild.StructuredLogger
+    nuget Microsoft.Build.Locator
     nuget Microsoft.Build.Framework 17.3.2
+    nuget Microsoft.Build.Utilities.Core 17.3.2
     nuget Microsoft.NET.Test.Sdk 17.5.0
     nuget coverlet.collector 3.2.0 version_in_path: true
     nuget xunit 2.4.2
     nuget xunit.runner.visualstudio 2.4.5 version_in_path: true
 
-group PreviewApp
-    source https://api.nuget.org/v3/index.json
-    nuget Microsoft.Build.Locator
-
 group Build
   source https://api.nuget.org/v3/index.json
-  framework: net6.0
+  framework: net6.0, net7.0
   storage: none
 
   nuget FSharp.Core

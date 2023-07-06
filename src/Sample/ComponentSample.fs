@@ -8,7 +8,7 @@ open Avalonia.Controls.Shapes
 open Avalonia.Media
 open Avalonia.Media.Imaging
 open Avalonia.Layout
-open Avalonia.FuncUI.LiveView
+open Avalonia.FuncUI.LiveView.Attribute
 open Avalonia.Controls.Primitives
 open Avalonia.Controls
 open Avalonia.Input

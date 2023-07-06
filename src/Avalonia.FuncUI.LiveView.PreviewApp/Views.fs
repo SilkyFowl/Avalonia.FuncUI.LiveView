@@ -380,6 +380,7 @@ module View =
     open Avalonia.FuncUI.Types
 
     open Avalonia.FuncUI.LiveView.Types.Analyzer
+
     type Model = Types.LiveView.Model
 
     type IComponentContext with

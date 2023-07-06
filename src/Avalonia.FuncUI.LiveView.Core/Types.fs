@@ -1,11 +1,6 @@
 namespace Avalonia.FuncUI.LiveView
 
 open System
-
-[<AttributeUsage(AttributeTargets.Property)>]
-type LivePreviewAttribute() =
-    inherit Attribute()
-
 module Types =
     type LiveViewAnalyzerMsg = { Content: string[]; Path: string }
 

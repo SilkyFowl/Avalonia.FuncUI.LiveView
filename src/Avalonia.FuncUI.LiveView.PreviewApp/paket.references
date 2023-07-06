@@ -1,3 +1,4 @@
+FSharp.Core
 Avalonia.Desktop
 Avalonia.Diagnostics
 Avalonia.Themes.Fluent
@@ -7,6 +8,7 @@ Avalonia.FuncUI.Elmish
 FSharp.SystemTextJson
 FsConfig
 Microsoft.Extensions.Configuration.Json
-FSharp.Core
-group PreviewApp
+MSBuild.StructuredLogger
+Microsoft.Build.Framework copy_local: false
+Microsoft.Build.Utilities.Core copy_local: false
 Microsoft.Build.Locator

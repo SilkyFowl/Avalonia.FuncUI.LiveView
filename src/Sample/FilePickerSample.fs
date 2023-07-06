@@ -7,8 +7,7 @@ module Menu =
     open Avalonia.Controls
     open Avalonia.FuncUI
     open Avalonia.FuncUI.DSL
-    open Avalonia.FuncUI.LiveView
-    open Avalonia.FuncUI.LiveView.Types.PreviewApp
+    open Avalonia.FuncUI.LiveView.Attribute
     open Avalonia.Layout
     open Avalonia.Platform.Storage
     open Avalonia.Media
@@ -64,7 +63,6 @@ module Menu =
                     [ EffectTrigger.AfterInit; EffectTrigger.AfterChange binlogPath ]
                 )
 
-
                 let buttonWidth = 100
 
                 let centerText text =
@@ -111,17 +109,6 @@ module Menu =
                                             | None -> ()
                                         }
                                         |> ignore)
-                                ]
-                                ComboBox.create [
-                                    ComboBox.dock Dock.Top
-                                    ComboBox.dataItems projs.Current
-                                    ComboBox.itemTemplate (
-                                        DataTemplateView<ProjArgsInfo>.create (fun p ->
-                                            TextBlock.create [ TextBlock.text p.Name ])
-                                    )
-                                    ComboBox.onSelectedItemChanged (function
-                                        | :? ProjArgsInfo as p -> selectedProj.Set(Some p)
-                                        | _ -> ())
                                 ]
                             ]
                         ]

@@ -24,6 +24,7 @@ let references =
     let deps =
         seq {
             "Avalonia.FuncUI.LiveView.Core.dll"
+            "Avalonia.FuncUI.LiveView.Attribute.dll"
             "Avalonia.dll"
             "Avalonia.Desktop.dll"
             "Avalonia.Diagnostics.dll"

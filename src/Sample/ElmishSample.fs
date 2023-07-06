@@ -7,7 +7,7 @@ open Avalonia.FuncUI
 open Avalonia.FuncUI.DSL
 open Avalonia.FuncUI.Elmish
 open Avalonia.FuncUI.Builder
-open Avalonia.FuncUI.LiveView
+open Avalonia.FuncUI.LiveView.Attribute
 
 type State = { watermark: string }
 
