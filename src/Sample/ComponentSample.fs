@@ -404,6 +404,7 @@ let draft () =
     Component.create (
         "draft",
         fun ctx ->
+
             Menu.create [
                 Menu.viewItems [
                     MenuItem.create [
@@ -411,6 +412,17 @@ let draft () =
                         MenuItem.viewItems [
                             MenuItem.create [ MenuItem.header "Open Project" ]
                             MenuItem.create [ MenuItem.header "Close Project." ]
+                            MenuItem.create [
+                                MenuItem.header "Set Clipboard."
+                                MenuItem.onClick (fun e ->
+                                    let clipboard = (TopLevel.GetTopLevel ctx.control).Clipboard
+
+                                    task {
+                                        let txt = "Foo"
+                                        do! clipboard.SetTextAsync txt
+                                    }
+                                    |> ignore)
+                            ]
                         ]
                     ]
                 ]
@@ -510,8 +522,7 @@ let draft3 () =
             let debounceNum = ctx.useState num.Current
 
             ctx.useEffectdeDounceTime (
-                (fun () ->
-                        debounceNum.Set(num.Current * 2)),
+                (fun () -> debounceNum.Set(num.Current * 2)),
                 [ EffectTrigger.AfterInit; EffectTrigger.AfterChange num ],
                 TimeSpan.FromSeconds 5
             )
@@ -548,7 +559,7 @@ let dtaft4 () =
                 TextBlock.background "DarkBlue"
                 TextBlock.verticalAlignment VerticalAlignment.Center
                 TextBlock.margin (4, 0)
-                TextBlock.text "Fuga...."
+                TextBlock.text "Fuga."
             ]
             TextBox.create [ TextBlock.row 2; TextBox.column 1; TextBox.margin (4, 0) ]
         ]
