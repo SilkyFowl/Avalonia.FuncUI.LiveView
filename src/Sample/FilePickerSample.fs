@@ -3,7 +3,6 @@ module Sample.FilePickerSample
 
 module Menu =
     open System.IO
-    open Avalonia
     open Avalonia.Controls
     open Avalonia.FuncUI
     open Avalonia.FuncUI.DSL
@@ -11,9 +10,8 @@ module Menu =
     open Avalonia.Layout
     open Avalonia.Platform.Storage
     open Avalonia.Media
-    open Avalonia.FuncUI.Types
 
-    let openDllPicker ctr =
+    let openTextPicker ctr =
         task {
             let provier = TopLevel.GetTopLevel(ctr).StorageProvider
             let! location = provier.TryGetWellKnownFolderAsync(WellKnownFolder.Documents)
@@ -26,9 +24,9 @@ module Menu =
                         AllowMultiple = false,
                         FileTypeFilter = [
                             FilePickerFileType(
-                                "Binary Log",
-                                Patterns = [ "*.binlog"; "*.buildlog" ],
-                                MimeTypes = [ "application/binlog"; "application/buildlog" ],
+                                "Text",
+                                Patterns = [ "*.txt" ],
+                                MimeTypes = [ "text/plain" ],
                                 AppleUniformTypeIdentifiers = [ "public.data" ]
                             )
                         ]
@@ -44,29 +42,20 @@ module Menu =
         Component.create (
             $"live-view-menu-{id}",
             fun ctx ->
-                let binlogPath = ctx.useState @""
+                let textPath = ctx.useState @""
 
-                let loadProjInfo binlog () =
-                    let file = FileInfo binlogPath.Current
-
-                    if file.Exists && file.Extension = ".binlog" then [] else []
-
-                let projs = loadProjInfo binlogPath.Current |> ctx.useStateLazy
-                let selectedProj = ctx.useState None
-
-                ctx.useEffect (
-                    (fun () ->
-                        let file = FileInfo binlogPath.Current
-
-                        if file.Exists && file.Extension = ".binlog" then
-                            ()),
-                    [ EffectTrigger.AfterInit; EffectTrigger.AfterChange binlogPath ]
-                )
+                let textContent = ctx.useState ""
 
                 let buttonWidth = 100
 
                 let centerText text =
                     TextBlock.create [ TextBlock.textAlignment TextAlignment.Center; TextBlock.text text ]
+
+                ctx.attrs [
+                    Component.width 600
+                    Component.maxHeight 200
+                    Component.verticalAlignment VerticalAlignment.Stretch
+                ]
 
                 DockPanel.create [
                     DockPanel.margin 8
@@ -78,39 +67,37 @@ module Menu =
                             StackPanel.orientation Orientation.Horizontal
                             StackPanel.children [
                                 Button.create [
+                                    Button.content (centerText "Load Text")
                                     Button.width buttonWidth
-                                    Button.content (centerText "Load Binlog")
                                     Button.onClick (fun e ->
                                         task {
-                                            match! openDllPicker ctx.control with
-                                            | Some picked -> binlogPath.Set(picked.Path.AbsolutePath)
+                                            match! openTextPicker ctx.control with
+                                            | Some picked ->
+                                                textPath.Set(picked.Path.AbsolutePath)
+
+                                                backgroundTask {
+                                                    use! stream = picked.OpenReadAsync()
+                                                    use reader = new StreamReader(stream)
+                                                    let! content = reader.ReadToEndAsync()
+
+                                                    textContent.Set content
+                                                }
+                                                |> ignore
                                             | None -> ()
                                         }
                                         |> ignore)
                                 ]
-                                TextBox.create [ TextBox.text binlogPath.Current ]
                             ]
                         ]
-                        StackPanel.create [
-                            StackPanel.margin 8
-                            StackPanel.dock Dock.Top
-                            StackPanel.spacing 4
-                            StackPanel.orientation Orientation.Horizontal
-                            StackPanel.children [
-                                Button.create [
-
-                                    Button.content (centerText "Load Project")
-                                    Button.width buttonWidth
-                                    Button.isEnabled (Option.isSome selectedProj.Current)
-                                    Button.onClick (fun e ->
-                                        task {
-                                            match! openDllPicker ctx.control with
-                                            | Some picked -> binlogPath.Set(picked.Path.AbsolutePath)
-                                            | None -> ()
-                                        }
-                                        |> ignore)
+                        ScrollViewer.create [
+                            ScrollViewer.maxHeight 400
+                            ScrollViewer.content (
+                                TextBox.create [
+                                    TextBox.text textContent.Current
+                                    TextBox.verticalAlignment VerticalAlignment.Stretch
+                                    TextBox.textWrapping TextWrapping.WrapWithOverflow
                                 ]
-                            ]
+                            )
                         ]
                     ]
 
