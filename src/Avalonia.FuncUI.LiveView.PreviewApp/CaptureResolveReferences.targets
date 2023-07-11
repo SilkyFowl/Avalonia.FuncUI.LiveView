@@ -1,0 +1,40 @@
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<!-- Capture -->
+    <Target
+        Name="CoreCompile"
+        DependsOnTargets="ResolveReferences;$(CoreCompileDependsOn)"
+        Returns="@(CaptureReferences);"
+        >
+        <ItemGroup>
+            <ActualEmbeddedResources
+                Condition=" '$(UsingXBuild)' == true"
+                Include="@(_CoreCompileResourceInputs);@(ManifestResourceWithNoCulture);@(ManifestNonResxWithNoCultureOnDisk);@(CompiledLicenseFile);@(AdditionalEmbeddedResource)" />
+        <ActualEmbeddedResources
+                Condition=" '$(UsingXBuild)' != true"
+                Include="@(_CoreCompileResourceInputs);@(CompiledLicenseFile);@(AdditionalEmbeddedResource)" />
+        </ItemGroup>
+
+        <ItemGroup>
+            <EmbeddedFiles Include="@(Embed)" KeepDuplicates="false" />
+            <EmbeddedFiles Include="@(FsGeneratedSource)"  KeepDuplicates="false" Condition="'$(SourceLink)'!='' or '$(EmbeddedFiles)'!='' or '$(EmbedAllSources)'!=''" />
+        </ItemGroup>
+
+        <ItemGroup>
+            <EmbeddedFiles Include="@(Embed)" KeepDuplicates="false" />
+            <EmbeddedFiles Include="@(FsGeneratedSource)"  KeepDuplicates="false" Condition="'$(SourceLink)'!='' or '$(EmbeddedFiles)'!='' or '$(EmbedAllSources)'!=''" />
+            <CaptureReferences Include="@(ReferencePathWithRefAssemblies)"/>
+        </ItemGroup>
+
+        <ItemGroup>
+            <CaptureReferencePath Include="@(ReferencePath)" KeepDuplicates="false"/>
+            <DefineConstants Include="$(DefineConstants)" KeepDuplicates="false"/>
+        </ItemGroup>
+
+
+        <!-- Dotnet SDK requires SimpleResolution to be true Legacy project system build not -->
+        <PropertyGroup>
+            <FscOtherFlags Condition="'$(SimpleResolution)' == 'true'">--simpleresolution $(OtherFlags)</FscOtherFlags>
+            <FscOtherFlags Condition="'$(SimpleResolution)' != 'true'">$(OtherFlags)</FscOtherFlags>
+        </PropertyGroup>
+    </Target>
+</Project>

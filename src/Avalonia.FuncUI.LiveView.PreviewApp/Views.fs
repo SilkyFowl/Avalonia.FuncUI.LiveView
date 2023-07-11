@@ -138,6 +138,22 @@ module BuildinThemeVariantCase =
         | Light -> ThemeVariant.Light
 
 
+module Cache =
+    open System
+    open System.IO
+
+    let cacheDir =
+        lazy
+            let pathStr = Path.Combine [| AppDomain.CurrentDomain.BaseDirectory; "Cache" |]
+
+            if Directory.Exists pathStr then
+                DirectoryInfo pathStr
+            else
+                Directory.CreateDirectory pathStr
+
+    let createCacheFilePath fileName =
+        Path.Combine [| cacheDir.Value.FullName; fileName |]
+
 module Setting =
     open System
     open System.IO
@@ -235,6 +251,32 @@ module SelectProjectView =
             | _ -> return None
         }
 
+    let openProjOrSlnPicker ctr =
+        task {
+            let provier = TopLevel.GetTopLevel(ctr).StorageProvider
+            let! location = provier.TryGetWellKnownFolderAsync(WellKnownFolder.Documents)
+
+            let! result =
+                provier.OpenFilePickerAsync(
+                    FilePickerOpenOptions(
+                        Title = "Open Solution or Project",
+                        SuggestedStartLocation = location,
+                        AllowMultiple = false,
+                        FileTypeFilter = [
+                            FilePickerFileType(
+                                "MsBuild Solution or Project File",
+                                Patterns = [ "*.sln"; "*.fsproj" ],
+                                AppleUniformTypeIdentifiers = [ "public.data" ]
+                            )
+                        ]
+                    )
+                )
+
+            match List.ofSeq result with
+            | [ picked ] -> return Some picked
+            | _ -> return None
+        }
+
     let centerText text =
         TextBlock.create [ TextBlock.textAlignment TextAlignment.Center; TextBlock.text text ]
 
@@ -243,11 +285,11 @@ module SelectProjectView =
             $"select-project-view-$%s{id}",
             fun ctx ->
                 let binlogPath = ctx.useState ""
-                let projs: IWritable<ProjArgsInfo list> = ctx.useState []
+                let projs: IWritable<ProjectInfo list> = ctx.useState []
                 let selectedProj = ctx.useState None
 
                 ctx.useEffect (
-                    (fun () -> MSBuildBinLog.getFscArgs binlogPath.Current |> Seq.toList |> projs.Set),
+                    (fun () -> MSBuildBinLog.getProjctInfo binlogPath.Current |> Seq.toList |> projs.Set),
                     [ EffectTrigger.AfterChange binlogPath ]
                 )
 
@@ -288,6 +330,33 @@ module SelectProjectView =
                             yield! stackPanelAttrs
                             StackPanel.children [
                                 Button.create [
+                                    Button.content (centerText "Load Solution or Project")
+                                    Button.onClick (fun e ->
+                                        task {
+                                            match! openProjOrSlnPicker ctx.control with
+                                            | Some picked ->
+                                                let saveBinlogPath =
+                                                    $"{System.IO.Path.GetFileName picked.Path.AbsolutePath}.binlog"
+                                                    |> Cache.createCacheFilePath
+
+                                                let _ =
+                                                    MSBuildBinLog.resolveReferencesWithBinlog
+                                                        (printfn "%s")
+                                                        (eprintfn "%s")
+                                                        picked.Path.AbsolutePath
+                                                        saveBinlogPath
+
+                                                binlogPath.Set(saveBinlogPath)
+                                            | None -> ()
+                                        }
+                                        |> ignore)
+                                ]
+                            ]
+                        ]
+                        StackPanel.create [
+                            yield! stackPanelAttrs
+                            StackPanel.children [
+                                Button.create [
                                     Button.content (centerText "Load Project")
                                     Button.width buttonWidth
                                     Button.isEnabled (Option.isSome selectedProj.Current)
@@ -300,11 +369,11 @@ module SelectProjectView =
                                     ComboBox.dock Dock.Top
                                     ComboBox.dataItems projs.Current
                                     ComboBox.itemTemplate (
-                                        DataTemplateView<ProjArgsInfo>.create (fun p ->
+                                        DataTemplateView<ProjectInfo>.create (fun p ->
                                             TextBlock.create [ TextBlock.text p.Name ])
                                     )
                                     ComboBox.onSelectedItemChanged (function
-                                        | :? ProjArgsInfo as p -> selectedProj.Set(Some p)
+                                        | :? ProjectInfo as p -> selectedProj.Set(Some p)
                                         | _ -> selectedProj.Set None)
                                 ]
                             ]

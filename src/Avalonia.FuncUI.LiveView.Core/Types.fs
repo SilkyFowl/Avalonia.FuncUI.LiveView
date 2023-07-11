@@ -1,6 +1,7 @@
 namespace Avalonia.FuncUI.LiveView
 
 open System
+
 module Types =
     type LiveViewAnalyzerMsg = { Content: string[]; Path: string }
 
@@ -22,15 +23,15 @@ module Types =
             inherit IDisposable
             abstract IsConnected: bool
             abstract WaitForConnectionAsync: CancellationToken -> Task
-            abstract TryPostAsync:   ct : CancellationToken ->   msg: LiveViewAnalyzerMsg     ->  Task<Result<unit,IOException>>
-            
+            abstract TryPostAsync: ct: CancellationToken -> msg: LiveViewAnalyzerMsg -> Task<Result<unit, IOException>>
+
         type IAnalyzerClient =
             inherit IDisposable
             abstract IsConnected: bool
             abstract ConnectAsync: ct: CancellationToken -> Task
-            abstract StartReceive : unit -> unit
-            abstract OnReceivedMsg : IObservable<LiveViewAnalyzerMsg>
-            
+            abstract StartReceive: unit -> unit
+            abstract OnReceivedMsg: IObservable<LiveViewAnalyzerMsg>
+
 
     module LiveView =
         type Deferred<'args, 'result> =
@@ -79,6 +80,7 @@ module Types =
 
 
         open PreviewService
+
         type Model = {
             evalPendingMsgs: list<EvalInteractionParam>
             evalStateMap: Map<string, EvalState>
@@ -94,14 +96,18 @@ module Types =
             | SetAutoUpdate of bool
 
     module PreviewApp =
-        type ProjArgsInfo = {
+        type ReferenceSource = {
+            Path: string
+            ReferenceSourceTarget: string option
+            FusionName: string option
+        }
+
+        type ProjectInfo = {
             Name: string
             ProjectDirectory: string
             TargetPath: string
             TargetFramework: string
-            DotnetHostPath: string
-            DotnetFscCompilerPath: string
-            Args: string[]
+            ReferenceSources: ReferenceSource list
         }
 
         type Themes =

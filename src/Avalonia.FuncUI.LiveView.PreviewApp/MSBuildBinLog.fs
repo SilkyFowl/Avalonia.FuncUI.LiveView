@@ -4,9 +4,10 @@ open Avalonia.FuncUI.LiveView.Types.PreviewApp
 
 module MSBuildLocator =
     open Microsoft.Build.Locator
-    let registerInstanceMaxVersion() =
+
+    let registerInstanceMaxVersion () =
         MSBuildLocator.QueryVisualStudioInstances()
-        |> Seq.maxBy(fun i -> i.Version)
+        |> Seq.maxBy (fun i -> i.Version)
         |> MSBuildLocator.RegisterInstance
 
 module MSBuildBinLog =
@@ -21,7 +22,7 @@ module MSBuildBinLog =
         open System.Diagnostics
         open System.IO
 
-        let runProc onStdOut onStdErr startDir filename args =
+        let runProc onStdOut onStdErr startDir filename args env =
 
             let procStartInfo =
                 ProcessStartInfo(
@@ -36,6 +37,8 @@ module MSBuildBinLog =
             match startDir with
             | Some d -> procStartInfo.WorkingDirectory <- d
             | _ -> ()
+
+            env |> Map.iter (fun k v -> procStartInfo.Environment.Add(k, v))
 
             let outputHandler f (_sender: obj) (args: DataReceivedEventArgs) = f args.Data
             use p = new Process(StartInfo = procStartInfo)
@@ -59,54 +62,106 @@ module MSBuildBinLog =
 
     open Microsoft.Build.Logging.StructuredLogger
     open System.IO
+    open System
+    open Microsoft.Build.Construction
 
-    let loggerAsmPath = typeof<BinaryLogger>.Assembly.Location
 
-    let buildWithBinLog onStdOut onStdErr path binlogPath =
+    (* 
+        CustomBeforeMicrosoftCommonTargets
+        必要な情報を得るには
+        Target。。。-t:ResolveReferencesでいける？
+
+            DebugType = portable
+        define
+            DefineConstants = TRACE;DEBUG;NET;NET6_0;NETCOREAPP
+        
+    *)
+    let resolveReferencesWithBinlog onStdOut onStdErr path binlogPath =
+        let env = Map [ "DOTNET_CLI_UI_LANGUAGE", "en-us" ]
+
+        let msbuildPath =
+            let fi = FileInfo typeof<ProjectElement>.Assembly.Location
+            Path.Combine [| fi.Directory.FullName; "MSBuild.dll" |]
+
         let fileInfo = FileInfo path
+
         let binlog = FileInfo binlogPath
 
-        Helper.runProc onStdOut onStdErr (Some fileInfo.Directory.FullName) "dotnet" [
-            "build"
-            "-t:Rebuild"
-            "-v:diag"
+        let property =
+            let combine fileName =
+                Path.Combine [| AppDomain.CurrentDomain.BaseDirectory; fileName |]
+
+            let targets = combine "CaptureResolveReferences.targets"
+
+            let props = combine "CaptureResolveReferences.props"
+
+            $"-p:CustomAfterMicrosoftCommonProps={props};CustomAfterMicrosoftCommonTargets={targets}"
+
+        let args = [
+            msbuildPath
             fileInfo.FullName
-            $"-l:BinaryLogger,\"{loggerAsmPath}\";{binlog.FullName}"
+            property
+            "-t:CaptureResolveReferences"
+            "-noConLog"
+            "-nologo"
+            "-maxcpucount"
+            $"-bl:{binlog.FullName};ProjectImports=None"
         ]
 
+        Helper.runProc onStdOut onStdErr (Some fileInfo.Directory.FullName) "dotnet" args env
 
     let findProperty propertyName (tn: TreeNode) =
         tn.FindChildrenRecursive<Property>(fun p -> p.Name = propertyName)
         |> Seq.tryHead
         |> Option.map (fun p -> p.Value)
 
-    let getFscArgs binlog =
+    let getMetadataValue name (tn: TreeNode) =
+        match tn.FindChild(fun (m: Metadata) -> m.Name = name) with
+        | null -> None
+        | m -> Some m.Value
+
+    let findRefs (t: Target) =
+        match t.FindChild("CaptureReferencePath") with
+        | null -> None
+        | nn when not nn.HasChildren -> None
+        | nn ->
+            nn.Children
+            |> Seq.choose (function
+                | :? Item as item ->
+                    option {
+                        let referenceSourceTarget = item |> getMetadataValue "ReferenceSourceTarget"
+                        let fusionName = item |> getMetadataValue "FusionName"
+
+                        return {
+                            Path = item.Text
+                            ReferenceSourceTarget = referenceSourceTarget
+                            FusionName = fusionName
+                        }
+                    }
+                | _ -> None)
+            |> Seq.toList
+            |> Some
+
+
+    let getProjctInfo binlog =
         let build = BinaryLog.ReadBuild binlog
 
-        build.FindChildrenRecursive<FscTask>(fun _ -> true)
-        |> Seq.choose (fun fscTask ->
+        build.FindChildrenRecursive<Target>(fun t -> t.Name = "CoreCompile" && t.Succeeded)
+        |> Seq.choose (fun coreCompile ->
             option {
-                let! proj = fscTask.GetNearestParent<Project>() |> Option.ofObj
+                let proj = coreCompile.Project
                 let! evaluation = build.FindEvaluation proj.EvaluationId |> Option.ofObj
-
                 let! targetPath = evaluation |> findProperty "TargetPath"
                 let! targetFramework = evaluation |> findProperty "TargetFramework"
-                let! dotnetHostPath = evaluation |> findProperty "DOTNET_HOST_PATH"
-                let! dotnetFscCompilerPath = evaluation |> findProperty "DotnetFscCompilerPath"
-
-                let! argsMsg =
-                    fscTask.FindLastChild<Message>(fun m -> m.IsTextShortened && m.Text.Contains dotnetFscCompilerPath)
-                    |> Option.ofObj
-                    |> Option.map (fun m -> m.Text.ReplaceLineEndings().Split System.Environment.NewLine)
+                let! referenceSources = findRefs coreCompile
 
                 return {
                     Name = proj.Name
                     ProjectDirectory = proj.ProjectDirectory
                     TargetPath = targetPath
                     TargetFramework = targetFramework
-                    DotnetHostPath = dotnetHostPath
-                    DotnetFscCompilerPath = dotnetFscCompilerPath
-                    Args = argsMsg
+                    ReferenceSources = referenceSources
                 }
             })
         |> Seq.toList
+

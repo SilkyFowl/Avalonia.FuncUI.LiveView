@@ -1,0 +1,16 @@
+<Project>
+    <PropertyGroup>
+        <BuildInParallel>true</BuildInParallel>
+        <BuildProjectReferences>false</BuildProjectReferences>
+    </PropertyGroup>
+    <Target Name="CaptureResolveReferences">
+        <ItemGroup>
+            <MergedTargetFrameworksItems Include="$(TargetFramework)" />
+            <MergedTargetFrameworksItems Include="$(TargetFrameworks)" />
+        </ItemGroup>
+        <MSBuild
+            Projects="$(MSBuildProjectFile)"
+            Targets="CoreCompile"
+            Properties="TargetFramework=%(MergedTargetFrameworksItems.Identity)" />
+    </Target>
+</Project>

@@ -9,6 +9,7 @@ FSharp.SystemTextJson
 FsConfig
 Microsoft.Extensions.Configuration.Json
 MSBuild.StructuredLogger
+Microsoft.Build copy_local: false
 Microsoft.Build.Framework copy_local: false
 Microsoft.Build.Utilities.Core copy_local: false
 Microsoft.Build.Locator

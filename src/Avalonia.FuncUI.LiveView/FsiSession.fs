@@ -9,10 +9,6 @@ open Avalonia.FuncUI.LiveView.Types.LiveView.PreviewService
 open Avalonia.FuncUI.LiveView.Types.PreviewApp
 
 
-module ProjArgsInfo =
-    let getReferenceArgs info =
-        info.Args |> Array.filter (fun s -> s.StartsWith "-r:")
-
 /// Ref
 /// https://fsharp.github.io/fsharp-compiler-docs/fcs/interactive.html
 /// https://github.com/fsprojects/Avalonia.FuncUI/issues/147
@@ -42,6 +38,8 @@ module internal FsiSession =
             member _.OpenFileForReadShim(fileName, ?useMemoryMappedFile: bool, ?shouldShadowCopy: bool) =
                 match files.TryGetValue fileName with
                 | true, text -> new MemoryStream(Encoding.UTF8.GetBytes(text)) :> Stream
+                | _ when not (File.Exists fileName) && Path.GetFileName fileName = "unknown" ->
+                    new MemoryStream(Encoding.UTF8.GetBytes("")) :> Stream
                 | _ ->
                     defaultFileSystem.OpenFileForReadShim(
                         fileName,
@@ -143,20 +141,15 @@ module internal FsiSession =
                     // Ensure that references are not locked by the F# interactive process.
                     yield "--shadowcopyreferences+"
                     yield "-d:LIVEPREVIEW"
+                    for r in info.ReferenceSources do
+                        yield $"-r:{r.Path}"
+                    yield $"-r:{info.TargetPath}"
                 |],
                 inStream,
                 outStream,
                 errStream,
                 true
             )
-
-        String.concat "\n" [
-            for r in ProjArgsInfo.getReferenceArgs info do
-                let path = r.Replace("-r:", "")
-                $"#r @\"{path}\""
-            $"#r @\"{info.TargetPath}\""
-        ]
-        |> session.EvalInteraction
 
         session
 
@@ -220,7 +213,7 @@ module internal FsiSession =
                 timestamp = DateTime.Now
             }
 
-type FsiPreviewSession(info: ProjArgsInfo) =
+type FsiPreviewSession(info: ProjectInfo) =
     let sbOut = new StringBuilder()
     let sbErr = new StringBuilder()
     let inStream = new StringReader("")
