@@ -11,14 +11,14 @@ group Main
     nuget FSharp.SystemTextJson 1.1.23
     nuget FsUnit.xUnit
 
-    nuget Avalonia.FuncUI 1.0.0-rc1.1.1
-    nuget Avalonia.FuncUI.Elmish 1.0.0-rc1.1.1
+    nuget Avalonia.FuncUI 1.0.0
+    nuget Avalonia.FuncUI.Elmish 1.0.0
 
-    nuget Avalonia != 11.0.0-rc1.1
-    nuget Avalonia.Desktop prerelease
-    nuget Avalonia.Diagnostics prerelease
-    nuget Avalonia.Themes.Fluent prerelease
-    nuget Avalonia.Themes.Simple prerelease
+    nuget Avalonia != 11.0.0
+    nuget Avalonia.Desktop
+    nuget Avalonia.Diagnostics
+    nuget Avalonia.Themes.Fluent
+    nuget Avalonia.Themes.Simple
     nuget Avalonia.Angle.Windows.Natives ~> 2.1.0.0
     nuget MessagePack
     nuget MessagePack.FSharpExtensions
