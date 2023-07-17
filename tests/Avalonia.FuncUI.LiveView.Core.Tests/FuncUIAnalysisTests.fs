@@ -55,10 +55,11 @@ let module_after_DU_contain_module =
 [<Theory>]
 [<MemberData(nameof module_with_some_value_after_DU)>]
 [<MemberData(nameof module_after_DU_contain_module)>]
-let ``wont work If module with some value after DU`` code =
+let ``should work If module with some value after DU`` code =
+    let results = Helper.runFuncUIAnalysis code
+    results.livePreviewFuncs.Count |> shouldEqual 1
 
-    let ex =
-        Assert.Throws<Sdk.EmptyException>(fun _ -> createTestCode "" code |> Helper.runFuncUIAnalysis |> ignore)
-
-    ex.Message
-    |> shouldContainText "typecheck error Duplicate definition of type, exception or module 'Counter'"
+    results.invalidLivePreviewFuncs.Count |> shouldEqual 1
+    
+    results.invalidStringCalls.Count |> shouldEqual 1
+    results.notSuppurtPattern.Count |> shouldEqual 0
