@@ -8,6 +8,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".paket", ".paket", "{0A4244
 		paket.dependencies = paket.dependencies
 	EndProjectSection
 EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "build", "build\build.fsproj", "{049BAB3B-2D97-4B66-94C9-7E5E8F85171C}"
+EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{DB8DF710-E6E6-4722-99D4-514834AEEB16}"
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Avalonia.FuncUI.LiveView.Core", "src\Avalonia.FuncUI.LiveView.Core\Avalonia.FuncUI.LiveView.Core.fsproj", "{AA59F86F-40EC-4935-928E-ACE854A73DE4}"
@@ -23,8 +25,6 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{77D972B7-9F97-4C02-959F-C95D4B35CD61}"
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Avalonia.FuncUI.LiveView.Core.Tests", "tests\Avalonia.FuncUI.LiveView.Core.Tests\Avalonia.FuncUI.LiveView.Core.Tests.fsproj", "{20DD3B4D-46C8-4F78-B114-6ED2CCAA1433}"
-EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "build", "build\build.fsproj", "{049BAB3B-2D97-4B66-94C9-7E5E8F85171C}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

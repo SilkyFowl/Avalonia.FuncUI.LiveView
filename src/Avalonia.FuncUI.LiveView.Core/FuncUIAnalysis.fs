@@ -1,5 +1,6 @@
 module Avalonia.FuncUI.LiveView.FuncUIAnalysis
 
+open System.IO
 open System.Reflection
 open type System.Reflection.BindingFlags
 
@@ -9,6 +10,7 @@ open FSharp.Compiler.Text
 
 open Avalonia.Skia
 open Avalonia.FuncUI.Types
+open Avalonia.FuncUI.LiveView.Core.Types
 
 type FuncUIAnalysisHander =
     { OnLivePreviewFunc: FSharpMemberOrFunctionOrValue -> list<list<FSharpMemberOrFunctionOrValue>> -> unit
@@ -49,25 +51,27 @@ let stringArgDSLFuncMap =
         | [| t |] when t = typeof<IAttr> -> Some()
         | _ -> None
 
-    let controlTypes =
-        [| "Avalonia.Controls"
-           "Avalonia.Styling" |]
-        |> Array.map (fun name -> Assembly.Load(name).GetExportedTypes())
-        |> Array.concat
+    let funcUIAssembly = Assembly.Load "Avalonia.FuncUI"
+    do
+        FileInfo(Assembly.GetExecutingAssembly().Location).Directory.EnumerateFiles "Avalonia.*.dll"
+        |> Seq.toArray
+        |> Seq.iter (fun fi -> Assembly.LoadFile fi.FullName |> ignore)
 
-    let dslAssembly = Assembly.Load "Avalonia.FuncUI.DSL"
-
-    dslAssembly.GetExportedTypes()
+    funcUIAssembly.GetExportedTypes()
     |> Array.choose (fun ty ->
         let memberMap =
             ty.GetMethods(Public ||| Static)
             |> Array.choose (function
                 | FsStaticMember name & StringParam & ReturnIAttr as m ->
-                    let controlType =
-                        controlTypes
-                        |> Array.find (fun ty -> ty.Name = m.DeclaringType.Name)
+                    let typeParameters =
+                        m.GetGenericArguments()
+                        |> Array.map (fun t ->
+                            t.GetGenericParameterConstraints()
+                            |> Array.tryHead
+                            |> Option.defaultWith (fun () ->
+                                failwith $"{m.ReflectedType}.{name}: Faild to find getGeneric type tarameter."))
 
-                    let m' = m.MakeGenericMethod [| controlType |]
+                    let m' = m.MakeGenericMethod typeParameters
 
                     let invoke (str: string) = m'.Invoke((), [| box str |]) |> ignore
 
@@ -130,7 +134,11 @@ let (|LivePreviewFunc|_|) m =
 
     let hasLivePreviewAttribute (m: FSharpMemberOrFunctionOrValue) =
         m.Attributes
-        |> Seq.exists (fun attr -> attr.AttributeType.CompiledName = "LivePreviewAttribute")
+        |> Seq.exists (fun attr ->
+            let livePreviewAttr = typeof<LivePreviewAttribute>
+
+            attr.AttributeType.BasicQualifiedName  = livePreviewAttr.FullName
+            && attr.AttributeType.Assembly.QualifiedName = livePreviewAttr.Assembly.FullName)
 
     match m with
     | FSharpImplementationFileDeclaration.MemberOrFunctionOrValue (v, vs, e) when hasLivePreviewAttribute v ->

@@ -1,5 +1,5 @@
 Avalonia.Desktop
 Avalonia.Diagnostics
-JaggerJo.Avalonia.FuncUI
-JaggerJo.Avalonia.FuncUI.DSL
-JaggerJo.Avalonia.FuncUI.Elmish
+Avalonia.Themes.Fluent
+Avalonia.FuncUI
+Avalonia.FuncUI.Elmish

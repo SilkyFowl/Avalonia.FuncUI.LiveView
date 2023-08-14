@@ -51,6 +51,7 @@ module Paket =
               { baseParams with
                   TemplateFilePath = toTemplateFilePath analyzerProjSetting.Path
                   Id = Some analyzerProjSetting.PackageId
+                  ExcludedDependencies = [ "FSharp.Analyzers.SDK" ]
                   Files =
                       baseParams.Files
                       @ [ Include("bin" </> "Release" </> "net6.0" </> "publish", "lib" </> "net6.0") ] } |}
@@ -92,7 +93,9 @@ module Nuspec =
 
         if proj = analyzerProjSetting then
             nupkgDoc.Descendants(ns "dependency")
-            |> Seq.filter (fun dependency -> dependency.Attribute(xn "id").Value <> "FSharp.Analyzers.SDK")
+            |> Seq.filter (fun dependency ->
+                dependency.Attribute(xn "id").Value
+                <> "FSharp.Analyzers.SDK")
             |> Seq.toList
             |> List.iter (fun dependency -> dependency.Remove())
 
@@ -102,7 +105,6 @@ module Nuspec =
         ZipFile.CreateFromDirectory(unzipedPath, nupkgPath)
         Shell.deleteDir unzipedPath
 
-#nowarn "20"
 let initTargets () =
     Target.initEnvironment ()
 
@@ -124,6 +126,13 @@ let initTargets () =
     Target.create "BuildRelease" (fun _ ->
         slnPath
         |> DotNet.build (fun setParams -> { setParams with Configuration = DotNet.Release }))
+
+    Target.create "TestRelease" (fun _ ->
+        slnPath
+        |> DotNet.test (fun p ->
+            { p with
+                NoBuild = true
+                Configuration = DotNet.BuildConfiguration.Release }))
 
     Target.create "Pack" (fun _ ->
         for setting in Paket.settings do
@@ -164,13 +173,21 @@ let initTargets () =
     // --------------------------------------- Targets Dependencies ---------------------------------------
     // ****************************************************************************************************
 
-    "CleanDebug" ==> "BuildDebug" ==> "Default"
+    "ClearLocalAnalyzer" ?=> "BuildRelease" |> ignore
 
-    "CleanRelease"
-    ==> "ClearLocalAnalyzer"
-    ==> "BuildRelease"
-    ==> "Pack"
-    ==> "SetLocalAnalyzer"
+    "CleanDebug" ?=> "BuildDebug" |> ignore
+    "CleanRelease" ?=> "BuildRelease" |> ignore
+
+    "BuildRelease" ?=> "TestRelease" |> ignore
+
+    "Pack"
+    <== [ "TestRelease"
+          "BuildRelease"
+          "CleanRelease"
+          "ClearLocalAnalyzer" ]
+
+
+    "Pack" ==> "SetLocalAnalyzer" |> ignore
 
 //-----------------------------------------------------------------------------
 // Target Start
@@ -183,6 +200,7 @@ let main argv =
     |> Context.FakeExecutionContext.Create false "build.fsx"
     |> Context.RuntimeContext.Fake
     |> Context.setExecutionContext
+
     initTargets ()
     Target.runOrDefaultWithArguments "Default"
 

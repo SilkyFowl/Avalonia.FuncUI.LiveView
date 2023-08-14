@@ -15,7 +15,7 @@ open Avalonia.FuncUI.LiveView.MessagePack
 
 type StateStore =
     { Msg: IWritable<Msg>
-      EvalResult: IWritable<list<string * IControl>>
+      EvalResult: IWritable<list<string * Control>>
       EvalWarings: IWritable<obj []>
       Status: IWritable<LogMessage>
       TempScriptFileInfo: FileInfo }
@@ -120,11 +120,11 @@ module StyledElement =
 
                 for attr in setters do
                     match attr.Property with
-                    | Some p ->
+                    | ValueSome p ->
                         match p.Accessor with
                         | InstanceProperty x -> failwith "Can't support instance property"
                         | AvaloniaProperty x -> s.Setters.Add(Setter(x, p.Value))
-                    | None -> ()
+                    | ValueNone -> ()
 
                 styles.Add s
 
