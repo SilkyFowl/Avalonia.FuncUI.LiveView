@@ -91,8 +91,7 @@ module Counter =
 
     [<LivePreview>]
     let greenCounter () =
-        Store.num
-        |> view "preview2" [ Component.background Brushes.DarkGreen ] id
+        Store.num |> view "preview2" [ Component.background Brushes.DarkGreen ] id
 
 module Memo =
 

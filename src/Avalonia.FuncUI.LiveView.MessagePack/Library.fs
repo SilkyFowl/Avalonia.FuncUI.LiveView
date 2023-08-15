@@ -55,12 +55,7 @@ module Server =
 
     /// `AcceptTcpClientAsync`の結果を`Choice1Of2`でラップして`cont`を評価する。
     let inline acceptTcpClientAsync (listener: TcpListener) cont =
-        async {
-            return!
-                listener.AcceptTcpClientAsync()
-                |> Choice1Of2
-                |> cont
-        }
+        async { return! listener.AcceptTcpClientAsync() |> Choice1Of2 |> cont }
 
 
     /// `serializeAsync`を実行する。
@@ -71,8 +66,8 @@ module Server =
                 do! MsgPack.serializeAsync client token { ContentMsg = content }
 
                 return! Choice2Of2 client |> cont
-            with
-            | SerializedStreamError e -> return! acceptTcpClientAsync listener cont
+            with SerializedStreamError e ->
+                return! acceptTcpClientAsync listener cont
         }
 
     /// `TcpListener`を起動して、クライアントの接続を待ち受ける。
@@ -107,9 +102,7 @@ open System.Net.NetworkInformation
 
 module Client =
     let isActiveTcpListener ipAddredd port =
-        IPGlobalProperties
-            .GetIPGlobalProperties()
-            .GetActiveTcpListeners()
+        IPGlobalProperties.GetIPGlobalProperties().GetActiveTcpListeners()
         |> Array.exists (fun ep -> ep.Address = ipAddredd && ep.Port = port)
 
 
@@ -123,8 +116,7 @@ module Client =
                 try
                     do! client.ConnectAsync(address = address, port = port)
                     hasConnedted <- true
-                with
-                | :? SocketException as e ->
+                with :? SocketException as e ->
                     (LogError >> log) $"{e.SocketErrorCode}: {e.Message}"
                     do! Tasks.Task.Delay(millisecondsDelay = retryMilliseconds)
         }

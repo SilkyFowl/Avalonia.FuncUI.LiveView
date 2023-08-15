@@ -61,7 +61,6 @@ let funcUiAnalyzer: Analyzer =
 
             // エラーがなければPreviewを実行
             if Seq.isEmpty errorMessages then
-                { Content = String.concat Environment.NewLine ctx.Content }
-                |> server.Post
+                { Content = String.concat Environment.NewLine ctx.Content } |> server.Post
 
         Seq.distinct errorMessages |> Seq.toList

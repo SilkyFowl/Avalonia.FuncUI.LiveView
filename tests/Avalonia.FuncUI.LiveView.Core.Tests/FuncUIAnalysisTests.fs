@@ -20,9 +20,7 @@ module private Helper =
 
         let getDeps asmName =
 
-            let asm =
-                Path.Combine(asmPath.FullName, asmName)
-                |> Reflection.Assembly.LoadFile
+            let asm = Path.Combine(asmPath.FullName, asmName) |> Reflection.Assembly.LoadFile
 
             asm.GetReferencedAssemblies()
             |> Seq.map (fun asm -> $"{asm.Name}.dll")
@@ -63,14 +61,12 @@ module private Helper =
             )
             |> Async.RunSynchronously
 
-        checker.ParseAndCheckProject projOptions
-        |> Async.RunSynchronously
+        checker.ParseAndCheckProject projOptions |> Async.RunSynchronously
 
     let getDeclarations (results: FSharpCheckProjectResults) =
         results.Diagnostics |> shouldBeEmpty
 
-        results.AssemblyContents.ImplementationFiles[0]
-            .Declarations
+        results.AssemblyContents.ImplementationFiles[0].Declarations
 
     let runFuncUIAnalysis sourceCode =
         let livePreviewFuncs = ResizeArray()
@@ -88,9 +84,7 @@ module private Helper =
                   OnInvalidLivePreviewFunc = fun v vs -> invalidLivePreviewFuncs.Add(v, vs)
                   OnInvalidStringCall =
                     fun ex range m typeArgs argExprs -> invalidStringCalls.Add(ex, range, m, typeArgs, argExprs)
-                  OnNotSuppurtPattern =
-                    fun ex e ->
-                        notSuppurtPattern.Add(ex,e)}
+                  OnNotSuppurtPattern = fun ex e -> notSuppurtPattern.Add(ex, e) }
         )
 
         {| livePreviewFuncs = livePreviewFuncs
@@ -109,7 +103,8 @@ module FuncUIAnalysisTests =
     open FSharp.Compiler.Diagnostics
 
     let createTestCode =
-        sprintf """
+        sprintf
+            """
 open System
 open Avalonia.FuncUI
 open Avalonia.FuncUI.DSL
@@ -158,34 +153,28 @@ module Counter =
 
     [<Fact>]
     let ``should work if no contain DU`` () =
-        let results =
-            createTestCode ""
-            |> Helper.runFuncUIAnalysis
+        let results = createTestCode "" |> Helper.runFuncUIAnalysis
 
         results.livePreviewFuncs.Count |> shouldEqual 1
         results.invalidLivePreviewFuncs.Count |> shouldEqual 1
         results.invalidStringCalls.Count |> shouldEqual 1
 
 
-    let allValueCaseDUs : obj[] list =
-            [
-                """
+    let allValueCaseDUs: obj[] list =
+        [ """
 type Foo = Foo of int
                 """
-                """
+          """
 type Bar =
     | Hoge of int
     | Fuga of string
-                """
-                ]
-            |> List.map (fun s -> [|box s|])
+                """ ]
+        |> List.map (fun s -> [| box s |])
 
     [<Theory>]
     [<MemberData(nameof allValueCaseDUs)>]
     let ``wont work if all case have value DU`` allValueCaseDU =
-        let results =
-            createTestCode allValueCaseDU
-            |> Helper.runFuncUIAnalysis
+        let results = createTestCode allValueCaseDU |> Helper.runFuncUIAnalysis
 
         results.notSuppurtPattern.Count |> shouldBeGreaterThan 1
         results.livePreviewFuncs.Count |> shouldEqual 1
@@ -193,43 +182,38 @@ type Bar =
         results.invalidStringCalls.Count |> shouldEqual 1
 
     let anyNoValueCaseDUs =
-                [
-                    """
+        [ """
 type Foo = Foo
                     """
-                    """
+          """
 type Bar =
     | Hoge
     | Fuga of string
                     """
-                    """
+          """
 type Bar<'t> =
     | Hoge
     | Fuga of string
     | A of {|a:int; b:string; c: bool * string|}
     | B of ('t -> unit)
-                    """
-                ]
+                    """ ]
 
-    let anyNoValueCaseDUsData =
-        anyNoValueCaseDUs
-        |> List.map (fun s -> [|box s|])
+    let anyNoValueCaseDUsData = anyNoValueCaseDUs |> List.map (fun s -> [| box s |])
 
     [<Theory>]
     [<MemberData(nameof anyNoValueCaseDUsData)>]
     let ``should work If at least one no value case DU is the end of the code`` anyNoValueCase =
-            let results =
-                createTestCode anyNoValueCase
-                |> Helper.runFuncUIAnalysis
+        let results = createTestCode anyNoValueCase |> Helper.runFuncUIAnalysis
 
-            results.livePreviewFuncs.Count |> shouldEqual 1
-            results.invalidLivePreviewFuncs.Count |> shouldEqual 1
-            results.invalidStringCalls.Count |> shouldEqual 1
-            results.notSuppurtPattern.Count |> shouldEqual 0
+        results.livePreviewFuncs.Count |> shouldEqual 1
+        results.invalidLivePreviewFuncs.Count |> shouldEqual 1
+        results.invalidStringCalls.Count |> shouldEqual 1
+        results.notSuppurtPattern.Count |> shouldEqual 0
 
     let module_with_some_value_after_DU =
         let baseCode =
-                sprintf """
+            sprintf
+                """
 open System
 open Avalonia.FuncUI
 open Avalonia.FuncUI.DSL
@@ -271,33 +255,30 @@ module Counter =
         view
 
     """
-        anyNoValueCaseDUs
-        |> List.map ( fun du ->
-            [| (baseCode >> box) du |]
-        )
+
+        anyNoValueCaseDUs |> List.map (fun du -> [| (baseCode >> box) du |])
 
     let nestedAnyNoValueCaseDUs =
-                [
-                    """
+        [ """
     type Foo = Foo
                     """
-                    """
+          """
     type Bar =
         | Hoge
         | Fuga of string
                     """
-                    """
+          """
     type Bar<'t> =
         | Hoge
         | Fuga of string
         | A of {|a:int; b:string; c: bool * string|}
         | B of ('t -> unit)
-                    """
-                ]
+                    """ ]
 
     let module_after_DU_contain_module =
         let baseCode =
-                sprintf """
+            sprintf
+                """
 open System
 open Avalonia.FuncUI
 open Avalonia.FuncUI.DSL
@@ -341,10 +322,8 @@ module Counter =
         view
 
     """
-        nestedAnyNoValueCaseDUs
-        |> List.map ( fun du ->
-            [| (baseCode >> box) du |]
-        )
+
+        nestedAnyNoValueCaseDUs |> List.map (fun du -> [| (baseCode >> box) du |])
 
     [<Theory>]
     [<MemberData(nameof module_with_some_value_after_DU)>]
@@ -352,9 +331,7 @@ module Counter =
     let ``wont work If module with some value after DU`` code =
 
         let ex =
-            Assert.Throws<Sdk.EmptyException>(fun _ ->
-            createTestCode code
-            |> Helper.runFuncUIAnalysis
-            |> ignore
-            )
-        ex.Message |> shouldContainText "typecheck error Duplicate definition of type, exception or module 'Counter'"
+            Assert.Throws<Sdk.EmptyException>(fun _ -> createTestCode code |> Helper.runFuncUIAnalysis |> ignore)
+
+        ex.Message
+        |> shouldContainText "typecheck error Duplicate definition of type, exception or module 'Counter'"

@@ -16,7 +16,7 @@ open Avalonia.FuncUI.LiveView.MessagePack
 type StateStore =
     { Msg: IWritable<Msg>
       EvalResult: IWritable<list<string * Control>>
-      EvalWarings: IWritable<obj []>
+      EvalWarings: IWritable<obj[]>
       Status: IWritable<LogMessage>
       TempScriptFileInfo: FileInfo }
 
@@ -100,9 +100,7 @@ module Counter =
           EvalResult = new State<_>([ "init", initResult ])
           EvalWarings = new State<_>([||])
           Status = new State<_>(LogInfo "")
-          TempScriptFileInfo =
-            Path.ChangeExtension(Path.GetTempFileName(), "fsx")
-            |> FileInfo }
+          TempScriptFileInfo = Path.ChangeExtension(Path.GetTempFileName(), "fsx") |> FileInfo }
 
 open Avalonia.FuncUI.Hosts
 
@@ -111,6 +109,7 @@ module StyledElement =
     open Avalonia.Styling
 
     type StyledElement with
+
         /// 参考:
         static member styles(styleSeq: list<(Selector -> Selector) * list<IAttr<'a>>>) =
             let styles = Styles()
@@ -139,7 +138,7 @@ module LiveView =
         let buttonBackground =
             Application.Current.FindResource "ButtonBackground" :?> IBrush
 
-        Component (fun ctx ->
+        Component(fun ctx ->
 
             // sharedの購読
             let evalText =
@@ -174,8 +173,7 @@ module LiveView =
             ctx.attrs [
                 Component.styles [
                     (fun (x: Selector) -> x.Name(rootGridName).Child()),
-                    [ Layoutable.margin 8
-                      Layoutable.verticalAlignment VerticalAlignment.Center ]
+                    [ Layoutable.margin 8; Layoutable.verticalAlignment VerticalAlignment.Center ]
                 ]
             ]
 
@@ -205,7 +203,7 @@ module LiveView =
                                 TextBox.errors evalWarnings.Current
                         else
                             TextBox.isVisible false
-                        ]
+                    ]
 
                     GridSplitter.create [
                         if showEvalText.Current then
@@ -214,7 +212,7 @@ module LiveView =
                             GridSplitter.columnSpan 3
                         else
                             GridSplitter.isVisible false
-                        ]
+                    ]
                     ScrollViewer.create [
                         if showEvalText.Current then
                             ScrollViewer.row 3
@@ -251,10 +249,7 @@ module LiveView =
                                                             Border.height 2
                                                             Border.background buttonBackground
                                                         ]
-                                                        Border.create [
-                                                            Border.row 2
-                                                            Border.child content
-                                                        ]
+                                                        Border.create [ Border.row 2; Border.child content ]
                                                     ]
                                                 ]
                                             )
@@ -279,11 +274,7 @@ module LiveView =
                         Button.content "eval manualy"
                         Button.onClick evalInteractionAsync
                     ]
-                    TextBlock.create [
-                        TextBlock.row 5
-                        TextBlock.column 2
-                        TextBlock.text $"{status.Current}"
-                    ]
+                    TextBlock.create [ TextBlock.row 5; TextBlock.column 2; TextBlock.text $"{status.Current}" ]
                 ]
             ])
 

@@ -9,13 +9,13 @@ open MessagePack.FSharp
 open MessagePack.Resolvers
 
 module Settings =
-    val iPAddress : IPAddress
-    val port : int
+    val iPAddress: IPAddress
+    val port: int
 
 [<MessagePackObject>]
 type MsgPack =
     { [<Key(0)>]
-      ContentMsg: string}
+      ContentMsg: string }
 
 module Server =
     val init: ipAddress: IPAddress -> port: int -> FuncUiAnalyzer.Server
