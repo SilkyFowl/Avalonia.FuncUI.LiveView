@@ -159,7 +159,7 @@ Install analyzer with `nuget`.
 nuget install SilkyFowl.Avalonia.FuncUI.LiveView.Analyzer -Version 0.0.1.1 -OutputDirectory packages/analyzers
 ```
 
-### 動作確認
+### Checking behavior
 
 Rewrite `Program.fs` as follows:
 
