@@ -56,6 +56,7 @@ AnalyzerとLivePreviewの通信で`localhost:8080`を使用します。
 mkdir YourFuncUIApp
 cd YourFuncUIApp
 dotnet new tool-manifest
+dotnet new gitignore
 code .
 ```
 
@@ -74,7 +75,7 @@ dotnet sln add ./src/YourFuncUIApp/YourFuncUIApp.fsproj
 dotnet tool install fantomas
 ```
 
-`.\.editorconfig`
+`.\.editorconfig`を作成します。内容は以下の通りです。
 
 ```editorconfig
 root = true
@@ -93,7 +94,6 @@ fsharp_experimental_elmish=true
 #### Paketのセットアップ
 
 ```sh
-dotnet new tool-manifest
 dotnet tool install paket
 ```
 
@@ -118,11 +118,12 @@ group Analyzers
 
 
 ```sh
-dotnet paket convert-from-nuget --force
-dotnet paket add -p ./src/YourFuncUIApp/YourFuncUIApp.fsproj Avalonia.FuncUI
-dotnet paket add -p ./src/YourFuncUIApp/YourFuncUIApp.fsproj Avalonia.Desktop
-dotnet paket add -p ./src/YourFuncUIApp/YourFuncUIApp.fsproj Avalonia.Themes.Fluent
-dotnet paket add -p ./src/YourFuncUIApp/YourFuncUIApp.fsproj SilkyFowl.Avalonia.FuncUI.LiveView
+dotnet paket convert-from-nuget --force --no-install --no-auto-restore
+dotnet paket add -p ./src/YourFuncUIApp/YourFuncUIApp.fsproj Avalonia.FuncUI --no-install
+dotnet paket add -p ./src/YourFuncUIApp/YourFuncUIApp.fsproj Avalonia.Desktop --no-install
+dotnet paket add -p ./src/YourFuncUIApp/YourFuncUIApp.fsproj Avalonia.Themes.Fluent --no-install
+dotnet paket add -p ./src/YourFuncUIApp/YourFuncUIApp.fsproj SilkyFowl.Avalonia.FuncUI.LiveView --no-install
+dotnet paket install
 ```
 
 #### Paketを使わない場合
@@ -142,11 +143,11 @@ dotnet paket add -p ./src/YourFuncUIApp/YourFuncUIApp.fsproj SilkyFowl.Avalonia.
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Avalonia.Desktop" Version="11.0.0" />
-    <PackageReference Include="Avalonia.Themes.Fluent" Version="11.0.0" />
-    <PackageReference Include="Avalonia.FuncUI" Version="1.0.0" />
+    <PackageReference Include="Avalonia.Desktop" Version="11.0.3" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="11.0.3" />
+    <PackageReference Include="Avalonia.FuncUI" Version="1.0.1" />
     <PackageReference Include="SilkyFowl.Avalonia.FuncUI.LiveView" Version="0.0.1.1" />
-    <!-- MessagePackのバージョン指定しないと正しい古いライブラリが参照されてしまう。 -->
+    <!-- MessagePackのバージョン指定しないと古いライブラリが参照されてしまう。 -->
     <PackageReference Include="MessagePack" Version="2.5.124" />
   </ItemGroup>
 </Project>
@@ -181,7 +182,7 @@ module Main =
     [<LivePreview>]
     let view () =
         Component(fun ctx ->
-            let state = ctx.useState 1
+            let state = ctx.useState 0
 
             DockPanel.create [
                 DockPanel.children [
