@@ -54,75 +54,244 @@ AnalyzerとLivePreviewの通信で`localhost:8080`を使用します。
 
 ```sh
 mkdir YourFuncUIApp
-code YourFuncUIApp/
+cd YourFuncUIApp
+dotnet new tool-manifest
+code .
 ```
 
-FuncUIのテンプレートをインストールして、プロジェクトを作成します。
+プロジェクトを作成します。
+
 
 ```sh
-dotnet new -i JaggerJo.Avalonia.FuncUI.Templates
-dotnet new funcUI.basic
+dotnet new sln
+dotnet new console -o ./src/YourFuncUIApp -lang f#
+dotnet sln add ./src/YourFuncUIApp/YourFuncUIApp.fsproj
 ```
 
-Paketをセットアップします。
+#### F#のフォーマッタのセットアップ
+
+```sh
+dotnet tool install fantomas
+```
+
+`.\.editorconfig`
+
+```editorconfig
+root = true
+
+[*]
+indent_style=space
+indent_size=4
+charset=utf-8
+trim_trailing_whitespace=true
+insert_final_newline=false
+
+[*.{fs,fsx}]
+fsharp_experimental_elmish=true
+```
+
+#### Paketのセットアップ
 
 ```sh
 dotnet new tool-manifest
 dotnet tool install paket
 ```
 
-ここで以下のようにファイルを作成、編集します。
-
-- paket.dependencies
+`paket.dependencies`を作成します。内容は以下の通りです。
 
 ```paket.dependencies
 source https://api.nuget.org/v3/index.json
 
 storage: none
-framework: net6.0
+
+nuget FSharp.Core content: none
+nuget Avalonia.FuncUI 1.0.1
+nuget Avalonia.Desktop 11.0.3
+nuget Avalonia.Themes.Fluent 11.0.3
+nuget SilkyFowl.Avalonia.FuncUI.LiveView 0.0.1.1
+
+group Analyzers
+    source https://api.nuget.org/v3/index.json
+    storage: storage
+    nuget SilkyFowl.Avalonia.FuncUI.LiveView.Analyzer 0.0.1.1
 ```
+
+
+```sh
+dotnet paket convert-from-nuget --force
+dotnet paket add -p ./src/YourFuncUIApp/YourFuncUIApp.fsproj Avalonia.FuncUI
+dotnet paket add -p ./src/YourFuncUIApp/YourFuncUIApp.fsproj Avalonia.Desktop
+dotnet paket add -p ./src/YourFuncUIApp/YourFuncUIApp.fsproj Avalonia.Themes.Fluent
+dotnet paket add -p ./src/YourFuncUIApp/YourFuncUIApp.fsproj SilkyFowl.Avalonia.FuncUI.LiveView
+```
+
+#### Paketを使わない場合
+
+`YourFuncUIApp.fsproj`に依存関係を追加します。
+
+```fsproj
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net7.0</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="Program.fs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia.Desktop" Version="11.0.0" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="11.0.0" />
+    <PackageReference Include="Avalonia.FuncUI" Version="1.0.0" />
+    <PackageReference Include="SilkyFowl.Avalonia.FuncUI.LiveView" Version="0.0.1.1" />
+    <!-- MessagePackのバージョン指定しないと正しい古いライブラリが参照されてしまう。 -->
+    <PackageReference Include="MessagePack" Version="2.5.124" />
+  </ItemGroup>
+</Project>
+```
+
+`nuget`でアナライザをインストールします。
+
+```sh
+nuget install SilkyFowl.Avalonia.FuncUI.LiveView.Analyzer -Version 0.0.1.1 -OutputDirectory packages/analyzers
+```
+
+### 動作確認
+
+`Program.fs`を以下のように書き換えます。
+
+```fs
+namespace CounterApp
+
+open Avalonia
+open Avalonia.Controls.ApplicationLifetimes
+open Avalonia.Themes.Fluent
+open Avalonia.FuncUI.Hosts
+open Avalonia.Controls
+open Avalonia.FuncUI
+open Avalonia.FuncUI.DSL
+open Avalonia.Layout
+
+open Avalonia.FuncUI.LiveView
+open Avalonia.FuncUI.LiveView.Core.Types
+
+module Main =
+    [<LivePreview>]
+    let view () =
+        Component(fun ctx ->
+            let state = ctx.useState 1
+
+            DockPanel.create [
+                DockPanel.children [
+                    Button.create [
+                        Button.dock Dock.Bottom
+                        Button.onClick (fun _ -> state.Set(state.Current - 1))
+                        Button.content "-"
+                        Button.horizontalAlignment HorizontalAlignment.Stretch
+                        Button.horizontalContentAlignment HorizontalAlignment.Center
+                    ]
+                    Button.create [
+                        Button.dock Dock.Bottom
+                        Button.onClick (fun _ -> state.Set(state.Current + 1))
+                        Button.content "+"
+                        Button.horizontalAlignment HorizontalAlignment.Stretch
+                        Button.horizontalContentAlignment HorizontalAlignment.Center
+                    ]
+                    TextBlock.create [
+                        TextBlock.dock Dock.Top
+                        TextBlock.fontSize 48.0
+                        TextBlock.verticalAlignment VerticalAlignment.Center
+                        TextBlock.horizontalAlignment HorizontalAlignment.Center
+                        TextBlock.text (string state.Current)
+                    ]
+                ]
+            ])
+
+type MainWindow() =
+    inherit HostWindow()
+
+    do
+        base.Title <- "Counter Example"
+        base.Content <- Main.view ()
+
+module LiveView =
+    let enabled =
+        match System.Environment.GetEnvironmentVariable("FUNCUI_LIVEPREVIEW") with
+        | null -> false
+        | "1" -> true
+        | _ -> false
+
+type App() =
+    inherit Application()
+
+    override this.Initialize() =
+        this.Styles.Add(FluentTheme())
+        this.RequestedThemeVariant <- Styling.ThemeVariant.Dark
+
+    override this.OnFrameworkInitializationCompleted() =
+        match this.ApplicationLifetime with
+        | :? IClassicDesktopStyleApplicationLifetime as desktopLifetime ->
+            desktopLifetime.MainWindow <-
+                if LiveView.enabled then
+                    LiveViewWindow() :> Window
+                else
+                    MainWindow()
+        | _ -> ()
+
+#if DEBUG
+        this.AttachDevTools()
+#endif
+
+module Program =
+
+    [<EntryPoint>]
+    let main (args: string[]) =
+        AppBuilder
+            .Configure<App>()
+            .UsePlatformDetect()
+            .UseSkia()
+            .StartWithClassicDesktopLifetime(args)
+```
+
+起動して、プログラムが動作するか確認してください。
+
+```sh
+dotnet run --project ./src/YourFuncUIApp/YourFuncUIApp.fsproj
+```
+
+### vscodeの設定
 
 - .vscode/launch.json
 
 ```json
 {
-    "version": "0.2.0",
     "configurations": [
         {
-            "name": "FunUI Launch",
+            "name": "FuncUI Launch",
             "type": "coreclr",
             "request": "launch",
             "preLaunchTask": "build",
-            "program": "${workspaceFolder}/bin/Debug/net6.0/YourFuncUIApp.dll",
+            "program": "${workspaceFolder}/src/YourFuncUIApp/bin/Debug/net7.0/YourFuncUIApp.dll",
             "args": [],
             "cwd": "${workspaceFolder}",
-            "console": "internalConsole",
             "stopAtEntry": false,
-            "linux": {
-                "env": {
-                    "LANG": "en_US.UTF-8"
-                }
-            }
+            "console": "internalConsole"
         },
         {
-            "name": "FuncUI Launch(Live Preview)",
+            "name": "FuncUI Launch (Preview)",
             "type": "coreclr",
             "request": "launch",
             "preLaunchTask": "build",
-            "program": "${workspaceFolder}/bin/Debug/net6.0/YourFuncUIApp.dll",
+            "program": "${workspaceFolder}/src/YourFuncUIApp/bin/Debug/net7.0/YourFuncUIApp.dll",
             "args": [],
-            "cwd": "${workspaceFolder}",
-            "console": "internalConsole",
-            "stopAtEntry": false,
             "env": {
                 "FUNCUI_LIVEPREVIEW": "1"
             },
-            "linux": {
-                "env": {
-                    "LANG": "en_US.UTF-8",
-                    "FUNCUI_LIVEPREVIEW": "1"
-                }
-            }
+            "cwd": "${workspaceFolder}",
+            "stopAtEntry": false,
+            "console": "internalConsole"
         }
     ]
 }
@@ -135,83 +304,20 @@ framework: net6.0
     "version": "2.0.0",
     "tasks": [
         {
-            "type": "msbuild",
+            "label": "build",
+            "command": "dotnet",
+            "type": "shell",
+            "args": [
+                "build",
+            ],
             "problemMatcher": [
                 "$msCompile"
             ],
-            "group": "build",
-            "label": "build",
-            "detail": "Build fsproj project using dotnet build"
-        }
+            "group": "build"
+        },
     ]
 }
 ```
-
-ここでデバッガを起動して、動作するのを確認してください。
-
-![First-Debug]
-
-起動したら次へ進みます。
-
-![First-Debug-success]
-
-### FuncUI Analyzerのセットアップ
-
-以下のコマンドを実行します。
-
-```sh
-dotnet paket convert-from-nuget --force
-```
-
-コマンドが完了したら以下のように編集します。
-
-- paket.dependencies
-
-```paket.dependencies
-source https://api.nuget.org/v3/index.json
-
-storage: none
-framework: net6.0
-nuget Avalonia.Desktop >= 0.10.12
-nuget Avalonia.Diagnostics >= 0.10.12
-nuget FSharp.Core content: none
-nuget JaggerJo.Avalonia.FuncUI >= 0.5.0
-nuget JaggerJo.Avalonia.FuncUI.DSL >= 0.5.0
-nuget JaggerJo.Avalonia.FuncUI.Elmish >= 0.5.0
-nuget Avalonia.Angle.Windows.Natives <= 2.1.0.2020091801 // こうしないとWindows環境で起動しなくなる
-nuget SilkyFowl.Avalonia.FuncUI.LiveView
-
-// [ Analyzers Group ]
-group Analyzers
-    framework: net6.0
-    source https://api.nuget.org/v3/index.json
-    storage: storage
-    nuget SilkyFowl.Avalonia.FuncUI.LiveView.Analyzer
-```
-
-- paket.references
-
-```diff
---- a/paket.references
-+++ b/paket.references
-@@ -3,4 +3,5 @@ Avalonia.Diagnostics
- JaggerJo.Avalonia.FuncUI
- JaggerJo.Avalonia.FuncUI.DSL
- JaggerJo.Avalonia.FuncUI.Elmish
--FSharp.Core
-\ No newline at end of file
-+FSharp.Core
-+SilkyFowl.Avalonia.FuncUI.LiveView
-\ No newline at end of file
-```
-
-その後、以下のコマンドでpaketを更新します。
-
-```sh
-dotnet paket update
-```
-
-ここで設定ファイルを追加します。
 
 - .vscode/settings.json
 
@@ -223,6 +329,16 @@ dotnet paket update
     ],
 }
 ```
+
+ここでデバッガを起動して、動作するのを確認してください。
+
+![First-Debug]
+
+起動したら次へ進みます。
+
+![First-Debug-success]
+
+### FuncUI Analyzerの動作確認
 
 - `FSharp.enableAnalyzers`が`true`
 - `FSharp.analyzersPath`にAnalyzerのDllが存在する
@@ -237,103 +353,6 @@ dotnet paket update
 > ![fsx-in-explorer]
 >
 > ![there-is-no-fsx-in-fs-explorer]
-
-### LivePreviewのセットアップ
-
-以下のようにコードを変更します。
-`[<LivePreview>]`属性の付与された関数がLivePreviewの対象となります。
-
-```diff
-diff --git a/Counter.fs b/Counter.fs
-index efce7d1..9aea401 100644
---- a/Counter.fs
-+++ b/Counter.fs
-@@ -5,6 +5,7 @@ module Counter =
-     open Avalonia.FuncUI
-     open Avalonia.FuncUI.DSL
-     open Avalonia.Layout
-+    open Avalonia.FuncUI.LiveView.Core.Types
-
-     let view =
-         Component(fun ctx ->
-@@ -46,3 +47,13 @@ module Counter =
-                 ]
-             ]
-         )
-+
-+    [<LivePreview>]
-+    let preview() =
-+          DockPanel.create [
-+            DockPanel.children [
-+                TextBlock.create [
-+                    TextBlock.text "live preview!!"
-+                ]
-+            ]
-+          ]
-```
-
-`LiveViewWindow`を起動出来るようにします。
-ここでは環境変数`FUNCUI_LIVEPREVIEW`が`1`である場合にLiveViewが有効になるようにしています。
-
-```diff
-diff --git a/Program.fs b/Program.fs
-index 00ef90f..4d22a95 100644
---- a/Program.fs
-+++ b/Program.fs
-@@ -1,10 +1,24 @@
- ﻿namespace YourFuncUIApp
-
-+open System
-+
- open Avalonia
-+open Avalonia.Controls
- open Avalonia.Controls.ApplicationLifetimes
- open Avalonia.Input
- open Avalonia.Themes.Fluent
- open Avalonia.FuncUI.Hosts
-+open Avalonia.FuncUI.LiveView
-+
-+module LiveView =
-+    [<Literal>]
-+    let FUNCUI_LIVEPREVIEW = "FUNCUI_LIVEPREVIEW"
-+
-+    let enabled =
-+        match Environment.GetEnvironmentVariable FUNCUI_LIVEPREVIEW with
-+        | null -> false
-+        | "1" -> true
-+        | _ -> false
-
- type MainWindow() as this =
-     inherit HostWindow()
-@@ -14,10 +28,10 @@ type MainWindow() as this =
-         base.Height <- 400.0
-         this.Content <- Counter.view
-
--        //this.VisualRoot.VisualRoot.Renderer.DrawFps <- true
--        //this.VisualRoot.VisualRoot.Renderer.DrawDirtyRects <- true
-+#if DEBUG
-+        this.AttachDevTools()
-+#endif
-
--
- type App() =
-     inherit Application()
-
-@@ -27,7 +41,11 @@ type App() =
-     override this.OnFrameworkInitializationCompleted() =
-         match this.ApplicationLifetime with
-         | :? IClassicDesktopStyleApplicationLifetime as desktopLifetime ->
--            desktopLifetime.MainWindow <- MainWindow()
-+            desktopLifetime.MainWindow <-
-+                if LiveView.enabled then
-+                    LiveViewWindow() :> Window
-+                else
-+                    MainWindow()
-         | _ -> ()
-
- module Program =
-
-```
 
 ### LivePreviewの起動
 
@@ -370,7 +389,7 @@ $env:FUNCUI_LIVEPREVIEW = 1
 
 ```sh
 dotnet build -c Release
-dotnet ./bin/Release/net6.0/PreviewApp.dll
+dotnet ./src/YourFuncUIApp/bin/Release/net7.0/YourFuncUIApp.dll
 ```
 
 ## 既知の不具合、制限
