@@ -2,13 +2,36 @@
 	"version": "2.0.0",
 	"tasks": [
 		{
-			"type": "msbuild",
+			"type": "shell",
 			"problemMatcher": [
 				"$msCompile"
+			],
+			"command": "dotnet",
+			"args": [
+				"build"
 			],
 			"group": "build",
 			"label": "Build: solution",
 			"detail": "Build the Avalonia.FuncUI.LiveView.sln solution using dotnet build"
+		},
+		{
+			"label": "Start Current Test",
+			"type": "shell",
+			"command": "dotnet test ${fileDirname}",
+			"isBackground": true,
+			"options": {
+				"env": {
+					"VSTEST_HOST_DEBUG": "1"
+				}
+			},
+			"problemMatcher": {
+				"base": "$msCompile",
+				"background": {
+					"activeOnStart": true,
+					"beginsPattern": "Starting test execution, please wait\\.\\.\\.",
+					"endsPattern": "^Process Id: \\d+, Name: testhost$"
+				}
+			}
 		}
 	]
 }

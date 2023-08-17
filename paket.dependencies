@@ -1,22 +1,23 @@
 source https://api.nuget.org/v3/index.json
 
 storage: none
-framework: net6.0
+framework: netstandard2.0, netstandard2.1,  net6.0, net7.0
 
 nuget coverlet.collector
-nuget FSharp.Compiler.Service
-nuget FSharp.Analyzers.SDK
+nuget FSharp.Compiler.Service 43.7.300
+nuget FSharp.Analyzers.SDK 0.11.0
 nuget FSharp.Core content: none
 nuget FsUnit.xUnit
 
-nuget JaggerJo.Avalonia.FuncUI 0.5.3
-nuget JaggerJo.Avalonia.FuncUI.DSL 0.5.3
-nuget JaggerJo.Avalonia.FuncUI.Elmish 0.5.3
-nuget Elmish 3.1.0
+nuget Avalonia.FuncUI 1.0.1
+nuget Avalonia.FuncUI.Elmish 1.0.1
 
+nuget Avalonia != 11.0.3
 nuget Avalonia.Desktop
 nuget Avalonia.Diagnostics
-nuget Avalonia.Angle.Windows.Natives 2.1.0.2020091801
+nuget Avalonia.Themes.Fluent
+nuget Avalonia.Themes.Simple
+nuget Avalonia.Angle.Windows.Natives ~> 2.1.0.0
 nuget MessagePack.FSharpExtensions
 nuget Microsoft.NET.Test.Sdk
 nuget xunit

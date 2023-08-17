@@ -24,6 +24,7 @@ let release = ReleaseNotes.load "RELEASE_NOTES.md"
 
 type ProjSetting =
     { Name: string }
+
     member this.Path = srcPath @@ this.Name
     member this.PackageId = $"{gitUserName}.{this.Name}"
 
@@ -51,6 +52,7 @@ module Paket =
               { baseParams with
                   TemplateFilePath = toTemplateFilePath analyzerProjSetting.Path
                   Id = Some analyzerProjSetting.PackageId
+                  ExcludedDependencies = [ "FSharp.Analyzers.SDK" ]
                   Files =
                       baseParams.Files
                       @ [ Include("bin" </> "Release" </> "net6.0" </> "publish", "lib" </> "net6.0") ] } |}
@@ -70,9 +72,7 @@ module Nuspec =
         let ns localName =
             XName.Get(localName, "http://schemas.microsoft.com/packaging/2011/10/nuspec.xsd")
 
-        let unzipedPath =
-            outputPath
-            </> $"{proj.PackageId}.{release.NugetVersion}"
+        let unzipedPath = outputPath </> $"{proj.PackageId}.{release.NugetVersion}"
 
         let nupkgPath = $"{unzipedPath}.nupkg"
 
@@ -102,7 +102,6 @@ module Nuspec =
         ZipFile.CreateFromDirectory(unzipedPath, nupkgPath)
         Shell.deleteDir unzipedPath
 
-#nowarn "20"
 let initTargets () =
     Target.initEnvironment ()
 
@@ -112,18 +111,27 @@ let initTargets () =
 
     Target.create "CleanDebug" (fun _ -> !! "src/**/Debug" ++ outputPath |> Shell.cleanDirs)
 
-    Target.create "CleanRelease" (fun _ ->
-        !! "src/**/Release" ++ outputPath
-        |> Shell.cleanDirs)
+    Target.create "CleanRelease" (fun _ -> !! "src/**/Release" ++ outputPath |> Shell.cleanDirs)
 
 
     Target.create "BuildDebug" (fun _ ->
         slnPath
-        |> DotNet.build (fun setParams -> { setParams with Configuration = DotNet.Debug }))
+        |> DotNet.build (fun setParams ->
+            { setParams with
+                Configuration = DotNet.Debug }))
 
     Target.create "BuildRelease" (fun _ ->
         slnPath
-        |> DotNet.build (fun setParams -> { setParams with Configuration = DotNet.Release }))
+        |> DotNet.build (fun setParams ->
+            { setParams with
+                Configuration = DotNet.Release }))
+
+    Target.create "TestRelease" (fun _ ->
+        slnPath
+        |> DotNet.test (fun p ->
+            { p with
+                NoBuild = true
+                Configuration = DotNet.BuildConfiguration.Release }))
 
     Target.create "Pack" (fun _ ->
         for setting in Paket.settings do
@@ -147,9 +155,7 @@ let initTargets () =
 
             Nuspec.addLicense setting.projSetting)
 
-    Target.create "ClearLocalAnalyzer" (fun _ ->
-        !!outputPath ++ localanalyzerPath
-        |> Shell.cleanDirs)
+    Target.create "ClearLocalAnalyzer" (fun _ -> !!outputPath ++ localanalyzerPath |> Shell.cleanDirs)
 
     Target.create "SetLocalAnalyzer" (fun _ ->
         let analyzerId = analyzerProjSetting.PackageId
@@ -164,13 +170,17 @@ let initTargets () =
     // --------------------------------------- Targets Dependencies ---------------------------------------
     // ****************************************************************************************************
 
-    "CleanDebug" ==> "BuildDebug" ==> "Default"
+    "ClearLocalAnalyzer" ?=> "BuildRelease" |> ignore
 
-    "CleanRelease"
-    ==> "ClearLocalAnalyzer"
-    ==> "BuildRelease"
-    ==> "Pack"
-    ==> "SetLocalAnalyzer"
+    "CleanDebug" ?=> "BuildDebug" |> ignore
+    "CleanRelease" ?=> "BuildRelease" |> ignore
+
+    "BuildRelease" ?=> "TestRelease" |> ignore
+
+    "Pack" <== [ "TestRelease"; "BuildRelease"; "CleanRelease" ]
+
+
+    "SetLocalAnalyzer" <== [ "Pack"; "ClearLocalAnalyzer" ]
 
 //-----------------------------------------------------------------------------
 // Target Start
@@ -183,6 +193,7 @@ let main argv =
     |> Context.FakeExecutionContext.Create false "build.fsx"
     |> Context.RuntimeContext.Fake
     |> Context.setExecutionContext
+
     initTargets ()
     Target.runOrDefaultWithArguments "Default"
 

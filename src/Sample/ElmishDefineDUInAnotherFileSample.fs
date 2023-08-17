@@ -9,7 +9,7 @@ open Avalonia.FuncUI.Builder
 open Avalonia.FuncUI.LiveView.Core.Types
 open Sample.ElmishModule
 
-let view (state:State) dispatch =
+let view (state: State) dispatch =
 
     StackPanel.create [
         StackPanel.spacing 10.0

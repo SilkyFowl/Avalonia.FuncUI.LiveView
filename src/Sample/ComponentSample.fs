@@ -62,10 +62,7 @@ let draft () =
     Component.create (
         "draft",
         fun ctx ->
-            let num =
-                Store.num
-                |> State.readMap (fun i -> 4.0 ** i)
-                |> ctx.usePassedRead
+            let num = Store.num |> State.readMap (fun i -> 4.0 ** i) |> ctx.usePassedRead
 
             TextBlock.create [
                 TextBlock.foreground Brushes.LightSlateGray
@@ -141,11 +138,7 @@ let dtaft4 () =
                 TextBlock.margin (4, 0)
                 TextBlock.text "Fuga."
             ]
-            TextBox.create [
-                TextBlock.row 2
-                TextBox.column 1
-                TextBox.margin (4, 0)
-            ]
+            TextBox.create [ TextBlock.row 2; TextBox.column 1; TextBox.margin (4, 0) ]
         ]
     ]
 
@@ -166,6 +159,6 @@ let previewObj () =
         | _ -> i * 3)
 
 let cmp =
-    Component (fun ctx ->
+    Component(fun ctx ->
         let num = ctx.usePassed Store.num
         counter num)

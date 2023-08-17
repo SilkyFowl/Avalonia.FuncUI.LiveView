@@ -1,3 +1,7 @@
+### 0.0.1.1
+
+* Support Avalonia.FuncUI v1.0.1.
+
 ### 0.0.1
 
 * This release is to support Avalonia.FuncUI v0.5.x. There are no changes.

@@ -40,5 +40,12 @@
                 }
             }
         },
+        {
+            "name": "Debug Current Tests",
+            "type": "coreclr",
+            "request": "attach",
+            "preLaunchTask": "Start Current Test",
+            "processName": "testhost",
+        }
     ]
 }

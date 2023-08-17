@@ -35,7 +35,7 @@ trim_trailing_whitespace=true
 insert_final_newline=false
 
 [*.fs]
-fsharp_single_argument_web_mode=true
+fsharp_experimental_elmish=true
 ```
 
 This should will allow Fantomas to format your code on save.

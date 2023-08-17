@@ -6,6 +6,5 @@ coverlet.collector
 FSharp.Compiler.Service
 Avalonia.Desktop
 Avalonia.Diagnostics
-JaggerJo.Avalonia.FuncUI
-JaggerJo.Avalonia.FuncUI.DSL
-JaggerJo.Avalonia.FuncUI.Elmish
+Avalonia.FuncUI
+Avalonia.FuncUI.Elmish
