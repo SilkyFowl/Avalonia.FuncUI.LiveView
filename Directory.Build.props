@@ -1,0 +1,36 @@
+<Project>
+    <!-- Build Settings -->
+    <PropertyGroup>
+        <BuildInParallel>true</BuildInParallel>
+        <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
+    </PropertyGroup>
+
+    <!-- Package Properties  -->
+    <PropertyGroup>
+        <PackageId>SilkyFowl.$(MSBuildProjectName)</PackageId>
+        <Title>SilkyFowl.$(MSBuildProjectName)</Title>
+        <Product>SilkyFowl.$(MSBuildProjectName)</Product>
+        <Description>Live fs/fsx previewer for Avalonia.FuncUI.</Description>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
+        <Copyright>Copyright (c) 2022 SilkyFowl</Copyright>
+        <PackageLicenseFile>LICENSE.md</PackageLicenseFile>
+        <PackageProjectUrl>https://github.com/SilkyFowl/Avalonia.FuncUI.LiveView</PackageProjectUrl>
+        <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
+        <RepositoryUrl>https://github.com/SilkyFowl/Avalonia.FuncUI.LiveView.git</RepositoryUrl>
+        <RepositoryType>git</RepositoryType>
+        
+        <!-- Read version from RELEASE_NOTES.md.  -->
+        <ReleaseNotesContent>$([System.IO.File]::ReadAllText("$(MSBuildThisFileDirectory)RELEASE_NOTES.md"))</ReleaseNotesContent>
+        <VersionPrefixString>$([System.Text.RegularExpressions.Regex]::Match( $(ReleaseNotesContent), "([\d+\.]+\d+)-?(\w+\d+)?").Groups[1].Value)</VersionPrefixString>
+        <VersionSuffixString>$([System.Text.RegularExpressions.Regex]::Match( $(ReleaseNotesContent), "([\d+\.]+\d+)-?(\w+\d+)?").Groups[2].Value)</VersionSuffixString>
+        <VersionPrefix Condition="$(VersionPrefixString) != ''" >$(VersionPrefixString)</VersionPrefix>
+        <VersionSuffix Condition="$(VersionSuffixString) != ''" >$(VersionSuffixString)</VersionSuffix>
+    </PropertyGroup>
+
+    <!-- Package assets  -->
+    <ItemGroup>
+       <None Include="$(MSBuildThisFileDirectory)LICENSE.md" Pack="true" PackagePath=""/>
+       <None Include="$(MSBuildThisFileDirectory)README.md" Pack="true" PackagePath=""/>
+       <None Include="$(MSBuildThisFileDirectory)github\img\README\*.png" Pack="true" PackagePath="github\img\README"/>
+    </ItemGroup>
+</Project>
