@@ -14,7 +14,7 @@ open System.Text.RegularExpressions
 let srcPath = "./src"
 let outputPath = "./dist"
 let slnPath = "./Avalonia.FuncUI.LiveView.sln"
-let localanalyzerPath = "./localanalyzers"
+let analyzersPath = "./analyzers"
 
 // properties
 let projectDescription = [ "Live fs/fsx previewer for Avalonia.FuncUI." ]
@@ -197,17 +197,17 @@ let initTargets () =
     Target.create "ClearLocalAnalyzer" (fun _ ->
         let analyzaer =
             if Environment.isWindows then
-                "funcui-analyser.exe"
+                "funcui-analyzer.exe"
             else
-                "funcui-analyser"
+                "funcui-analyzer"
 
-        let analyserPath = localanalyzerPath </> analyzaer
+        let funUiAnalyzer = analyzersPath </> analyzaer
 
-        if Shell.testFile analyserPath then
-            Some localanalyzerPath |> DotNet.uninstallTool analyzerProjSetting.PackageId)
+        if Shell.testFile funUiAnalyzer then
+            Some analyzersPath |> DotNet.uninstallTool analyzerProjSetting.PackageId)
 
     Target.create "SetLocalAnalyzer" (fun _ ->
-        Some localanalyzerPath
+        Some analyzersPath
         |> DotNet.installTool analyzerProjSetting.PackageId release.NugetVersion)
 
     Target.create "RebuildDebug" ignore

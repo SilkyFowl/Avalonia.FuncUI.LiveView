@@ -6,7 +6,7 @@
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
 
     <PackAsTool>true</PackAsTool>
-    <ToolCommandName>funcui-analyser</ToolCommandName>
+    <ToolCommandName>funcui-analyzer</ToolCommandName>
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Analyzer.fs" />

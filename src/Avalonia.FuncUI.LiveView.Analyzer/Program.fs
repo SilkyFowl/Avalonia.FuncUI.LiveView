@@ -29,7 +29,7 @@ type Arguments =
 
 let parser =
     ArgumentParser.Create<Arguments>(
-        programName = "funcui-analyser",
+        programName = "funcui-analyzer",
         errorHandler =
             ProcessExiter(
                 colorizer =
@@ -45,10 +45,10 @@ let printProductVersion () =
     info.ProductVersion
 
 module AnalyzerPath =
-    let analyserDir =
+    let analyzerDir =
         Directory.GetParent((typeof<Arguments>).Assembly.Location).FullName
 
-    let print () = analyserDir.Replace("\\", "/")
+    let print () = analyzerDir.Replace("\\", "/")
 
 
     let printForVscode () =
@@ -59,14 +59,14 @@ module AnalyzerPath =
                 Environment.GetEnvironmentVariable("HOME")
 
         let result =
-            if analyserDir.StartsWith(homeDir) then
-                Path.GetRelativePath(homeDir, analyserDir).Replace("\\", "/")
+            if analyzerDir.StartsWith(homeDir) then
+                Path.GetRelativePath(homeDir, analyzerDir).Replace("\\", "/")
             else
-                analyserDir.Replace("\\", "/")
+                analyzerDir.Replace("\\", "/")
         $"${{userHome}}/{result}"
 
     let printRelative relativeTo =
-        Path.GetRelativePath(relativeTo, analyserDir).Replace("\\", "/")
+        Path.GetRelativePath(relativeTo, analyzerDir).Replace("\\", "/")
 
 
 [<EntryPoint>]

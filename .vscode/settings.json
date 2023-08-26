@@ -5,7 +5,6 @@
     "FSharp.enableAnalyzers": true,
     "FSharp.analyzersPath": [
         "packages/Analyzers",
-        "analyzers",
-        "localanalyzers"
+        "analyzers"
     ]
 }
