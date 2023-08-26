@@ -3,6 +3,7 @@
     <PropertyGroup>
         <BuildInParallel>true</BuildInParallel>
         <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
+        <PackageOutputPath>$(MSBuildThisFileDirectory)dist</PackageOutputPath>
     </PropertyGroup>
 
     <!-- Package Properties  -->

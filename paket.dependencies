@@ -3,6 +3,7 @@ source https://api.nuget.org/v3/index.json
 storage: none
 framework: netstandard2.0, netstandard2.1,  net6.0, net7.0
 
+nuget Argu
 nuget coverlet.collector
 nuget FSharp.Compiler.Service 43.7.300
 nuget FSharp.Analyzers.SDK 0.11.0

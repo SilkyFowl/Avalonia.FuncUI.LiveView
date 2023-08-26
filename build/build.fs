@@ -4,6 +4,8 @@ open Fake.IO
 open Fake.IO.FileSystemOperators
 open Fake.IO.Globbing.Operators
 open Fake.Core.TargetOperators
+open System.Runtime.InteropServices
+open System.Text.RegularExpressions
 
 // ****************************************************************************************************
 // ------------------------------------------- Definitions -------------------------------------------
@@ -31,76 +33,87 @@ type ProjSetting =
 let analyzerProjSetting = { Name = "Avalonia.FuncUI.LiveView.Analyzer" }
 let liveViewProjSetting = { Name = "Avalonia.FuncUI.LiveView" }
 
-module Paket =
-    open PaketTemplate
 
-    let private baseParams =
-        { DefaultPaketTemplateParams with
-            TemplateType = Project
-            Version = Some release.NugetVersion
-            ReleaseNotes = release.Notes
-            Description = projectDescription
-            Authors = authors
-            ProjectUrl = Some projectUrl
-            Files = [ Include(".." </> ".." </> "LICENSE.md", "") ] }
+module Proc =
+    let runSimple path args =
+        CreateProcess.fromRawCommand path args
+        |> CreateProcess.redirectOutput
+        |> CreateProcess.ensureExitCode
+        |> Proc.run
+        |> fun result -> result.Result.Output
 
-    let settings =
-        let toTemplateFilePath projectPath = Some(projectPath @@ "paket.template")
+module String =
+    let splitByLinebreak (str: string) = str.Split System.Environment.NewLine
 
-        [ {| projSetting = analyzerProjSetting
-             templateParams =
-              { baseParams with
-                  TemplateFilePath = toTemplateFilePath analyzerProjSetting.Path
-                  Id = Some analyzerProjSetting.PackageId
-                  ExcludedDependencies = [ "FSharp.Analyzers.SDK" ]
-                  Files =
-                      baseParams.Files
-                      @ [ Include("bin" </> "Release" </> "net6.0" </> "publish", "lib" </> "net6.0") ] } |}
-          {| projSetting = liveViewProjSetting
-             templateParams =
-              { baseParams with
-                  TemplateFilePath = toTemplateFilePath liveViewProjSetting.Path
-                  Id = Some liveViewProjSetting.PackageId } |} ]
+module DotNet =
+    let isIntalledLocalTool toolPackageId version toolPath =
+        let regex = String.getRegEx $"^{String.toLower toolPackageId}\s+%s{version}"
 
-module Nuspec =
-    open System.Xml.Linq
-    open System.IO.Compression
+        let args =
+            let baseArgs = [ "tool"; "list" ]
 
-    let addLicense (proj: ProjSetting) =
-        let xn = XName.Get
+            match toolPath with
+            | Some toolPath -> baseArgs @ [ "--tool-path"; toolPath ]
+            | None -> baseArgs
 
-        let ns localName =
-            XName.Get(localName, "http://schemas.microsoft.com/packaging/2011/10/nuspec.xsd")
+        Proc.runSimple "dotnet" args
+        |> fun output -> output.Split System.Environment.NewLine
+        |> Array.exists regex.IsMatch
 
-        let unzipedPath = outputPath </> $"{proj.PackageId}.{release.NugetVersion}"
+    let installTool toolId version toolPath =
+        let msg, args =
+            let baseMsg = $"dotnet tool install {toolId} --version {version}"
+            let baseArgs = [ "tool"; "install"; toolId; "--version"; version ]
 
-        let nupkgPath = $"{unzipedPath}.nupkg"
+            match toolPath with
+            | Some toolPath -> $"{baseMsg} --tool-path {toolPath}", baseArgs @ [ "--tool-path"; toolPath ]
+            | None -> baseMsg, baseArgs
 
-        let nuspecPath = unzipedPath </> $"{proj.PackageId}.nuspec"
+        Trace.logfn "installTool: %s" msg
 
-        Zip.unzip unzipedPath nupkgPath
+        Proc.runSimple "dotnet" args |> Trace.logfn "installTool result: %s"
 
-        let nupkgDoc = XDocument.Load nuspecPath
+    let uninstallTool toolId toolPath =
+        let msg, args =
+            let baseMsg = $"dotnet tool uninstall {toolId}"
+            let baseArgs = [ "tool"; "uninstall"; toolId ]
 
-        nupkgDoc.Descendants(ns "authors")
-        |> Seq.iter (fun metadata ->
-            metadata.AddAfterSelf(
-                XElement(ns "requireLicenseAcceptance", "false"),
-                XElement(ns "license", XAttribute(xn "type", "file"), "LICENSE.md"),
-                XElement(ns "licenseUrl", "https://aka.ms/deprecateLicenseUrl")
-            ))
+            match toolPath with
+            | Some toolPath -> $"{baseMsg} --tool-path {toolPath}", baseArgs @ [ "--tool-path"; toolPath ]
+            | None -> baseMsg, baseArgs
 
-        if proj = analyzerProjSetting then
-            nupkgDoc.Descendants(ns "dependency")
-            |> Seq.filter (fun dependency -> dependency.Attribute(xn "id").Value <> "FSharp.Analyzers.SDK")
-            |> Seq.toList
-            |> List.iter (fun dependency -> dependency.Remove())
+        Trace.logfn "uninstallTool: %s" msg
 
-        nupkgDoc.Save nuspecPath
-        Shell.rm nupkgPath
+        Proc.runSimple "dotnet" args |> Trace.logfn "uninstallTool result: %s"
 
-        ZipFile.CreateFromDirectory(unzipedPath, nupkgPath)
-        Shell.deleteDir unzipedPath
+module Nuget =
+
+    /// Get nuget's global-packages path
+    let getGlobalPackagesPath () =
+        let header = "global-packages: "
+        let regex = Regex $"(?<=({header}))([^\r\n]*)"
+
+        let result =
+            Proc.runSimple "dotnet" [ "nuget"; "locals"; "global-packages"; "--list" ]
+
+        regex.Match(result).Value
+
+    /// Get library's directory path from nuget's global-packages cache
+    let tryGetGlobalPackagesCacheDir version packageId =
+        let globalPackagesPath = getGlobalPackagesPath ()
+        let cachePath = globalPackagesPath </> packageId </> version
+
+        Trace.logfn "chchePath: %s" cachePath
+
+        if Shell.testDir cachePath then Some cachePath else None
+
+    /// If library's directory path exists in nuget's global-packages cache, delete it
+    let tryClearGlobalPackagesCacheDir version packageId =
+        let cachePath = tryGetGlobalPackagesCacheDir version packageId
+
+        match cachePath with
+        | Some path -> Shell.deleteDir path
+        | None -> ()
 
 let initTargets () =
     Target.initEnvironment ()
@@ -109,9 +122,25 @@ let initTargets () =
     // --------------------------------------------- Targets ---------------------------------------------
     // ****************************************************************************************************
 
-    Target.create "CleanDebug" (fun _ -> !! "src/**/Debug" ++ outputPath |> Shell.cleanDirs)
+    Target.create "CleanDebug" (fun _ ->
+        slnPath
+        |> DotNet.msbuild (fun p ->
+            { p with
+                MSBuildParams =
+                    { p.MSBuildParams with
+                        Targets = [ "Clean" ]
+                        Properties = [ "Configuration", "Debug" ] } }))
 
-    Target.create "CleanRelease" (fun _ -> !! "src/**/Release" ++ outputPath |> Shell.cleanDirs)
+    Target.create "CleanRelease" (fun _ ->
+        slnPath
+        |> DotNet.msbuild (fun p ->
+            { p with
+                MSBuildParams =
+                    { p.MSBuildParams with
+                        Targets = [ "Clean" ]
+                        Properties = [ "Configuration", "Release" ] } }))
+
+    Target.create "CleanOutput" (fun _ -> !!outputPath |> Shell.cleanDirs)
 
 
     Target.create "BuildDebug" (fun _ ->
@@ -133,54 +162,107 @@ let initTargets () =
                 NoBuild = true
                 Configuration = DotNet.BuildConfiguration.Release }))
 
-    Target.create "Pack" (fun _ ->
-        for setting in Paket.settings do
+    Target.create "UninstallAnalyerAsLocalTool" (fun _ ->
+        let packageId = analyzerProjSetting.PackageId
+        let version = release.NugetVersion
 
-            PaketTemplate.create (fun _ -> setting.templateParams)
+        if DotNet.isIntalledLocalTool packageId version None then
+            DotNet.uninstallTool packageId None)
 
-            setting.projSetting.Path
-            |> DotNet.publish (fun opts ->
-                { opts with
-                    Configuration = DotNet.Release
-                    SelfContained = Some false
-                    Framework = Some "net6.0" })
+    Target.create "ClearAnalyerNugetGlobalPackagesCache" (fun _ ->
 
-            Paket.pack (fun p ->
-                { p with
-                    ToolType = ToolType.CreateLocalTool()
-                    TemplateFile = Option.toObj setting.templateParams.TemplateFilePath
-                    OutputPath = outputPath
-                    MinimumFromLockFile = true
-                    IncludeReferencedProjects = true })
+        match Nuget.tryGetGlobalPackagesCacheDir release.NugetVersion analyzerProjSetting.PackageId with
+        | Some path ->
+            Trace.logfn "Nuget global-packages cache found: %s" path
+            Nuget.tryClearGlobalPackagesCacheDir release.NugetVersion analyzerProjSetting.PackageId
+            Trace.logfn "Nuget global-packages cache cleared: %s" path
+        | None ->
+            Trace.logfn
+                "Nuget global-packages cache not found: %s %s"
+                analyzerProjSetting.PackageId
+                release.NugetVersion)
 
-            Nuspec.addLicense setting.projSetting)
+    Target.create "InstallAnalyerAsLocalTool" (fun _ ->
+        DotNet.installTool analyzerProjSetting.PackageId release.NugetVersion None)
 
-    Target.create "ClearLocalAnalyzer" (fun _ -> !!outputPath ++ localanalyzerPath |> Shell.cleanDirs)
+    Target.create "BuildReleaseWithPack" (fun _ ->
+        slnPath
+        |> DotNet.build (fun p ->
+            { p with
+                Configuration = DotNet.Release
+                MSBuildParams =
+                    { p.MSBuildParams with
+                        Properties = [ "GeneratePackageOnBuild", "true" ] } }))
+
+    Target.create "ClearLocalAnalyzer" (fun _ ->
+        let analyzaer =
+            if Environment.isWindows then
+                "funcui-analyser.exe"
+            else
+                "funcui-analyser"
+
+        let analyserPath = localanalyzerPath </> analyzaer
+
+        if Shell.testFile analyserPath then
+            Some localanalyzerPath |> DotNet.uninstallTool analyzerProjSetting.PackageId)
 
     Target.create "SetLocalAnalyzer" (fun _ ->
-        let analyzerId = analyzerProjSetting.PackageId
+        Some localanalyzerPath
+        |> DotNet.installTool analyzerProjSetting.PackageId release.NugetVersion)
 
-        outputPath
-        |> Directory.findFirstMatchingFile $"{analyzerId}.*"
-        |> Zip.unzip (localanalyzerPath </> analyzerId))
-
+    Target.create "RebuildDebug" ignore
+    Target.create "RebuildRelease" ignore
+    Target.create "RebuildAll" ignore
+    Target.create "RebuildReleaseWithPack" ignore
+    Target.create "ReInstallAnalyerAsLocalTool" ignore
+    Target.create "Pack" ignore
+    Target.create "PackAndSetLocalAnalyzer" ignore
     Target.create "Default" ignore
 
     // ****************************************************************************************************
     // --------------------------------------- Targets Dependencies ---------------------------------------
     // ****************************************************************************************************
 
-    "ClearLocalAnalyzer" ?=> "BuildRelease" |> ignore
+    "ClearLocalAnalyzer" ?=> "SetLocalAnalyzer" |> ignore
+
+    "UninstallAnalyerAsLocalTool"
+    ?=> "ClearAnalyerNugetGlobalPackagesCache"
+    ?=> "InstallAnalyerAsLocalTool"
+    |> ignore
 
     "CleanDebug" ?=> "BuildDebug" |> ignore
     "CleanRelease" ?=> "BuildRelease" |> ignore
 
     "BuildRelease" ?=> "TestRelease" |> ignore
 
-    "Pack" <== [ "TestRelease"; "BuildRelease"; "CleanRelease" ]
+    "CleanRelease" ?=> "BuildReleaseWithPack" |> ignore
+    "CleanOutput" ?=> "BuildReleaseWithPack" |> ignore
 
+    "BuildRelease" ?=> "TestRelease" |> ignore
+    "BuildReleaseWithPack" ?=> "TestRelease" |> ignore
 
-    "SetLocalAnalyzer" <== [ "Pack"; "ClearLocalAnalyzer" ]
+    "Pack" ?=> "SetLocalAnalyzer" |> ignore
+    "Pack" ?=> "InstallAnalyerAsLocalTool" |> ignore
+
+    "RebuildDebug" <== [ "CleanDebug"; "BuildDebug" ]
+
+    "RebuildRelease" <== [ "CleanRelease"; "BuildRelease" ]
+
+    "RebuildAll" <== [ "RebuildDebug"; "RebuildRelease" ]
+
+    "RebuildReleaseWithPack"
+    <== [ "BuildReleaseWithPack"; "CleanRelease"; "CleanOutput" ]
+
+    "Pack" <== [ "TestRelease"; "RebuildReleaseWithPack" ]
+
+    "SetLocalAnalyzer" <== [ "ClearLocalAnalyzer" ]
+
+    "ReInstallAnalyerAsLocalTool"
+    <== [ "InstallAnalyerAsLocalTool"
+          "UninstallAnalyerAsLocalTool"
+          "ClearAnalyerNugetGlobalPackagesCache" ]
+
+    "PackAndSetLocalAnalyzer" <== [ "Pack"; "SetLocalAnalyzer" ]
 
 //-----------------------------------------------------------------------------
 // Target Start
