@@ -11,10 +11,10 @@ nuget FSharp.Analyzers.SDK 0.11.0
 nuget FSharp.Core content: none
 nuget FsUnit.xUnit
 
-nuget Avalonia.FuncUI 1.0.1
-nuget Avalonia.FuncUI.Elmish 1.0.1
+nuget Avalonia.FuncUI ~> 1.0.1
+nuget Avalonia.FuncUI.Elmish ~> 1.0.1
 
-nuget Avalonia != 11.0.3
+nuget Avalonia ~> 11.0.3
 nuget Avalonia.Desktop
 nuget Avalonia.Diagnostics
 nuget Avalonia.Themes.Fluent

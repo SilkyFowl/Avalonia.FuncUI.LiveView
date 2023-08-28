@@ -1,3 +1,11 @@
+### 0.0.3-preview01
+
+* breaking: Analyzer changed from library to dotnet-tool.
+* paket
+  * change resolver strategy max to min.
+    * see:http://fsprojects.github.io/Paket/nuget-dependencies.html#The-modifier-1
+  * fix version range.
+
 ### 0.0.1.1
 
 * Support Avalonia.FuncUI v1.0.1.
