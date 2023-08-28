@@ -7,14 +7,14 @@
 [Ionide.Ionide-fsharp]: https://marketplace.visualstudio.com/items?itemName=Ionide.Ionide-fsharp
 [FsAutoComplete]: https://github.com/fsharp/FsAutoComplete
 [Enjoy-It!!]: https://user-images.githubusercontent.com/16532218/174063805-0d8db77d-f408-4639-aced-d38a38145685.mp4
-[funcUi-analyzer]: github/img/README.ja/funcUi-analyzer.png
-[cant-analyze-du]: github/img/README.ja/cant-analyze-du.png
-[install-Ionide.Ionide-fsharp]: github/img/README.ja/install-Ionide.Ionide-fsharp.png
-[First-Debug]: github/img/README.ja/First-Debug.png
-[First-Debug-success]: github/img/README.ja/First-Debug-success.png
-[DU-with-any-no-value-case]: github/img/README.ja/DU-with-any-no-value-case.png
-[fsx-in-explorer]: github/img/README.ja/fsx-in-explorer.png
-[there-is-no-fsx-in-fs-explorer]: github/img/README.ja/there-is-no-fsx-in-fs-explorer.png
+[funcUi-analyzer]: github/img/README/funcUi-analyzer.png
+[cant-analyze-du]: github/img/README/cant-analyze-du.png
+[install-Ionide.Ionide-fsharp]: github/img/README/install-Ionide.Ionide-fsharp.png
+[First-Debug]: github/img/README/First-Debug.png
+[First-Debug-success]: github/img/README/First-Debug-success.png
+[DU-with-any-no-value-case]: github/img/README/DU-with-any-no-value-case.png
+[fsx-in-explorer]: github/img/README/fsx-in-explorer.png
+[there-is-no-fsx-in-fs-explorer]: github/img/README/there-is-no-fsx-in-fs-explorer.png
 
 # Avalonia.FuncUI.LiveView
 

@@ -1,23 +1,29 @@
-﻿module Avalonia.FuncUI.LiveView.Analyzer
+﻿module Avalonia.FuncUI.LiveView.Analyzer.Library
 
 open System
+open System.Reflection
 open Avalonia.FuncUI.LiveView
 open Avalonia.FuncUI.LiveView.MessagePack
 open Avalonia.FuncUI.LiveView.Core.Types
 open FSharp.Analyzers.SDK
 
-let server = Server.init Settings.iPAddress Settings.port
 
-// `fsautocomplete`が終了するときにサーバも終了する。
-AppDomain.CurrentDomain.ProcessExit.Add(fun _ -> server.Dispose())
+let service =
+    lazy
+        let server = Server.init Settings.iPAddress Settings.port
+        // When `fsautocomplete` terminates, the server also terminates.
+        AppDomain.CurrentDomain.ProcessExit.Add(fun _ -> server.Dispose())
+        server
+
 
 let private nl = Environment.NewLine
 
-/// AnalyzerでIDEによるF#コードの編集にフックできる。
-/// これを利用してLiveViewを実現する。
+/// Analyzer can hook into IDE editing of F# code.
+/// This is used to realize LiveView.
 [<Analyzer "FuncUiAnalyzer">]
 let funcUiAnalyzer: Analyzer =
     fun ctx ->
+        let service = service.Value
         let livePreviewFuncs = ResizeArray()
         let errorMessages = ResizeArray()
         let notSuppurtPatternMessages = ResizeArray()
@@ -55,12 +61,12 @@ let funcUiAnalyzer: Analyzer =
                               Fixes = [] } }
         )
 
-        if livePreviewFuncs.Count > 0 then
-            // FuncUIAnalyzer自体のエラーはPreview対象がある時のみカウントする。
+        if Seq.isEmpty errorMessages then
+            // Errors in FuncUIAnalyzer itself are counted only when there is a Preview target.
             errorMessages.AddRange notSuppurtPatternMessages
 
-            // エラーがなければPreviewを実行
-            if Seq.isEmpty errorMessages then
-                { Content = String.concat Environment.NewLine ctx.Content } |> server.Post
+            // Post if no errors.
+            if not (Seq.isEmpty livePreviewFuncs) then
+                service.Post { Content = String.concat nl ctx.Content }
 
         Seq.distinct errorMessages |> Seq.toList
