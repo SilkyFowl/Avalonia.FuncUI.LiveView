@@ -1,9 +1,10 @@
 {
     "editor.inlayHints.enabled": "offUnlessPressed",
+    // see: https://github.com/fsharp/FsAutoComplete/commit/81c1341b44934dcfa56361377f31a285a90af3df
+    "omnisharp.autoStart": false,
     "FSharp.enableAnalyzers": true,
     "FSharp.analyzersPath": [
         "packages/Analyzers",
-        "analyzers",
-        "localanalyzers"
+        "analyzers"
     ]
 }

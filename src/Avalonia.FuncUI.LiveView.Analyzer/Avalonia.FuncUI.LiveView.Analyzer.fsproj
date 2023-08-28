@@ -1,12 +1,16 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
+    <OutputType>Exe</OutputType>
     <TargetFramework>net6.0</TargetFramework>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
-    <DisableImplicitFSharpCoreReference>true</DisableImplicitFSharpCoreReference>
+
+    <PackAsTool>true</PackAsTool>
+    <ToolCommandName>funcui-analyzer</ToolCommandName>
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Analyzer.fs" />
+    <Compile Include="Program.fs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Avalonia.FuncUI.LiveView.Core\Avalonia.FuncUI.LiveView.Core.fsproj" />

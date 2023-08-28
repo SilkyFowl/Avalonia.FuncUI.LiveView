@@ -2,6 +2,7 @@
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>net6.0</TargetFramework>
+    <IsPackable>false</IsPackable>
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Types.fs" />
@@ -12,6 +13,8 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Avalonia.FuncUI.LiveView\Avalonia.FuncUI.LiveView.fsproj" />
+    <ProjectReference Include="..\Avalonia.FuncUI.LiveView.Core\Avalonia.FuncUI.LiveView.Core.fsproj" />
+    <ProjectReference Include="..\Avalonia.FuncUI.LiveView.MessagePack\Avalonia.FuncUI.LiveView.MessagePack.fsproj" />
   </ItemGroup>
   <Import Project="..\..\.paket\Paket.Restore.targets" />
 </Project>

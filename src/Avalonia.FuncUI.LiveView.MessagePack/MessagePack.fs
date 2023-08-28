@@ -40,7 +40,7 @@ module internal MsgPack =
 
 module Server =
 
-    /// クライアントへのデータ送信の失敗による例外なのかを判定するアクティブパターン。
+    /// Determine if exception is due to failure to send data to the client.
     let inline (|SerializedStreamError|_|) (ex: exn) =
 
         let msg = "Error occurred while writing the serialized data to the stream."
@@ -53,13 +53,13 @@ module Server =
                 | _ -> None)
         | _ -> None
 
-    /// `AcceptTcpClientAsync`の結果を`Choice1Of2`でラップして`cont`を評価する。
+    /// Wrap result of `AcceptTcpClientAsync` with `Choice1Of2` and evaluate `cont`.
     let inline acceptTcpClientAsync (listener: TcpListener) cont =
         async { return! listener.AcceptTcpClientAsync() |> Choice1Of2 |> cont }
 
 
-    /// `serializeAsync`を実行する。
-    /// `SerializedStreamError`に該当する例外した場合、復旧処理として`acceptTcpClientAsync`を実行する。
+    /// Execute `serializeAsync`.
+    /// If Exception `SerializedStreamError` occurs, execute `acceptTcpClientAsync` as a recovery process.
     let inline trySerializeAsync cont listener client token { Content = content } =
         async {
             try
@@ -70,12 +70,29 @@ module Server =
                 return! acceptTcpClientAsync listener cont
         }
 
-    /// `TcpListener`を起動して、クライアントの接続を待ち受ける。
+    /// Initialize `TcpListener`.
+    /// continue until `OperationCanceledException` occurs.
+    let rec initListenerAsync ipAddress port =
+        async {
+            try
+                let! ct = Async.CancellationToken
+                ct.ThrowIfCancellationRequested()
+                let listener = TcpListener(ipAddress, port)
+
+                listener.Start()
+
+                return listener
+            with
+            | :? OperationCanceledException as e -> return raise e
+            | ex ->
+                do! Async.Sleep 1_000
+                return! initListenerAsync ipAddress port
+        }
+
+    /// Invoke `TcpListener` to listen for client connections.
     let inline body ipAddress port token (inbox: MailboxProcessor<Msg>) =
         async {
-            let listener = TcpListener(ipAddress, port)
-
-            listener.Start()
+            let! listener = initListenerAsync ipAddress port
 
             use _ =
                 { new IDisposable with
@@ -106,8 +123,8 @@ module Client =
         |> Array.exists (fun ep -> ep.Address = ipAddredd && ep.Port = port)
 
 
-    /// `FuncUiAnalyzer`への接続が成功するまで`ConnectAsync`を行う。
-    /// `SocketException`以外のエラーになった場合は中断。
+    /// Continue `ConnectAsync` until success of connection to `FuncUiAnalyzer`.
+    /// If an error other than `SocketException` occurs, abort.
     let tryConnectAsync (log: Logger) retryMilliseconds address port (client: TcpClient) =
         task {
             let mutable hasConnedted = false
@@ -122,7 +139,7 @@ module Client =
         }
 
 
-    /// `FuncUiAnalyzer`からデータを購読するためのクライアント。
+    /// Client to subscribe to data from `FuncUiAnalyzer`.
     let init (log: Logger) address port onReceive =
         let cts = new CancellationTokenSource()
 

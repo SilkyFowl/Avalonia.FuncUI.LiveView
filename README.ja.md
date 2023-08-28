@@ -7,14 +7,14 @@
 [Ionide.Ionide-fsharp]: https://marketplace.visualstudio.com/items?itemName=Ionide.Ionide-fsharp
 [FsAutoComplete]: https://github.com/fsharp/FsAutoComplete
 [Enjoy-It!!]: https://user-images.githubusercontent.com/16532218/174063805-0d8db77d-f408-4639-aced-d38a38145685.mp4
-[funcUi-analyzer]: github/img/README.ja/funcUi-analyzer.png
-[cant-analyze-du]: github/img/README.ja/cant-analyze-du.png
-[install-Ionide.Ionide-fsharp]: github/img/README.ja/install-Ionide.Ionide-fsharp.png
-[First-Debug]: github/img/README.ja/First-Debug.png
-[First-Debug-success]: github/img/README.ja/First-Debug-success.png
-[DU-with-any-no-value-case]: github/img/README.ja/DU-with-any-no-value-case.png
-[fsx-in-explorer]: github/img/README.ja/fsx-in-explorer.png
-[there-is-no-fsx-in-fs-explorer]: github/img/README.ja/there-is-no-fsx-in-fs-explorer.png
+[funcUi-analyzer]: github/img/README/funcUi-analyzer.png
+[cant-analyze-du]: github/img/README/cant-analyze-du.png
+[install-Ionide.Ionide-fsharp]: github/img/README/install-Ionide.Ionide-fsharp.png
+[First-Debug]: github/img/README/First-Debug.png
+[First-Debug-success]: github/img/README/First-Debug-success.png
+[DU-with-any-no-value-case]: github/img/README/DU-with-any-no-value-case.png
+[fsx-in-explorer]: github/img/README/fsx-in-explorer.png
+[there-is-no-fsx-in-fs-explorer]: github/img/README/there-is-no-fsx-in-fs-explorer.png
 
 # Avalonia.FuncUI.LiveView
 
@@ -55,15 +55,14 @@ AnalyzerとLivePreviewの通信で`localhost:8080`を使用します。
 ```sh
 mkdir YourFuncUIApp
 cd YourFuncUIApp
-dotnet new tool-manifest
-dotnet new gitignore
 code .
 ```
 
-プロジェクトを作成します。
-
+プロジェクトを作成していきます。
 
 ```sh
+dotnet new tool-manifest
+dotnet new gitignore
 dotnet new sln
 dotnet new console -o ./src/YourFuncUIApp -lang f#
 dotnet sln add ./src/YourFuncUIApp/YourFuncUIApp.fsproj
@@ -108,12 +107,7 @@ nuget FSharp.Core content: none
 nuget Avalonia.FuncUI 1.0.1
 nuget Avalonia.Desktop 11.0.3
 nuget Avalonia.Themes.Fluent 11.0.3
-nuget SilkyFowl.Avalonia.FuncUI.LiveView 0.0.1.1
-
-group Analyzers
-    source https://api.nuget.org/v3/index.json
-    storage: storage
-    nuget SilkyFowl.Avalonia.FuncUI.LiveView.Analyzer 0.0.1.1
+nuget SilkyFowl.Avalonia.FuncUI.LiveView 0.0.3
 ```
 
 
@@ -146,20 +140,16 @@ dotnet paket install
     <PackageReference Include="Avalonia.Desktop" Version="11.0.3" />
     <PackageReference Include="Avalonia.Themes.Fluent" Version="11.0.3" />
     <PackageReference Include="Avalonia.FuncUI" Version="1.0.1" />
-    <PackageReference Include="SilkyFowl.Avalonia.FuncUI.LiveView" Version="0.0.1.1" />
-    <!-- MessagePackのバージョン指定しないと古いライブラリが参照されてしまう。 -->
-    <PackageReference Include="MessagePack" Version="2.5.124" />
+    <PackageReference Include="SilkyFowl.Avalonia.FuncUI.LiveView" Version="0.0.3" />
   </ItemGroup>
 </Project>
 ```
 
-`nuget`でアナライザをインストールします。
-
 ```sh
-nuget install SilkyFowl.Avalonia.FuncUI.LiveView.Analyzer -Version 0.0.1.1 -OutputDirectory packages/analyzers
+dotnet restore
 ```
 
-### 動作確認
+#### コードを書く
 
 `Program.fs`を以下のように書き換えます。
 
@@ -324,14 +314,11 @@ dotnet run --project ./src/YourFuncUIApp/YourFuncUIApp.fsproj
 
 ```json
 {
-    "FSharp.enableAnalyzers": true,
-    "FSharp.analyzersPath": [
-        "packages/analyzers"
-    ],
+    "FSharp.enableAnalyzers": true
 }
 ```
 
-ここでデバッガを起動して、動作するのを確認してください。
+ここでデバッガを起動して、設定によって動作するのを確認してください。
 
 ![First-Debug]
 
@@ -339,7 +326,20 @@ dotnet run --project ./src/YourFuncUIApp/YourFuncUIApp.fsproj
 
 ![First-Debug-success]
 
-### FuncUI Analyzerの動作確認
+
+### FuncUI Analyzerのセットアップ
+
+アナライザをインストールします。
+
+> **Warning**
+> v0.0.3からSilkyFowl.Avalonia.FuncUI.LiveView.Analyzerのインストール方法が変わりました。
+
+```sh
+dotnet tool install SilkyFowl.Avalonia.FuncUI.LiveView.Analyzer --version 0.0.3 --tool-path analyzers
+```
+
+
+#### FuncUI Analyzerの動作確認
 
 - `FSharp.enableAnalyzers`が`true`
 - `FSharp.analyzersPath`にAnalyzerのDllが存在する

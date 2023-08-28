@@ -1,0 +1,43 @@
+<Project>
+    <!-- Build Settings -->
+    <PropertyGroup>
+        <BuildInParallel>true</BuildInParallel>
+        <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
+        <PackageOutputPath>$(MSBuildThisFileDirectory)dist</PackageOutputPath>
+    </PropertyGroup>
+
+    <!-- Package Properties  -->
+    <PropertyGroup>
+        <PackageId>SilkyFowl.$(MSBuildProjectName)</PackageId>
+        <Title>SilkyFowl.$(MSBuildProjectName)</Title>
+        <Product>SilkyFowl.$(MSBuildProjectName)</Product>
+        <Description>Live fs/fsx previewer for Avalonia.FuncUI.</Description>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
+        <Authors>SilkyFowl</Authors>
+        <Copyright>Copyright (c) 2022 SilkyFowl</Copyright>
+        <PackageLicenseFile>LICENSE.md</PackageLicenseFile>
+        <PackageProjectUrl>https://github.com/SilkyFowl/Avalonia.FuncUI.LiveView</PackageProjectUrl>
+        <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
+        <RepositoryUrl>https://github.com/SilkyFowl/Avalonia.FuncUI.LiveView.git</RepositoryUrl>
+        <RepositoryType>git</RepositoryType>
+        
+        <!-- Read RELEASE_NOTES.md.  -->
+        <_ReleaseNotesContent>$([System.IO.File]::ReadAllText("$(MSBuildThisFileDirectory)RELEASE_NOTES.md"))</_ReleaseNotesContent>
+        <_LastestReleaseNoteContent>$([System.Text.RegularExpressions.Regex]::Split($(_ReleaseNotesContent),  "\n### \d+-?(\w+\d+)?")[0])</_LastestReleaseNoteContent>
+        <_Pattern>([\d+\.]+\d+)-?(\w+\d+)?(?:\r?\n){2}((?:[^\n]+\n)+)</_Pattern>
+        <_VersionPrefixString>$([System.Text.RegularExpressions.Regex]::Match( $(_LastestReleaseNoteContent), $(_Pattern)).Groups[1].Value)</_VersionPrefixString>
+        <_VersionSuffixString>$([System.Text.RegularExpressions.Regex]::Match( $(_LastestReleaseNoteContent), $(_Pattern)).Groups[2].Value)</_VersionSuffixString>
+        <!-- version from RELEASE_NOTES.md.  -->
+        <VersionPrefix Condition="$(_VersionPrefixString) != ''" >$(_VersionPrefixString)</VersionPrefix>
+        <VersionSuffix Condition="$(_VersionSuffixString) != ''" >$(_VersionSuffixString)</VersionSuffix>
+        <!-- releaseNotes from RELEASE_NOTES.md.  -->
+        <PackageReleaseNotes>$([System.Text.RegularExpressions.Regex]::Match( $(_LastestReleaseNoteContent), $(_Pattern)).Groups[3].Value)</PackageReleaseNotes>
+    </PropertyGroup>
+
+    <!-- Package assets  -->
+    <ItemGroup>
+       <None Include="$(MSBuildThisFileDirectory)LICENSE.md" Pack="true" PackagePath=""/>
+       <None Include="$(MSBuildThisFileDirectory)README.md" Pack="true" PackagePath=""/>
+       <None Include="$(MSBuildThisFileDirectory)github\img\README\*.png" Pack="true" PackagePath="github\img\README"/>
+    </ItemGroup>
+</Project>
