@@ -1,3 +1,7 @@
+### 0.0.3
+
+* Stable release.
+
 ### 0.0.3-preview01
 
 * breaking: Analyzer changed from library to dotnet-tool.

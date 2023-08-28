@@ -55,8 +55,6 @@ Create a working directory and launch VScode.
 ```sh
 mkdir YourFuncUIApp
 cd YourFuncUIApp
-dotnet new tool-manifest
-dotnet new gitignore
 code .
 ```
 
@@ -64,6 +62,8 @@ Create a project.
 
 
 ```sh
+dotnet new tool-manifest
+dotnet new gitignore
 dotnet new sln
 dotnet new console -o ./src/YourFuncUIApp -lang f#
 dotnet sln add ./src/YourFuncUIApp/YourFuncUIApp.fsproj
@@ -108,12 +108,7 @@ nuget FSharp.Core content: none
 nuget Avalonia.FuncUI 1.0.1
 nuget Avalonia.Desktop 11.0.3
 nuget Avalonia.Themes.Fluent 11.0.3
-nuget SilkyFowl.Avalonia.FuncUI.LiveView 0.0.1.1
-
-group Analyzers
-    source https://api.nuget.org/v3/index.json
-    storage: storage
-    nuget SilkyFowl.Avalonia.FuncUI.LiveView.Analyzer 0.0.1.1
+nuget SilkyFowl.Avalonia.FuncUI.LiveView 0.0.3
 ```
 
 
@@ -146,20 +141,16 @@ Add a dependency to `YourFuncUIApp.fsproj` as follows:
     <PackageReference Include="Avalonia.Desktop" Version="11.0.3" />
     <PackageReference Include="Avalonia.Themes.Fluent" Version="11.0.3" />
     <PackageReference Include="Avalonia.FuncUI" Version="1.0.1" />
-    <PackageReference Include="SilkyFowl.Avalonia.FuncUI.LiveView" Version="0.0.1.1" />
-    <!-- If no MessagePack version specified, old libraries referenced. -->
-    <PackageReference Include="MessagePack" Version="2.5.124" />
+    <PackageReference Include="SilkyFowl.Avalonia.FuncUI.LiveView" Version="0.0.3" />
   </ItemGroup>
 </Project>
 ```
 
-Install analyzer with `nuget`.
-
 ```sh
-nuget install SilkyFowl.Avalonia.FuncUI.LiveView.Analyzer -Version 0.0.1.1 -OutputDirectory packages/analyzers
+dotnet restore
 ```
 
-### Checking behavior
+### Write code
 
 Rewrite `Program.fs` as follows:
 
@@ -324,10 +315,7 @@ dotnet run --project ./src/YourFuncUIApp/YourFuncUIApp.fsproj
 
 ```json
 {
-    "FSharp.enableAnalyzers": true,
-    "FSharp.analyzersPath": [
-        "packages/analyzers"
-    ],
+    "FSharp.enableAnalyzers": true
 }
 ```
 
@@ -338,6 +326,18 @@ Now start the debugger and make sure it works.
 When launched, proceed to the next step.
 
 ![First-Debug-success]
+
+
+### Setting up FuncUI Analyzer
+
+Install Analyzer.
+
+> **Warning**
+> Installation of SilkyFowl.Avalonia.FuncUI.LiveView.Analyzer has changed since v0.0.3.
+
+```sh
+dotnet tool install SilkyFowl.Avalonia.FuncUI.LiveView.Analyzer --version 0.0.3 --tool-path analyzers
+```
 
 ### Check if FuncUI Analyzer works
 
