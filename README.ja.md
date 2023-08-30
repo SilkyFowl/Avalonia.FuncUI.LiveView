@@ -6,6 +6,8 @@
 [Howto-Video]: https://user-images.githubusercontent.com/16532218/170818646-29ded885-bc2a-4336-909a-b17fc7242345.mp4
 [Ionide.Ionide-fsharp]: https://marketplace.visualstudio.com/items?itemName=Ionide.Ionide-fsharp
 [FsAutoComplete]: https://github.com/fsharp/FsAutoComplete
+[SilkyFowl.Avalonia.FuncUI.LiveView.Demo]: https://github.com/SilkyFowl/SilkyFowl.Avalonia.FuncUI.LiveView.Demo
+[SilkyFowl.Avalonia.FuncUI.LiveView.Demo.Paket]: https://github.com/SilkyFowl/SilkyFowl.Avalonia.FuncUI.LiveView.Demo.Paket
 [Enjoy-It!!]: https://user-images.githubusercontent.com/16532218/174063805-0d8db77d-f408-4639-aced-d38a38145685.mp4
 [funcUi-analyzer]: github/img/README/funcUi-analyzer.png
 [cant-analyze-du]: github/img/README/cant-analyze-du.png
@@ -27,6 +29,11 @@ Avalonia.FuncUI用のfs/fsxファイルライブプレビューア。
 Avalonia.FuncUI.LiveViewは[Avalonia.FuncUI][Avalonia.FuncUI-Docs]のUIをリアルタイムプレビューすることを目指す実験的なライブラリです。
 [FSharp.Analyzers.SDK]を利用することで、エディターで編集中しているF#ファイルの内容をリアルタイムでプレビュー表示します。
 **プレビューを更新するためにファイルを保存する必要はありません。**
+
+## デモリポジトリ
+
+- [SilkyFowl.Avalonia.FuncUI.LiveView.Demo] 
+- [SilkyFowl.Avalonia.FuncUI.LiveView.Demo.Paket]
 
 ## チュートリアル
 

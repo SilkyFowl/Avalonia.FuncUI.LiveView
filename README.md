@@ -6,6 +6,8 @@
 [Howto-Video]: https://user-images.githubusercontent.com/16532218/170818646-29ded885-bc2a-4336-909a-b17fc7242345.mp4
 [Ionide.Ionide-fsharp]: https://marketplace.visualstudio.com/items?itemName=Ionide.Ionide-fsharp
 [FsAutoComplete]: https://github.com/fsharp/FsAutoComplete
+[SilkyFowl.Avalonia.FuncUI.LiveView.Demo]: https://github.com/SilkyFowl/SilkyFowl.Avalonia.FuncUI.LiveView.Demo
+[SilkyFowl.Avalonia.FuncUI.LiveView.Demo.Paket]: https://github.com/SilkyFowl/SilkyFowl.Avalonia.FuncUI.LiveView.Demo.Paket
 [Enjoy-It!!]: https://user-images.githubusercontent.com/16532218/174063805-0d8db77d-f408-4639-aced-d38a38145685.mp4
 [funcUi-analyzer]: github/img/README/funcUi-analyzer.png
 [cant-analyze-du]: github/img/README/cant-analyze-du.png
@@ -27,6 +29,11 @@ Live fs/fsx previewer for Avalonia.FuncUI.
 Avalonia.FuncUI.LiveView is an experimental FsAutoComplete extension that aims to provide a real-time preview of the UI of Avalonia.FuncUI.
 Analyzers.SDK, it displays a real-time preview of the content of the F# file you are editing in the editor.
 **No need to save the file to update the preview.**
+
+## Demo repositories
+
+- [SilkyFowl.Avalonia.FuncUI.LiveView.Demo] 
+- [SilkyFowl.Avalonia.FuncUI.LiveView.Demo.Paket]
 
 ## How to use
 
