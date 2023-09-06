@@ -1,12 +1,20 @@
-﻿namespace Sample
+﻿namespace Avalonia.FuncUI.LiveView.Cli
 
-open System
 open Avalonia
-open Avalonia.Controls.ApplicationLifetimes
 open Avalonia.Controls
+open Avalonia.Controls.ApplicationLifetimes
 open Avalonia.Themes.Fluent
+
+open Avalonia.FuncUI
 open Avalonia.FuncUI.Hosts
-open Avalonia.FuncUI.LiveView
+open Avalonia.FuncUI.DSL
+
+module Preview =
+
+    let view () =
+        Component(fun ctx ->
+
+            TextBox.create [ TextBox.text "Hello World" ])
 
 type MainWindow() as this =
     inherit HostWindow()
@@ -15,13 +23,7 @@ type MainWindow() as this =
         base.Title <- "Sample"
         base.Width <- 400.0
         base.Height <- 400.0
-        this.Content <- Sample.ComponentSample.cmp
-
-//this.VisualRoot.VisualRoot.Renderer.DrawFps <- true
-//this.VisualRoot.VisualRoot.Renderer.DrawDirtyRects <- true
-#if DEBUG
-        this.AttachDevTools()
-#endif
+        this.Content <- Preview.view ()
 
 type App() =
     inherit Application()
@@ -32,14 +34,14 @@ type App() =
 
     override this.OnFrameworkInitializationCompleted() =
         match this.ApplicationLifetime with
-        | :? IClassicDesktopStyleApplicationLifetime as desktopLifetime ->
-            desktopLifetime.MainWindow <- MainWindow()
+        | :? IClassicDesktopStyleApplicationLifetime as desktopLifetime -> desktopLifetime.MainWindow <- MainWindow()
         | _ -> ()
 
-module Program =
 
+// For more information see https://aka.ms/fsharp-console-apps
+module Program =
     [<EntryPoint>]
-    let main (args: string[]) =
+    let main args =
         AppBuilder
             .Configure<App>()
             .UsePlatformDetect()

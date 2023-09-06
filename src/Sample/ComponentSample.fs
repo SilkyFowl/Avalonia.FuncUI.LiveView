@@ -7,7 +7,7 @@ open Avalonia.Controls
 open Avalonia.Controls.Shapes
 open Avalonia.Media
 open Avalonia.Layout
-open Avalonia.FuncUI.LiveView.Core.Types
+open Avalonia.FuncUI.LiveView
 
 let counter numState =
 

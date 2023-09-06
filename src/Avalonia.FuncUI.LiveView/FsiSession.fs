@@ -20,6 +20,7 @@ open Avalonia.FuncUI
 open Avalonia.FuncUI.Types
 open Avalonia.FuncUI.DSL
 open Avalonia.FuncUI.VirtualDom
+open Avalonia.FuncUI.LiveView
 open Avalonia.FuncUI.LiveView.Core.Types
 
 let create () =

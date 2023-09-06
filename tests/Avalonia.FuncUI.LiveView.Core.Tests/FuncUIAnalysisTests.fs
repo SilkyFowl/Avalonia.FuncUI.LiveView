@@ -28,7 +28,7 @@ module private Helper =
 
         let deps =
             seq {
-                "Avalonia.FuncUI.LiveView.Core.dll"
+                "Avalonia.FuncUI.LiveView.Attribute.dll"
                 "Avalonia.dll"
                 "Avalonia.Desktop.dll"
                 "Avalonia.Diagnostics.dll"
@@ -109,7 +109,7 @@ open System
 open Avalonia.FuncUI
 open Avalonia.FuncUI.DSL
 open Avalonia.Controls
-open Avalonia.FuncUI.LiveView.Core.Types
+open Avalonia.FuncUI.LiveView
 
 [<RequireQualifiedAccess>]
 module Store =

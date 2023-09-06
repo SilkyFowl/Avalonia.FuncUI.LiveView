@@ -1,3 +1,7 @@
+### 0.0.4-preview01
+
+* Separate `LivePreviewAttribute` into project `Avalonia.FuncUI.LiveView.Attribute`.
+
 ### 0.0.3
 
 * Stable release.

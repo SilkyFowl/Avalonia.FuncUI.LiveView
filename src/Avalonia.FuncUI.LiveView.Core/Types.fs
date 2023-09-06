@@ -11,10 +11,6 @@ type LogMessage =
 
 type Logger = LogMessage -> unit
 
-[<AttributeUsage(AttributeTargets.Property)>]
-type LivePreviewAttribute() =
-    inherit Attribute()
-
 module FuncUiAnalyzer =
     open System
     open System.Threading
