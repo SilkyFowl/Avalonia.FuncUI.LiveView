@@ -96,7 +96,9 @@ module Counter =
             ]
             |> VirtualDom.create
 
-        { Msg = new State<_> { Content = initText }
+        { Msg =
+            new State<_> { FullName = "init"
+                           Contents = [| initText |] }
           EvalResult = new State<_>([ "init", initResult ])
           EvalWarings = new State<_>([||])
           Status = new State<_>(LogInfo "")
@@ -142,7 +144,7 @@ module LiveView =
 
             // sharedの購読
             let evalText =
-                ctx.usePassedRead (shared.Msg |> State.readMap (fun m -> m.Content), true)
+                ctx.usePassedRead (shared.Msg |> State.readMap (fun m -> m.Contents), true)
 
             let evalResult = ctx.usePassed (shared.EvalResult)
             let evalWarnings = ctx.usePassed (shared.EvalWarings)
@@ -197,7 +199,7 @@ module LiveView =
                             TextBox.columnSpan 3
                             TextBox.acceptsReturn true
                             TextBox.textWrapping TextWrapping.Wrap
-                            TextBox.text evalText.Current
+                            TextBox.text (String.concat "" evalText.Current)
 
                             if not <| Array.isEmpty evalWarnings.Current then
                                 TextBox.errors evalWarnings.Current

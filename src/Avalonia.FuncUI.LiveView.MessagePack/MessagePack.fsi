@@ -14,8 +14,10 @@ module Settings =
 
 [<MessagePackObject>]
 type MsgPack =
-    { [<Key(0)>]
-      ContentMsg: string }
+    { [<Key(1)>]
+      FullName: string  
+      [<Key(0)>]
+      Contents: string[] }
 
 module Server =
     val init: ipAddress: IPAddress -> port: int -> FuncUiAnalyzer.Server

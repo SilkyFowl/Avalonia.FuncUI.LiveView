@@ -2,7 +2,7 @@ module Avalonia.FuncUI.LiveView.Types
 
 open System
 
-type Msg = { Content: string }
+type Msg = { FullName: string; Contents: string[] }
 
 type LogMessage =
     | LogDebug of string

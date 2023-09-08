@@ -20,10 +20,19 @@ module Settings =
 
 [<MessagePackObject>]
 type MsgPack =
-    { [<Key(0)>]
-      ContentMsg: string }
+    { [<Key(1)>]
+      FullName: string
+      [<Key(0)>]
+      Contents: string[] }
 
 module internal MsgPack =
+    let ofMsg (msg: Msg) : MsgPack =
+        { FullName = msg.FullName
+          Contents = msg.Contents }
+
+    let toMsg (msgPack: MsgPack) : Msg =
+        { FullName = msgPack.FullName
+          Contents = msgPack.Contents }
 
     let resolver =
         Resolvers.CompositeResolver.Create(FSharpResolver.Instance, StandardResolver.Instance)
@@ -60,10 +69,10 @@ module Server =
 
     /// Execute `serializeAsync`.
     /// If Exception `SerializedStreamError` occurs, execute `acceptTcpClientAsync` as a recovery process.
-    let inline trySerializeAsync cont listener client token { Content = content } =
+    let inline trySerializeAsync cont listener client token msg =
         async {
             try
-                do! MsgPack.serializeAsync client token { ContentMsg = content }
+                do! MsgPack.ofMsg msg |> MsgPack.serializeAsync client token
 
                 return! Choice2Of2 client |> cont
             with SerializedStreamError e ->
@@ -164,10 +173,7 @@ module Client =
 
 
                 match ValueOption.ofNullable result with
-                | ValueSome buff ->
-                    let { ContentMsg = content } = MsgPack.deserialize buff
-
-                    onReceive { Content = content }
+                | ValueSome buff -> MsgPack.deserialize buff |> MsgPack.toMsg |> onReceive
 
                 | ValueNone -> ()
         }

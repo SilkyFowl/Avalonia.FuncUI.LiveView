@@ -122,7 +122,7 @@ let evalInteraction
     (fsiSession: FsiEvaluationSession)
     (log: Logger)
     (tempFile: FileInfo)
-    { Msg.Content = content }
+    { Msg.Contents = content }
     (evalWarings: IWritable<_>)
     (evalResult: IWritable<_>)
     =
@@ -130,8 +130,13 @@ let evalInteraction
         let time = DateTime.Now.ToString "T"
         (LogInfo >> log) $"{time} Eval Start..."
 
-        // Fsiの改行コードは、どのOSでも\n固定。
-        do! File.WriteAllTextAsync(tempFile.FullName, content.Replace(Environment.NewLine, "\n"))
+        do!
+            content
+            // Fsi newline code for any OS is LF(\n).
+            |> Array.map (fun s -> s.Replace("\r?\n?$", "\n"))
+            |> String.concat ""
+            |> fun contents -> File.WriteAllTextAsync(tempFile.FullName, contents)
+
 
         let res, warnings = fsiSession.EvalScriptNonThrowing tempFile.FullName
 

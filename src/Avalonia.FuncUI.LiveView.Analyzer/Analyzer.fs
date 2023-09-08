@@ -67,6 +67,8 @@ let funcUiAnalyzer: Analyzer =
 
             // Post if no errors.
             if not (Seq.isEmpty livePreviewFuncs) then
-                service.Post { Content = String.concat nl ctx.Content }
+                service.Post
+                    { FullName = ctx.FileName
+                      Contents = ctx.Content }
 
         Seq.distinct errorMessages |> Seq.toList
