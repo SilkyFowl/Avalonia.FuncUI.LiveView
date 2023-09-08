@@ -1,4 +1,4 @@
-module Avalonia.FuncUI.LiveView.Core.Types
+module Avalonia.FuncUI.LiveView.Types
 
 open System
 

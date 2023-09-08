@@ -4,7 +4,7 @@ open System
 open System.Reflection
 open Avalonia.FuncUI.LiveView
 open Avalonia.FuncUI.LiveView.MessagePack
-open Avalonia.FuncUI.LiveView.Core.Types
+open Avalonia.FuncUI.LiveView.Types
 open FSharp.Analyzers.SDK
 
 

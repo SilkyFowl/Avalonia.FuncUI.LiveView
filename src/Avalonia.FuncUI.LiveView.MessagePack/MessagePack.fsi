@@ -1,6 +1,6 @@
 namespace Avalonia.FuncUI.LiveView.MessagePack
 
-open Avalonia.FuncUI.LiveView.Core.Types
+open Avalonia.FuncUI.LiveView.Types
 open System
 open System.Net
 

@@ -10,7 +10,7 @@ open MessagePack
 open MessagePack.FSharp
 open MessagePack.Resolvers
 
-open Avalonia.FuncUI.LiveView.Core.Types
+open Avalonia.FuncUI.LiveView.Types
 
 module Settings =
 

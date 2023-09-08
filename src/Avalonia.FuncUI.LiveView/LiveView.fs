@@ -10,7 +10,7 @@ open Avalonia.FuncUI
 open Avalonia.FuncUI.Types
 open Avalonia.FuncUI.DSL
 
-open Avalonia.FuncUI.LiveView.Core.Types
+open Avalonia.FuncUI.LiveView.Types
 open Avalonia.FuncUI.LiveView.MessagePack
 
 type StateStore =

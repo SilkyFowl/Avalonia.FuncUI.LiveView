@@ -10,7 +10,6 @@ open FSharp.Compiler.Text
 
 open Avalonia.Skia
 open Avalonia.FuncUI.Types
-open Avalonia.FuncUI.LiveView.Core.Types
 
 type FuncUIAnalysisHander =
     { OnLivePreviewFunc: FSharpMemberOrFunctionOrValue -> list<list<FSharpMemberOrFunctionOrValue>> -> unit
