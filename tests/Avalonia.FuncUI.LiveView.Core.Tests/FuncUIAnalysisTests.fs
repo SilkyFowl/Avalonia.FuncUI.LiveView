@@ -1,337 +1,601 @@
-namespace Avalonia.FuncUI.LiveView.Core.Tests
+namespace LiveViewCoreTests
 
-module private Helper =
-    open Xunit
-    open FsUnit.Xunit
-    open FsUnitTyped
-    open System
-    open System.IO
-    open FSharp.Compiler.CodeAnalysis
-    open FSharp.Compiler.EditorServices
-    open FSharp.Compiler.Symbols
-    open FSharp.Compiler.Text
-
-    open Avalonia.FuncUI.LiveView
-
-    /// F# インタラクティブに、このアプリのアセンブリと依存アセンブリを読み込むための引数。
-    let references =
-        let entryAsm = Reflection.Assembly.GetEntryAssembly()
-        let asmPath = Directory.GetParent entryAsm.Location
-
-        let getDeps asmName =
-
-            let asm = Path.Combine(asmPath.FullName, asmName) |> Reflection.Assembly.LoadFile
-
-            asm.GetReferencedAssemblies()
-            |> Seq.map (fun asm -> $"{asm.Name}.dll")
-            |> Seq.insertAt 0 asmName
-
-        let deps =
-            seq {
-                "Avalonia.FuncUI.LiveView.Attribute.dll"
-                "Avalonia.dll"
-                "Avalonia.Desktop.dll"
-                "Avalonia.Diagnostics.dll"
-                "Avalonia.FuncUI.dll"
-                "Avalonia.FuncUI.Elmish.dll"
-            }
-            |> Seq.map getDeps
-            |> Seq.concat
-            |> Seq.sort
-            |> Seq.distinct
-            |> Seq.filter (fun lib -> Path.Combine(asmPath.FullName, lib) |> File.Exists)
-
-        deps
-        |> Seq.map (fun p -> $"-r:{Path.GetFileName p}")
-        |> Seq.append (Seq.singleton $"-I:{asmPath.FullName}")
-        |> Seq.toArray
-
-    let checker: FSharpChecker = FSharpChecker.Create(keepAssemblyContents = true)
-
-    let parseAndCheckSingleFile (input) =
-        let file = Path.ChangeExtension(Path.GetTempFileName(), "fsx")
-        File.WriteAllText(file, input)
-        // Get context representing a stand-alone (script) file
-        let projOptions, _errors =
-            checker.GetProjectOptionsFromScript(
-                file,
-                SourceText.ofString input,
-                assumeDotNetFramework = false,
-                otherFlags = references
-            )
-            |> Async.RunSynchronously
-
-        checker.ParseAndCheckProject projOptions |> Async.RunSynchronously
-
-    let getDeclarations (results: FSharpCheckProjectResults) =
-        results.Diagnostics |> shouldBeEmpty
-
-        results.AssemblyContents.ImplementationFiles[0].Declarations
-
-    let runFuncUIAnalysis sourceCode =
-        let livePreviewFuncs = ResizeArray()
-        let invalidLivePreviewFuncs = ResizeArray()
-        let invalidStringCalls = ResizeArray()
-        let notSuppurtPattern = ResizeArray()
+open Xunit
+open TestCodeSnippets
+open FsUnitTyped
+open Helper
 
 
-        sourceCode
-        |> parseAndCheckSingleFile
-        |> getDeclarations
-        |> List.iter (
-            FuncUIAnalysis.visitDeclaration
-                { OnLivePreviewFunc = fun v vs -> livePreviewFuncs.Add(v, vs)
-                  OnInvalidLivePreviewFunc = fun v vs -> invalidLivePreviewFuncs.Add(v, vs)
-                  OnInvalidStringCall =
-                    fun ex range m typeArgs argExprs -> invalidStringCalls.Add(ex, range, m, typeArgs, argExprs)
-                  OnNotSuppurtPattern = fun ex e -> notSuppurtPattern.Add(ex, e) }
-        )
-
-        {| livePreviewFuncs = livePreviewFuncs
-           invalidLivePreviewFuncs = invalidLivePreviewFuncs
-           invalidStringCalls = invalidStringCalls
-           notSuppurtPattern = notSuppurtPattern |}
-
-
-module FuncUIAnalysisTests =
-
-    open System
-    open Xunit
-    open FsUnit.Xunit
-    open FsUnitTyped
-    open Avalonia.FuncUI.LiveView
-    open FSharp.Compiler.Diagnostics
-
-    let createTestCode =
-        sprintf
-            """
-open System
-open Avalonia.FuncUI
-open Avalonia.FuncUI.DSL
-open Avalonia.Controls
-open Avalonia.FuncUI.LiveView
-
-[<RequireQualifiedAccess>]
-module Store =
-    let num = new State<_> 0
-
-module Counter =
-    open Avalonia.FuncUI
-    open Avalonia.Controls
-    open Avalonia.Media
-    open Avalonia.FuncUI.DSL
-    open Avalonia.Layout
-
-    let view numState =
-
-        Component.create (
-            "Counter",
-            fun ctx ->
-                let state = ctx.usePassed numState
-
-                Grid.create [
-                    Grid.rowDefinitions "test,Auto"
-                    Grid.children [
-                        TextBlock.create [
-                            TextBlock.text "Foo!!"
-                        ]
-                    ]
-                ]
-        )
-
-    [<LivePreview>]
-    let preview () =
-        view Store.num
-
-    [<LivePreview>]
-    let preview2 =
-        let n = 1
-        view Store.num
-
-%s
-    """
+module ``No contain DU`` =
 
     [<Fact>]
-    let ``should work if no contain DU`` () =
-        let results = createTestCode "" |> Helper.runFuncUIAnalysis
+    let ``a lidLivePreviewFunc`` () =
+        task {
+            let! results = Simple.livePreviewFunc |> runFuncUIAnalysisAsync
 
-        results.livePreviewFuncs.Count |> shouldEqual 1
-        results.invalidLivePreviewFuncs.Count |> shouldEqual 1
-        results.invalidStringCalls.Count |> shouldEqual 1
+            FuncUIAnalysisResult.count results
+            |> shouldEqual
+                { livePreviewFuncCount = 1
+                  invalidLivePreviewFuncCount = 0
+                  invalidStringCallCount = 0
+                  notSuppurtPatternCount = 0 }
+
+        }
+
+    [<Fact>]
+    let ``a invalidLivePreviewFunc`` () =
+        task {
+            let! results = Simple.invalidLivePreviewFunc |> runFuncUIAnalysisAsync
+
+            FuncUIAnalysisResult.count results
+            |> shouldEqual
+                { livePreviewFuncCount = 0
+                  invalidLivePreviewFuncCount = 1
+                  invalidStringCallCount = 0
+                  notSuppurtPatternCount = 0 }
+        }
+
+    [<Fact>]
+    let ``a invalidStringCall`` () =
+        task {
+            let! results = Simple.invalidStringCall |> runFuncUIAnalysisAsync
+
+            FuncUIAnalysisResult.count results
+            |> shouldEqual
+                { livePreviewFuncCount = 0
+                  invalidLivePreviewFuncCount = 0
+                  invalidStringCallCount = 1
+                  notSuppurtPatternCount = 0 }
+        }
 
 
-    let allValueCaseDUs: obj[] list =
-        [ """
-type Foo = Foo of int
-                """
-          """
-type Bar =
-    | Hoge of int
-    | Fuga of string
-                """ ]
-        |> List.map (fun s -> [| box s |])
 
-    [<Theory>]
-    [<MemberData(nameof allValueCaseDUs)>]
-    let ``wont work if all case have value DU`` allValueCaseDU =
-        let results = createTestCode allValueCaseDU |> Helper.runFuncUIAnalysis
+    [<Fact>]
+    let `` a lidLivePreviewFunc and a invalidStringCall`` () =
+        task {
+            let! results = Simple.lidLivePreviewFuncAndInvalidStringCall |> runFuncUIAnalysisAsync
 
-        results.notSuppurtPattern.Count |> shouldBeGreaterThan 1
-        results.livePreviewFuncs.Count |> shouldEqual 1
-        results.invalidLivePreviewFuncs.Count |> shouldEqual 1
-        results.invalidStringCalls.Count |> shouldEqual 1
+            FuncUIAnalysisResult.count results
+            |> shouldEqual
+                { livePreviewFuncCount = 1
+                  invalidLivePreviewFuncCount = 0
+                  invalidStringCallCount = 1
+                  notSuppurtPatternCount = 0 }
+        }
 
-    let anyNoValueCaseDUs =
-        [ """
-type Foo = Foo
-                    """
-          """
-type Bar =
-    | Hoge
-    | Fuga of string
-                    """
-          """
-type Bar<'t> =
-    | Hoge
-    | Fuga of string
-    | A of {|a:int; b:string; c: bool * string|}
-    | B of ('t -> unit)
-                    """ ]
 
-    let anyNoValueCaseDUsData = anyNoValueCaseDUs |> List.map (fun s -> [| box s |])
+module DU_is_in_top_of_code =
+    let private snipNoLivePreviewFunc du =
+        $"""
+module Foo
 
-    [<Theory>]
-    [<MemberData(nameof anyNoValueCaseDUsData)>]
-    let ``should work If at least one no value case DU is the end of the code`` anyNoValueCase =
-        let results = createTestCode anyNoValueCase |> Helper.runFuncUIAnalysis
+{du}
 
-        results.livePreviewFuncs.Count |> shouldEqual 1
-        results.invalidLivePreviewFuncs.Count |> shouldEqual 1
-        results.invalidStringCalls.Count |> shouldEqual 1
-        results.notSuppurtPattern.Count |> shouldEqual 0
+{snipCounter "Auto,Auto"}
+        """
+        |> String.trimStart
 
-    let module_with_some_value_after_DU =
-        let baseCode =
-            sprintf
-                """
-open System
-open Avalonia.FuncUI
-open Avalonia.FuncUI.DSL
-open Avalonia.Controls
-open Avalonia.FuncUI.LiveView.Core.Types
+    let private snipWithLivePreviewFunc du =
+        $"""
+module Foo
 
-%s
+{du}
 
-module Counter =
-    open Avalonia.FuncUI
-    open Avalonia.Controls
-    open Avalonia.Media
-    open Avalonia.FuncUI.DSL
-    open Avalonia.Layout
-
-    let view =
-        Component.create (
-            "Counter",
-            fun ctx ->
-                let state = ctx.useState 0
-
-                Grid.create [
-                    Grid.rowDefinitions "test,Auto"
-                    Grid.children [
-                        TextBlock.create [
-                            TextBlock.text "Foo!!"
-                        ]
-                    ]
-                ]
-        )
+{snipCounter "Auto,Auto"}
 
     [<LivePreview>]
-    let preview () =
-        view
+    let preview () = view Store.num
+        """
+
+    [<Fact>]
+    let ``All value case DU singleCase`` () =
+        task {
+            let! results = AllValueCaseDU.singleCase |> snipNoLivePreviewFunc |> runFuncUIAnalysisAsync
+
+            FuncUIAnalysisResult.count results
+            |> shouldEqual
+                { livePreviewFuncCount = 0
+                  invalidLivePreviewFuncCount = 0
+                  invalidStringCallCount = 0
+                  notSuppurtPatternCount = 0 }
+        }
+
+    [<Fact>]
+    let ``All value case DU singleCase with livePreviewFunc`` () =
+        task {
+            let! results = AllValueCaseDU.singleCase |> snipWithLivePreviewFunc |> runFuncUIAnalysisAsync
+
+            FuncUIAnalysisResult.count results
+            |> shouldEqual
+                { livePreviewFuncCount = 1
+                  invalidLivePreviewFuncCount = 0
+                  invalidStringCallCount = 0
+                  notSuppurtPatternCount = 0 }
+        }
+
+    [<Fact>]
+    let ``All value case DU multiCase`` () =
+        task {
+            let! results = AllValueCaseDU.multiCase |> snipNoLivePreviewFunc |> runFuncUIAnalysisAsync
+
+            FuncUIAnalysisResult.count results
+            |> shouldEqual
+                { livePreviewFuncCount = 0
+                  invalidLivePreviewFuncCount = 0
+                  invalidStringCallCount = 0
+                  notSuppurtPatternCount = 0 }
+        }
+
+    [<Fact>]
+    let ``All value case DU multiCase with livePreviewFunc`` () =
+        task {
+            let! results = AllValueCaseDU.multiCase |> snipWithLivePreviewFunc |> runFuncUIAnalysisAsync
+
+            FuncUIAnalysisResult.count results
+            |> shouldEqual
+                { livePreviewFuncCount = 1
+                  invalidLivePreviewFuncCount = 0
+                  invalidStringCallCount = 0
+                  notSuppurtPatternCount = 0 }
+        }
+
+    [<Fact>]
+    let ``All value case DU namedValueCase`` () =
+        task {
+            let! results = AllValueCaseDU.namedValueCase |> snipNoLivePreviewFunc |> runFuncUIAnalysisAsync
+
+            FuncUIAnalysisResult.count results
+            |> shouldEqual
+                { livePreviewFuncCount = 0
+                  invalidLivePreviewFuncCount = 0
+                  invalidStringCallCount = 0
+                  notSuppurtPatternCount = 0 }
+        }
+
+    [<Fact>]
+    let ``All value case DU namedValueCase with livePreviewFunc`` () =
+        task {
+            let! results =
+                AllValueCaseDU.namedValueCase
+                |> snipWithLivePreviewFunc
+                |> runFuncUIAnalysisAsync
+
+            FuncUIAnalysisResult.count results
+            |> shouldEqual
+                { livePreviewFuncCount = 1
+                  invalidLivePreviewFuncCount = 0
+                  invalidStringCallCount = 0
+                  notSuppurtPatternCount = 0 }
+        }
+
+    [<Fact>]
+    let ``All value case DU valueCaseInParenthesis`` () =
+        task {
+            let! results =
+                AllValueCaseDU.valueCaseInParenthesis
+                |> snipNoLivePreviewFunc
+                |> runFuncUIAnalysisAsync
+
+            FuncUIAnalysisResult.count results
+            |> shouldEqual
+                { livePreviewFuncCount = 0
+                  invalidLivePreviewFuncCount = 0
+                  invalidStringCallCount = 0
+                  notSuppurtPatternCount = 0 }
+        }
+
+    [<Fact>]
+    let ``All value case DU valueCaseInParenthesis with livePreviewFunc`` () =
+        task {
+            let! results =
+                AllValueCaseDU.valueCaseInParenthesis
+                |> snipWithLivePreviewFunc
+                |> runFuncUIAnalysisAsync
+
+            FuncUIAnalysisResult.count results
+            |> shouldEqual
+                { livePreviewFuncCount = 1
+                  invalidLivePreviewFuncCount = 0
+                  invalidStringCallCount = 0
+                  notSuppurtPatternCount = 0 }
+        }
+
+    [<Fact>]
+    let ``All value case DU functionValueCase`` () =
+        task {
+            let! results =
+                AllValueCaseDU.functionValueCase
+                |> snipNoLivePreviewFunc
+                |> runFuncUIAnalysisAsync
+
+            FuncUIAnalysisResult.count results
+            |> shouldEqual
+                { livePreviewFuncCount = 0
+                  invalidLivePreviewFuncCount = 0
+                  invalidStringCallCount = 0
+                  notSuppurtPatternCount = 0 }
+        }
+
+    [<Fact>]
+    let ``All value case DU functionValueCase with livePreviewFunc`` () =
+        task {
+            let! results =
+                AllValueCaseDU.functionValueCase
+                |> snipWithLivePreviewFunc
+                |> runFuncUIAnalysisAsync
+
+            FuncUIAnalysisResult.count results
+            |> shouldEqual
+                { livePreviewFuncCount = 1
+                  invalidLivePreviewFuncCount = 0
+                  invalidStringCallCount = 0
+                  notSuppurtPatternCount = 0 }
+        }
+
+
+    [<Fact>]
+    let ``All value case DU generic singleCase`` () =
+        task {
+            let! results =
+                AllValueCaseDU.genericSingleCase
+                |> snipNoLivePreviewFunc
+                |> runFuncUIAnalysisAsync
+
+            FuncUIAnalysisResult.count results
+            |> shouldEqual
+                { livePreviewFuncCount = 0
+                  invalidLivePreviewFuncCount = 0
+                  invalidStringCallCount = 0
+                  notSuppurtPatternCount = 0 }
+        }
+
+    [<Fact>]
+    let ``All value case DU generic singleCase with livePreviewFunc`` () =
+        task {
+            let! results =
+                AllValueCaseDU.genericSingleCase
+                |> snipWithLivePreviewFunc
+                |> runFuncUIAnalysisAsync
+
+            FuncUIAnalysisResult.count results
+            |> shouldEqual
+                { livePreviewFuncCount = 1
+                  invalidLivePreviewFuncCount = 0
+                  invalidStringCallCount = 0
+                  notSuppurtPatternCount = 0 }
+        }
+
+    [<Fact>]
+    let ``All value case DU generic multiCase`` () =
+        task {
+            let! results =
+                AllValueCaseDU.genericMultiCase
+                |> snipNoLivePreviewFunc
+                |> runFuncUIAnalysisAsync
+
+            FuncUIAnalysisResult.count results
+            |> shouldEqual
+                { livePreviewFuncCount = 0
+                  invalidLivePreviewFuncCount = 0
+                  invalidStringCallCount = 0
+                  notSuppurtPatternCount = 0 }
+        }
+
+    [<Fact>]
+    let ``All value case DU generic multiCase with livePreviewFunc`` () =
+        task {
+            let! results =
+                AllValueCaseDU.genericMultiCase
+                |> snipWithLivePreviewFunc
+                |> runFuncUIAnalysisAsync
+
+            FuncUIAnalysisResult.count results
+            |> shouldEqual
+                { livePreviewFuncCount = 1
+                  invalidLivePreviewFuncCount = 0
+                  invalidStringCallCount = 0
+                  notSuppurtPatternCount = 0 }
+        }
+
+    [<Fact>]
+    let ``Any no value case DU singleCase`` () =
+        task {
+            let! results = AnyNoValueCaseDU.singleCase |> snipNoLivePreviewFunc |> runFuncUIAnalysisAsync
+
+            FuncUIAnalysisResult.count results
+            |> shouldEqual
+                { livePreviewFuncCount = 0
+                  invalidLivePreviewFuncCount = 0
+                  invalidStringCallCount = 0
+                  notSuppurtPatternCount = 0 }
+        }
+
+    [<Fact>]
+    let ``Any no value case DU singleCase with livePreviewFunc`` () =
+        task {
+            let! results = AnyNoValueCaseDU.singleCase |> snipWithLivePreviewFunc |> runFuncUIAnalysisAsync
+
+            FuncUIAnalysisResult.count results
+            |> shouldEqual
+                { livePreviewFuncCount = 1
+                  invalidLivePreviewFuncCount = 0
+                  invalidStringCallCount = 0
+                  notSuppurtPatternCount = 0 }
+        }
+
+    [<Fact>]
+    let ``Any no value case DU multiCase`` () =
+        task {
+            let! results = AnyNoValueCaseDU.multiCase |> snipNoLivePreviewFunc |> runFuncUIAnalysisAsync
+
+            FuncUIAnalysisResult.count results
+            |> shouldEqual
+                { livePreviewFuncCount = 0
+                  invalidLivePreviewFuncCount = 0
+                  invalidStringCallCount = 0
+                  notSuppurtPatternCount = 0 }
+        }
+
+    [<Fact>]
+    let ``Any no value case DU multiCase with livePreviewFunc`` () =
+        task {
+            let! results = AnyNoValueCaseDU.multiCase |> snipWithLivePreviewFunc |> runFuncUIAnalysisAsync
+
+            FuncUIAnalysisResult.count results
+            |> shouldEqual
+                { livePreviewFuncCount = 1
+                  invalidLivePreviewFuncCount = 0
+                  invalidStringCallCount = 0
+                  notSuppurtPatternCount = 0 }
+        }
+
+    [<Fact>]
+    let ``Any no value case DU genericCase`` () =
+        task {
+            let! results = AnyNoValueCaseDU.genericCase |> snipNoLivePreviewFunc |> runFuncUIAnalysisAsync
+
+            FuncUIAnalysisResult.count results
+            |> shouldEqual
+                { livePreviewFuncCount = 0
+                  invalidLivePreviewFuncCount = 0
+                  invalidStringCallCount = 0
+                  notSuppurtPatternCount = 0 }
+        }
+
+    [<Fact>]
+    let ``Any no value case DU genericCase with livePreviewFunc`` () =
+        task {
+            let! results =
+                AnyNoValueCaseDU.genericCase
+                |> snipWithLivePreviewFunc
+                |> runFuncUIAnalysisAsync
+
+            FuncUIAnalysisResult.count results
+            |> shouldEqual
+                { livePreviewFuncCount = 1
+                  invalidLivePreviewFuncCount = 0
+                  invalidStringCallCount = 0
+                  notSuppurtPatternCount = 0 }
+        }
+
+module DU_is_in_end_of_code =
+    let private snipNoLivePreviewFunc du =
+        $"""
+module Foo
+
+{snipCounter "Auto,Auto"}
+
+{du}
+        """
+        |> String.trimStart
+
+    let private snipWithLivePreviewFunc du =
+        $"""
+module Foo
+
+{snipCounter "Auto,Auto"}
 
     [<LivePreview>]
-    let preview2 =
-        let n = 1
-        view
+    let preview () = view Store.num
 
-    """
+{du}
+        """
 
-        anyNoValueCaseDUs |> List.map (fun du -> [| (baseCode >> box) du |])
+    [<Fact>]
+    let ``All value case DU singleCase`` () =
+        task {
+            let! results = AllValueCaseDU.singleCase |> snipNoLivePreviewFunc |> runFuncUIAnalysisAsync
 
-    let nestedAnyNoValueCaseDUs =
-        [ """
-    type Foo = Foo
-                    """
-          """
-    type Bar =
-        | Hoge
-        | Fuga of string
-                    """
-          """
-    type Bar<'t> =
-        | Hoge
-        | Fuga of string
-        | A of {|a:int; b:string; c: bool * string|}
-        | B of ('t -> unit)
-                    """ ]
+            FuncUIAnalysisResult.count results
+            |> shouldEqual
+                { livePreviewFuncCount = 0
+                  invalidLivePreviewFuncCount = 0
+                  invalidStringCallCount = 0
+                  notSuppurtPatternCount = 0 }
+        }
 
-    let module_after_DU_contain_module =
-        let baseCode =
-            sprintf
-                """
-open System
-open Avalonia.FuncUI
-open Avalonia.FuncUI.DSL
-open Avalonia.Controls
-open Avalonia.FuncUI.LiveView.Core.Types
+    [<Fact>]
+    let ``All value case DU singleCase with livePreviewFunc`` () =
+        task {
+            let! results = AllValueCaseDU.singleCase |> snipWithLivePreviewFunc |> runFuncUIAnalysisAsync
+
+            FuncUIAnalysisResult.count results
+            |> shouldEqual
+                { livePreviewFuncCount = 1
+                  invalidLivePreviewFuncCount = 0
+                  invalidStringCallCount = 0
+                  notSuppurtPatternCount = 0 }
+        }
+
+    [<Fact>]
+    let ``All value case DU multiCase`` () =
+        task {
+            let! results = AllValueCaseDU.multiCase |> snipNoLivePreviewFunc |> runFuncUIAnalysisAsync
+
+            FuncUIAnalysisResult.count results
+            |> shouldEqual
+                { livePreviewFuncCount = 0
+                  invalidLivePreviewFuncCount = 0
+                  invalidStringCallCount = 0
+                  notSuppurtPatternCount = 0 }
+        }
+
+    [<Fact>]
+    let ``All value case DU multiCase with livePreviewFunc`` () =
+        task {
+            let! results = AllValueCaseDU.multiCase |> snipWithLivePreviewFunc |> runFuncUIAnalysisAsync
+
+            FuncUIAnalysisResult.count results
+            |> shouldEqual
+                { livePreviewFuncCount = 1
+                  invalidLivePreviewFuncCount = 0
+                  invalidStringCallCount = 0
+                  notSuppurtPatternCount = 0 }
+        }
 
 
-module DUs =
-%s
+    [<Fact>]
+    let ``All value case DU generic singleCase`` () =
+        task {
+            let! results =
+                AllValueCaseDU.genericSingleCase
+                |> snipNoLivePreviewFunc
+                |> runFuncUIAnalysisAsync
 
-module Counter =
-    open Avalonia.FuncUI
-    open Avalonia.Controls
-    open Avalonia.Media
-    open Avalonia.FuncUI.DSL
-    open Avalonia.Layout
+            FuncUIAnalysisResult.count results
+            |> shouldEqual
+                { livePreviewFuncCount = 0
+                  invalidLivePreviewFuncCount = 0
+                  invalidStringCallCount = 0
+                  notSuppurtPatternCount = 0 }
+        }
 
-    let view =
-        Component.create (
-            "Counter",
-            fun ctx ->
-                let state = ctx.useState 0
+    [<Fact>]
+    let ``All value case DU generic singleCase with livePreviewFunc`` () =
+        task {
+            let! results =
+                AllValueCaseDU.genericSingleCase
+                |> snipWithLivePreviewFunc
+                |> runFuncUIAnalysisAsync
 
-                Grid.create [
-                    Grid.rowDefinitions "test,Auto"
-                    Grid.children [
-                        TextBlock.create [
-                            TextBlock.text "Foo!!"
-                        ]
-                    ]
-                ]
-        )
+            FuncUIAnalysisResult.count results
+            |> shouldEqual
+                { livePreviewFuncCount = 1
+                  invalidLivePreviewFuncCount = 0
+                  invalidStringCallCount = 0
+                  notSuppurtPatternCount = 0 }
+        }
 
-    [<LivePreview>]
-    let preview () =
-        view
+    [<Fact>]
+    let ``All value case DU generic multiCase`` () =
+        task {
+            let! results =
+                AllValueCaseDU.genericMultiCase
+                |> snipNoLivePreviewFunc
+                |> runFuncUIAnalysisAsync
 
-    [<LivePreview>]
-    let preview2 =
-        let n = 1
-        view
+            FuncUIAnalysisResult.count results
+            |> shouldEqual
+                { livePreviewFuncCount = 0
+                  invalidLivePreviewFuncCount = 0
+                  invalidStringCallCount = 0
+                  notSuppurtPatternCount = 0 }
+        }
 
-    """
+    [<Fact>]
+    let ``All value case DU generic multiCase with livePreviewFunc`` () =
+        task {
+            let! results =
+                AllValueCaseDU.genericMultiCase
+                |> snipWithLivePreviewFunc
+                |> runFuncUIAnalysisAsync
 
-        nestedAnyNoValueCaseDUs |> List.map (fun du -> [| (baseCode >> box) du |])
+            FuncUIAnalysisResult.count results
+            |> shouldEqual
+                { livePreviewFuncCount = 1
+                  invalidLivePreviewFuncCount = 0
+                  invalidStringCallCount = 0
+                  notSuppurtPatternCount = 0 }
+        }
 
-    [<Theory>]
-    [<MemberData(nameof module_with_some_value_after_DU)>]
-    [<MemberData(nameof module_after_DU_contain_module)>]
-    let ``wont work If module with some value after DU`` code =
 
-        let ex =
-            Assert.Throws<Sdk.EmptyException>(fun _ -> createTestCode code |> Helper.runFuncUIAnalysis |> ignore)
+    [<Fact>]
+    let ``Any no value case DU singleCase`` () =
+        task {
+            let! results = AnyNoValueCaseDU.singleCase |> snipNoLivePreviewFunc |> runFuncUIAnalysisAsync
 
-        ex.Message
-        |> shouldContainText "typecheck error Duplicate definition of type, exception or module 'Counter'"
+            FuncUIAnalysisResult.count results
+            |> shouldEqual
+                { livePreviewFuncCount = 0
+                  invalidLivePreviewFuncCount = 0
+                  invalidStringCallCount = 0
+                  notSuppurtPatternCount = 0 }
+        }
+
+    [<Fact>]
+    let ``Any no value case DU singleCase with livePreviewFunc`` () =
+        task {
+            let! results = AnyNoValueCaseDU.singleCase |> snipWithLivePreviewFunc |> runFuncUIAnalysisAsync
+
+            FuncUIAnalysisResult.count results
+            |> shouldEqual
+                { livePreviewFuncCount = 1
+                  invalidLivePreviewFuncCount = 0
+                  invalidStringCallCount = 0
+                  notSuppurtPatternCount = 0 }
+        }
+
+    [<Fact>]
+    let ``Any no value case DU multiCase`` () =
+        task {
+            let! results = AnyNoValueCaseDU.multiCase |> snipNoLivePreviewFunc |> runFuncUIAnalysisAsync
+
+            FuncUIAnalysisResult.count results
+            |> shouldEqual
+                { livePreviewFuncCount = 0
+                  invalidLivePreviewFuncCount = 0
+                  invalidStringCallCount = 0
+                  notSuppurtPatternCount = 0 }
+        }
+
+    [<Fact>]
+    let ``Any no value case DU multiCase with livePreviewFunc`` () =
+        task {
+            let! results = AnyNoValueCaseDU.multiCase |> snipWithLivePreviewFunc |> runFuncUIAnalysisAsync
+
+            FuncUIAnalysisResult.count results
+            |> shouldEqual
+                { livePreviewFuncCount = 1
+                  invalidLivePreviewFuncCount = 0
+                  invalidStringCallCount = 0
+                  notSuppurtPatternCount = 0 }
+        }
+
+    [<Fact>]
+    let ``Any no value case DU genericCase`` () =
+        task {
+            let! results = AnyNoValueCaseDU.genericCase |> snipNoLivePreviewFunc |> runFuncUIAnalysisAsync
+
+            FuncUIAnalysisResult.count results
+            |> shouldEqual
+                { livePreviewFuncCount = 0
+                  invalidLivePreviewFuncCount = 0
+                  invalidStringCallCount = 0
+                  notSuppurtPatternCount = 0 }
+        }
+
+    [<Fact>]
+    let ``Any no value case DU genericCase with livePreviewFunc`` () =
+        task {
+            let! results =
+                AnyNoValueCaseDU.genericCase
+                |> snipWithLivePreviewFunc
+                |> runFuncUIAnalysisAsync
+
+            FuncUIAnalysisResult.count results
+            |> shouldEqual
+                { livePreviewFuncCount = 1
+                  invalidLivePreviewFuncCount = 0
+                  invalidStringCallCount = 0
+                  notSuppurtPatternCount = 0 }
+        }
