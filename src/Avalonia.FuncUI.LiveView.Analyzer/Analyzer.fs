@@ -54,10 +54,13 @@ type AnalyzerService() =
         if not isDisposed then
             isDisposed <- true
 
-            if channel.Writer.TryComplete() && not runner.IsCompleted then
-                runner.Wait(3_000) |> ignore
+            if
+                channel.Writer.TryComplete()
+                && not runner.IsCompleted
+                && not (runner.Wait(3_000))
+            then
+                cts.Cancel()
 
-            cts.Cancel()
             cts.Dispose()
 
     do AppDomain.CurrentDomain.ProcessExit.Add(dispose)
