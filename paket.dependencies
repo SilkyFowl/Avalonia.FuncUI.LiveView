@@ -6,10 +6,11 @@ framework: netstandard2.0, netstandard2.1,  net6.0, net7.0
 
 nuget Argu
 nuget coverlet.collector
-nuget FSharp.Compiler.Service 43.7.300
+nuget FSharp.Compiler.Service 43.7.400
 nuget FSharp.Analyzers.SDK 0.11.0
 nuget FSharp.Core content: none
 nuget FsUnit.xUnit
+nuget FSharp.Control.TaskSeq 0.3.0
 
 nuget Avalonia.FuncUI ~> 1.0.1
 nuget Avalonia.FuncUI.Elmish ~> 1.0.1
@@ -20,7 +21,6 @@ nuget Avalonia.Diagnostics
 nuget Avalonia.Themes.Fluent
 nuget Avalonia.Themes.Simple
 nuget Avalonia.Angle.Windows.Natives ~> 2.1.0.0
-nuget MessagePack.FSharpExtensions
 nuget Microsoft.NET.Test.Sdk
 nuget xunit
 nuget xunit.runner.visualstudio

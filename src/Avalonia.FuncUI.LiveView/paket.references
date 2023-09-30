@@ -3,4 +3,3 @@ Avalonia.Diagnostics
 Avalonia.FuncUI
 Avalonia.FuncUI.Elmish
 FSharp.Compiler.Service
-MessagePack.FSharpExtensions

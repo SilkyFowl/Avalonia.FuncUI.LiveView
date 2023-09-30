@@ -2,7 +2,20 @@ module Avalonia.FuncUI.LiveView.Types
 
 open System
 
-type Msg = { FullName: string; Contents: string[] }
+type ReferenceSource =
+    { Path: string
+      ReferenceSourceTarget: string option
+      FusionName: string option }
+
+type ProjectInfo =
+    { Name: string
+      ProjectDirectory: string
+      TargetPath: string
+      TargetFramework: string
+      ReferenceSources: ReferenceSource list }
+
+type Msg =
+    { FullName: string; Contents: string[] }
 
 type LogMessage =
     | LogDebug of string
@@ -11,20 +24,36 @@ type LogMessage =
 
 type Logger = LogMessage -> unit
 
-module FuncUiAnalyzer =
-    open System
-    open System.Threading
+module Protocol =
+    open System.Threading.Tasks
 
-    type Post = Msg -> unit
+    type IClient =
+        inherit IDisposable
+        abstract member PostAsync: msg: Msg -> Task<unit>
+        abstract member IsConnected: bool
 
-    type Server(body) =
-        let cts = new CancellationTokenSource()
-        let actor = MailboxProcessor<Msg>.Start(body cts.Token, cts.Token)
-        member _.Post = actor.Post
-        member _.Dispose() = cts.Dispose()
+    type IServer =
+        inherit IDisposable
 
-        interface IDisposable with
-            member this.Dispose() = this.Dispose()
+        abstract member IsConnected: bool
 
-module FuncUiLiveView =
-    type Receive = unit -> Msg
+        [<CLIEvent>]
+        abstract member OnMsgReceived: IEvent<Msg>
+
+        [<CLIEvent>]
+        abstract member OnLogMessage: IEvent<LogMessage>
+
+module Analyzer =
+    type IAnalyzerService =
+        abstract member Post: msg: Msg -> unit
+
+module Watcher =
+    type IWatcherService =
+        inherit IDisposable
+        abstract member Server: Protocol.IServer
+        abstract member IsConnected: bool
+        abstract member Watch: ProjectInfo -> unit
+        abstract member Unwatch: unit -> unit
+
+        [<CLIEvent>]
+        abstract member OnLogMessage: IEvent<LogMessage>

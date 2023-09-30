@@ -11,7 +11,7 @@ open Avalonia.FuncUI.Types
 open Avalonia.FuncUI.DSL
 
 open Avalonia.FuncUI.LiveView.Types
-open Avalonia.FuncUI.LiveView.MessagePack
+open Avalonia.FuncUI.LiveView.Protocol
 
 type StateStore =
     { Msg: IWritable<Msg>
@@ -287,9 +287,12 @@ type LiveViewWindow() =
     /// ※本来、Storeはアプリケーション一つだけであるのが望ましい。
     let shared = StateStore.init ()
 
-    let client =
-        Client.init shared.Status.Set Settings.iPAddress Settings.port shared.Msg.Set
+    let client = Server.create ()
 
     do
+        client.OnLogMessage |> Event.add shared.Status.Set
+
+        client.OnMsgReceived |> Event.add shared.Msg.Set
+
         base.Content <- LiveView.view shared client
         base.AttachDevTools()

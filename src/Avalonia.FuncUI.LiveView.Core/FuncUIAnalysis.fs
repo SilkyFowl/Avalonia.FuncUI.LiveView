@@ -8,7 +8,6 @@ open FSharp.Compiler.Symbols
 open FSharp.Compiler.Symbols.FSharpExprPatterns
 open FSharp.Compiler.Text
 
-open Avalonia.Skia
 open Avalonia.FuncUI.Types
 
 type FuncUIAnalysisHander =
@@ -27,9 +26,6 @@ let (|FSharpString|_|) t =
 
     if $"{t}" = stringType then Some() else None
 
-do
-    // Load service required for `Path.data` parsing.
-    SkiaPlatform.Initialize()
 
 let stringArgDSLFuncMap =
     let (|FsStaticMember|_|) (m: MethodInfo) =
