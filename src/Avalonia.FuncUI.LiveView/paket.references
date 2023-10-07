@@ -3,3 +3,7 @@ Avalonia.Diagnostics
 Avalonia.FuncUI
 Avalonia.FuncUI.Elmish
 FSharp.Compiler.Service
+Microsoft.Build.Locator
+Microsoft.Build
+Microsoft.Build.Framework
+Microsoft.Build.Utilities.Core

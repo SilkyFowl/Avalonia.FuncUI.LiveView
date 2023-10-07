@@ -4,8 +4,8 @@ open System
 
 type ReferenceSource =
     { Path: string
-      ReferenceSourceTarget: string option
-      FusionName: string option }
+      ReferenceSourceTarget: string
+      FusionName: string }
 
 type ProjectInfo =
     { Name: string
