@@ -96,9 +96,12 @@ module Preview =
                     ListBox.create [
                         ListBox.viewItems [
                             for { FullName = fullName
-                                  Contents = contents } in msgs.Current do
+                                  Contents = contents
+                                  Timestamp = timestamp } in msgs.Current do
+                                let timestamp = timestamp.ToString("HH:mm:ss.fff")
+
                                 Expander.create [
-                                    Expander.header (fullName)
+                                    Expander.header ($"[{timestamp}]:{fullName}")
                                     Expander.content (String.concat "\n" contents)
                                 ]
                         ]
@@ -129,7 +132,7 @@ module Preview =
 type MainWindow() as this =
     inherit HostWindow()
 
-    let server = Server.create()
+    let server = Server.create ()
 
     let logs = new State<_>([]) :> IWritable<_>
 

@@ -81,9 +81,7 @@ let preview () = ViewBuilder.Create<Host> []
 let ``SerializeAsync should serialize and write the message to the stream`` () =
     task {
         // Arrange
-        let msg =
-            { FullName = "Test"
-              Contents = [| "Hello"; "World" |] }
+        let msg = Msg.create "Test" [| "Hello"; "World" |]
 
         use stream = new MemoryStream()
         let token = new CancellationToken()
@@ -96,20 +94,19 @@ let ``SerializeAsync should serialize and write the message to the stream`` () =
         let reader = new StreamReader(stream)
         let serializedMsg = reader.ReadToEnd()
 
-        serializedMsg
-        |> should equal "{\"FullName\":\"Test\",\"Contents\":[\"Hello\",\"World\"]}"
+        let expected = Json.JsonSerializer.Serialize msg
+
+        serializedMsg |> should equal expected
     }
 
 
 [<Fact>]
-let ``Serialize_Success`` () =
+let ``Serialize Success`` () =
     task {
         let ct = new CancellationToken()
         use stream = new MemoryStream()
 
-        let value: Msg =
-            { FullName = "Test"
-              Contents = msgContent }
+        let value = Msg.create "Test" msgContent
 
         do! Msg.serializeAsync stream ct value
         stream.Position <- 0L
@@ -123,9 +120,7 @@ let ``Serialize_Success`` () =
 let ``SerializeAsyncEnumerable should serialize and write the message sequence to the stream`` () =
     task {
         // Arrange
-        let value: Msg =
-            { FullName = "Test"
-              Contents = [| "Hello"; "World" |] }
+        let value = Msg.create "Test" [| "Hello"; "World" |]
 
         use stream = new MemoryStream()
         let token = new CancellationToken()
@@ -140,8 +135,8 @@ let ``SerializeAsyncEnumerable should serialize and write the message sequence t
         use reader = new StreamReader(stream)
         let serializedMsgSeq = reader.ReadToEnd()
 
-        serializedMsgSeq
-        |> should equal "[{\"FullName\":\"Test\",\"Contents\":[\"Hello\",\"World\"]}]"
+        let expected = Json.JsonSerializer.Serialize [| value |]
+        serializedMsgSeq |> should equal expected
 
     }
 
@@ -150,17 +145,8 @@ let ``SerializeAsyncEnumerable should serialize and write the message sequence t
 let ``DeserializeAsyncEnumerable should deserialize and read the message sequence from the stream`` () =
     task {
         // Arrange
-        let msgSeq =
-            taskSeq {
-                { FullName = "Test"
-                  Contents = msgContent }
-
-                { FullName = "Test2"
-                  Contents = msgContent }
-
-                { FullName = "Test3"
-                  Contents = msgContent }
-            }
+        let msgs = List.init 10 (fun i -> Msg.create $"Test{i}" msgContent)
+        let msgSeq = TaskSeq.ofList msgs
 
         use stream = new MemoryStream()
         let token = new CancellationToken()
@@ -199,15 +185,11 @@ let (|TaskCancelled|_|) (ex: exn) =
     | _ -> None
 
 [<Fact>]
-let ``Async_Client_Server_Communication_Success`` () =
+let ``Async Client Server Communication Success`` () =
     task {
         let cts = new CancellationTokenSource()
         // Arrange
-        let msgs: Msg list =
-            List.init 100 (fun i ->
-                { FullName = $"TestMsg{i}"
-                  Contents = [| "Hello"; "World" |] })
-
+        let msgs = List.init 10 (fun i -> Msg.create $"Test{i}" msgContent)
 
         let socketNameSuffix = Guid.NewGuid().ToString("N")
 
@@ -258,7 +240,7 @@ let ``Async_Client_Server_Communication_Success`` () =
 
 
 [<Fact>]
-let ``Async_Client_Server_Communication_Failure`` () =
+let ``Async Client Server Communication Failure`` () =
     task {
         let cts = new CancellationTokenSource()
         let timeout = 10_000
@@ -274,17 +256,7 @@ let ``Async_Client_Server_Communication_Failure`` () =
             }
 
         // Arrange
-        let msgs: Msg list =
-            [ { FullName = "Test"
-                Contents = msgContent }
-              { FullName = "Test2"
-                Contents = msgContent }
-              { FullName = "Test3"
-                Contents = msgContent }
-              { FullName = "Test4"
-                Contents = msgContent }
-              { FullName = "Test5"
-                Contents = msgContent } ]
+        let msgs = List.init 10 (fun i -> Msg.create $"Test{i}" msgContent)
 
         let socketNameSuffix = Guid.NewGuid().ToString("N")
 

@@ -64,7 +64,7 @@ module ``No contain DU`` =
         }
 
 
-module DU_is_in_top_of_code =
+module ``DU is in top of code`` =
     let private snipNoLivePreviewFunc du =
         $"""
 module Foo
@@ -378,7 +378,7 @@ module Foo
                   notSuppurtPatternCount = 0 }
         }
 
-module DU_is_in_end_of_code =
+module ``DU is in end of code`` =
     let private snipNoLivePreviewFunc du =
         $"""
 module Foo

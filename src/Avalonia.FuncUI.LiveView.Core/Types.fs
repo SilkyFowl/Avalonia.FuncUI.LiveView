@@ -15,7 +15,15 @@ type ProjectInfo =
       ReferenceSources: ReferenceSource list }
 
 type Msg =
-    { FullName: string; Contents: string[] }
+    { FullName: string
+      Contents: string[]
+      Timestamp: DateTimeOffset }
+
+module Msg =
+    let create (fullName: string) (contents: string[]) =
+        { FullName = fullName
+          Contents = contents
+          Timestamp = DateTimeOffset.Now }
 
 type LogMessage =
     | LogDebug of string

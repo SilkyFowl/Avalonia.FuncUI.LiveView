@@ -96,9 +96,7 @@ module Counter =
             ]
             |> VirtualDom.create
 
-        { Msg =
-            new State<_> { FullName = "init"
-                           Contents = [| initText |] }
+        { Msg = new State<_>(Msg.create "init" [| initText |])
           EvalResult = new State<_>([ "init", initResult ])
           EvalWarings = new State<_>([||])
           Status = new State<_>(LogInfo "")

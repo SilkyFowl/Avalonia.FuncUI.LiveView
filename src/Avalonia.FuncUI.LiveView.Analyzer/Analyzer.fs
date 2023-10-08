@@ -128,9 +128,7 @@ let funcUiAnalyzer: Analyzer =
                 && Seq.isEmpty notSuppurtPatternMessages
                 && not (Seq.isEmpty livePreviewFuncs)
             then
-                service.Post
-                    { FullName = ctx.FileName
-                      Contents = ctx.Content }
+                Msg.create ctx.FileName ctx.Content |> service.Post
 
             yield! errorMessages
             yield! notSuppurtPatternMessages
