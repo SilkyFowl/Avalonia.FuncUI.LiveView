@@ -1,7 +1,5 @@
 ﻿namespace Avalonia.FuncUI.LiveView
 
-open System
-open System.IO
 open Avalonia
 open Avalonia.Controls
 open Avalonia.Media
@@ -12,96 +10,6 @@ open Avalonia.FuncUI.DSL
 
 open Avalonia.FuncUI.LiveView.Types
 open Avalonia.FuncUI.LiveView.Protocol
-
-type StateStore =
-    { Msg: IWritable<Msg>
-      EvalResult: IWritable<list<string * Control>>
-      EvalWarings: IWritable<obj[]>
-      Status: IWritable<LogMessage>
-      TempScriptFileInfo: FileInfo }
-
-module StateStore =
-    open Avalonia.FuncUI.VirtualDom
-    let private fsiSession = FsiSession.create ()
-
-    /// `state`の情報に基づいてEvalする。
-    let evalInteraction state =
-        FsiSession.evalInteraction
-            fsiSession
-            state.Status.Set
-            state.TempScriptFileInfo
-            state.Msg.Current
-            state.EvalWarings
-            state.EvalResult
-
-    /// `StateStore`を初期化する。
-    let init () =
-        let initText =
-            $"""
-module Counter =
-    open Avalonia.FuncUI
-    open Avalonia.Controls
-    open Avalonia.FuncUI.DSL
-    open Avalonia.Layout
-    open Avalonia.Media
-
-    let view =
-        Component.create("Counter",fun ctx ->
-            let state = ctx.useState 0
-            DockPanel.create [
-                DockPanel.verticalAlignment VerticalAlignment.Center
-                DockPanel.horizontalAlignment HorizontalAlignment.Center
-                DockPanel.children [
-                    Button.create [
-                        Button.width 64
-                        Button.horizontalAlignment HorizontalAlignment.Center
-                        Button.horizontalContentAlignment HorizontalAlignment.Center
-                        Button.content "Reset"
-                        Button.onClick (fun _ -> state.Set 0)
-                        Button.dock Dock.Bottom
-                    ]
-                    Button.create [
-                        Button.width 64
-                        Button.horizontalAlignment HorizontalAlignment.Center
-                        Button.horizontalContentAlignment HorizontalAlignment.Center
-                        Button.content "-"
-                        Button.onClick (fun _ -> state.Current - 1 |> state.Set)
-                        Button.dock Dock.Bottom
-                    ]
-                    Button.create [
-                        Button.width 64
-                        Button.horizontalAlignment HorizontalAlignment.Center
-                        Button.horizontalContentAlignment HorizontalAlignment.Center
-                        Button.content "+"
-                        Button.onClick (fun _ -> state.Current + 1 |> state.Set)
-                        Button.dock Dock.Bottom
-                    ]
-                    TextBlock.create [
-                        TextBlock.dock Dock.Top
-                        TextBlock.foreground Brushes.White
-                        TextBlock.fontSize 48.0
-                        TextBlock.horizontalAlignment HorizontalAlignment.Center
-                        TextBlock.text (string state.Current)
-                    ]
-                ]
-            ]
-        )
-            """
-
-        let initResult =
-            TextBlock.create [
-                TextBlock.verticalAlignment VerticalAlignment.Center
-                TextBlock.horizontalAlignment HorizontalAlignment.Center
-                TextBlock.text "Results are displayed here."
-            ]
-            |> VirtualDom.create
-
-        { Msg = new State<_>(Msg.create "init" [| initText |])
-          EvalResult = new State<_>([ "init", initResult ])
-          EvalWarings = new State<_>([||])
-          Status = new State<_>(LogInfo "")
-          TempScriptFileInfo = Path.ChangeExtension(Path.GetTempFileName(), "fsx") |> FileInfo }
-
 open Avalonia.FuncUI.Hosts
 
 [<AutoOpen>]
@@ -129,168 +37,335 @@ module StyledElement =
 
             StyledElement.styles styles
 
+module FilePicker =
+    open Avalonia.Platform.Storage
+
+    let openSimgleFileAsync ctr title filters =
+        task {
+            let provier = TopLevel.GetTopLevel(ctr).StorageProvider
+            let! location = provier.TryGetWellKnownFolderAsync(WellKnownFolder.Documents)
+
+            let! result =
+                provier.OpenFilePickerAsync(
+                    FilePickerOpenOptions(
+                        Title = title,
+                        SuggestedStartLocation = location,
+                        AllowMultiple = false,
+                        FileTypeFilter = filters
+                    )
+                )
+
+            match List.ofSeq result with
+            | [ picked ] -> return Some picked
+            | _ -> return None
+        }
+
+    let openProjectOrSolutionFileAsync ctr =
+        openSimgleFileAsync ctr "Open Project or Solution" [
+            FilePickerFileType(
+                "MsBuild Project Or Solution File",
+                Patterns = [ "*.fsproj"; "*.csproj"; "*.sln" ],
+                AppleUniformTypeIdentifiers = [ "public.data" ]
+            )
+        ]
+
+module ProjectInfoSelecter =
+    let view onOpenSelectProject =
+        Component.create (
+            "project-info-selecter",
+            fun ctx ->
+
+                let loadedProjects = ctx.useState<list<ProjectInfo>> []
+
+                let projectInfo = ctx.useState<ProjectInfo option> None
+
+                let openFile _ =
+                    backgroundTask {
+                        match! FilePicker.openProjectOrSolutionFileAsync ctx.control with
+                        | Some picked ->
+                            MSBuildLocator.registerIfNotRegistered ()
+
+                            if picked.Name.EndsWith(".sln") then
+                                ProjectInfo.loadFromSlnFile picked.Path.LocalPath
+                            else
+                                ProjectInfo.loadFromProjFile picked.Path.LocalPath
+                            |> List.ofSeq
+                            |> function
+                                | [ Ok info ] -> onOpenSelectProject info
+                                | results ->
+                                    results
+                                    |> List.choose (function
+                                        | Ok x -> Some x
+                                        | Error _ -> None)
+                                    |> loadedProjects.Set
+                        | None -> ()
+                    }
+                    |> ignore
+
+                let selectedProjectView =
+                    StackPanel.create [
+                        StackPanel.orientation Orientation.Horizontal
+                        StackPanel.children [
+                            Button.create [
+                                Button.margin 4
+                                Button.content "Open project or load solution."
+                                Button.onClick openFile
+                            ]
+                        ]
+                    ]
+
+                let loadedProjectsView =
+                    ListBox.create [
+                        ListBox.margin 4
+                        ListBox.isEnabled (List.isEmpty loadedProjects.Current |> not)
+                        ListBox.viewItems [
+                            match loadedProjects.Current with
+                            | [] ->
+                                ListBoxItem.create [
+                                    ListBoxItem.isEnabled false
+                                    ListBoxItem.content "No project loaded."
+                                ]
+                            | loadedProjects ->
+                                for x in loadedProjects do
+                                    ListBoxItem.create [
+                                        ListBoxItem.content $"{x.Name} - {x.TargetFramework}"
+                                        ListBoxItem.onDoubleTapped (fun _ -> onOpenSelectProject x)
+                                    ]
+                        ]
+                        ListBox.onSelectedIndexChanged (fun x ->
+                            if x < 0 then
+                                projectInfo.Set None
+                            else
+                                List.tryItem x loadedProjects.Current |> projectInfo.Set)
+                    ]
+
+                let openSelectedProjectButton =
+                    Button.create [
+                        Button.isEnabled (projectInfo.Current |> Option.isSome)
+                        Button.margin 4
+                        Button.content "Open selected project"
+                        Button.onClick (fun _ -> Option.iter onOpenSelectProject projectInfo.Current)
+                    ]
+
+                StackPanel.create [
+                    StackPanel.orientation Orientation.Vertical
+                    StackPanel.children [ selectedProjectView; loadedProjectsView; openSelectedProjectButton ]
+                ]
+        )
+
+    [<LivePreview>]
+    let filePickerView () = view ignore
+
+
 module LiveView =
 
     open Avalonia.Styling
+    open FSharp.Compiler.Diagnostics
+    open Avalonia.Controls.Primitives
 
-    let view shared client =
+    let mainView (watcher: Watcher.Service) (server: Protocol.IServer) =
 
-        let buttonBackground =
-            Application.Current.FindResource "ButtonBackground" :?> IBrush
+        Component.create (
+            "live-view-main",
+            fun ctx ->
+
+                let logs = ctx.useState<LogMessage list> []
+
+                ctx.useEffect (
+                    (fun _ ->
+                        server.OnLogMessage
+                        |> Event.merge watcher.OnLogMsg
+                        |> Event.add (fun x -> logs.Set(x :: logs.Current))),
+                    [ EffectTrigger.AfterInit ]
+                )
+
+                let msgs = ctx.useState<Msg list> []
+
+                ctx.useEffect (
+                    (fun _ -> server.OnMsgReceived |> Event.add (fun x -> msgs.Set(x :: msgs.Current))),
+                    [ EffectTrigger.AfterInit ]
+                )
+
+                let evalResults = ctx.useState<list<string * Control>> []
+                let evalWarnings = ctx.useState<FSharpDiagnostic[]> [||]
+                let evalExn = ctx.useState<exn option> None
+
+                ctx.useEffect (
+                    (fun _ ->
+                        watcher.OnEvalResult
+                        |> Event.add (function
+                            | Ok(name, results, warnings) ->
+                                evalResults.Set results
+                                evalWarnings.Set warnings
+                            | Error(ex, warnings) ->
+                                evalExn.Set(Some ex)
+                                evalWarnings.Set warnings)),
+                    [ EffectTrigger.AfterInit ]
+                )
+
+
+                let autoEval = ctx.useState true
+
+                ctx.useEffect (
+                    (fun _ ->
+                        server.OnMsgReceived
+                        |> Event.filter (fun _ -> autoEval.Current)
+                        |> Event.add (fun { FullName = path; Contents = contents } ->
+                            watcher.RequestEval(path, contents))),
+                    [ EffectTrigger.AfterInit ]
+                )
+
+                let showEvalText = ctx.useState false
+                let rootGridName = "live-preview-root"
+
+                ctx.attrs [
+                    Component.styles [
+                        (fun (x: Selector) -> x.Name(rootGridName).Child()),
+                        [ Layoutable.margin 8; Layoutable.verticalAlignment VerticalAlignment.Center ]
+                    ]
+                ]
+
+                Grid.create [
+                    Grid.name rootGridName
+                    Grid.rowDefinitions "Auto,*,4,*,Auto"
+                    Grid.columnDefinitions "Auto,*,Auto"
+                    Grid.children [
+                        CheckBox.create [
+                            CheckBox.row 0
+                            CheckBox.column 0
+                            CheckBox.content "Show EvalText"
+                            CheckBox.isChecked showEvalText.Current
+                            CheckBox.onChecked (fun _ -> showEvalText.Set true)
+                            CheckBox.onUnchecked (fun _ -> showEvalText.Set false)
+                        ]
+                        TextBox.create [
+                            match msgs.Current with
+                            | { Contents = contents } :: _ when showEvalText.Current ->
+                                TextBox.row 1
+                                TextBox.column 0
+                                TextBox.columnSpan 3
+                                TextBox.acceptsReturn true
+                                TextBox.textWrapping TextWrapping.Wrap
+                                TextBox.text (String.concat "" contents)
+
+                                if not <| Array.isEmpty evalWarnings.Current then
+                                    evalWarnings.Current |> Array.map (fun x -> box $"%A{x}") |> TextBox.errors
+                            | _ -> TextBox.isVisible false
+                        ]
+
+                        GridSplitter.create [
+                            if showEvalText.Current then
+                                GridSplitter.row 2
+                                GridSplitter.column 0
+                                GridSplitter.columnSpan 3
+                            else
+                                GridSplitter.isVisible false
+                        ]
+                        ScrollViewer.create [
+                            if showEvalText.Current then
+                                ScrollViewer.row 3
+                            else
+                                ScrollViewer.row 1
+                                ScrollViewer.rowSpan 3
+                            ScrollViewer.margin (4, 4)
+                            ScrollViewer.padding (4, 0)
+                            ScrollViewer.verticalAlignment VerticalAlignment.Top
+                            ScrollViewer.column 0
+                            ScrollViewer.columnSpan 3
+                            ScrollViewer.column 0
+                            ScrollViewer.content (
+                                DockPanel.create [
+                                    DockPanel.children [
+                                        for (name, content) in evalResults.Current do
+                                            Border.create [
+                                                Border.dock Dock.Top
+                                                Border.borderThickness 2
+                                                Border.child (
+                                                    Grid.create [
+                                                        Grid.rowDefinitions "Auto,Auto,Auto"
+                                                        Grid.children [
+                                                            TextBlock.create [
+                                                                TextBlock.row 0
+                                                                TextBlock.fontSize 20
+                                                                TextBlock.margin 4
+                                                                TextBlock.fontWeight FontWeight.SemiBold
+                                                                TextBlock.text name
+                                                            ]
+                                                            Border.create [ Border.row 1; Border.height 2 ]
+                                                            Border.create [ Border.row 2; Border.child content ]
+                                                        ]
+                                                    ]
+                                                )
+                                            ]
+                                    ]
+                                ]
+                            )
+                        ]
+                        CheckBox.create [
+                            CheckBox.row 4
+                            CheckBox.column 0
+                            CheckBox.margin 4
+                            CheckBox.content "Auto EvalText"
+                            CheckBox.isChecked autoEval.Current
+                            CheckBox.onChecked (fun _ -> autoEval.Set true)
+                            CheckBox.onUnchecked (fun _ -> autoEval.Set false)
+                        ]
+                        Button.create [
+                            Button.row 4
+                            TextBox.column 1
+                            Button.horizontalAlignment HorizontalAlignment.Left
+                            Button.content "eval manualy"
+                            Button.onClick (fun _ ->
+                                match msgs.Current with
+                                | { FullName = path; Contents = contents } :: _ -> watcher.RequestEval(path, contents)
+                                | _ -> ())
+                        ]
+                        TextBlock.create [
+                            TextBlock.row 5
+                            TextBlock.column 2
+                            TextBlock.maxLines 1
+                            TextBlock.multiline false
+                            TextBlock.horizontalScrollBarVisibility ScrollBarVisibility.Disabled
+                            TextBlock.text (
+                                match logs.Current with
+                                | [] -> ""
+                                | LogInfo msg :: _ -> $"Info: {msg}"
+                                | LogDebug msg :: _ -> $"Debug: {msg}"
+                                | LogError msg :: _ -> $"Error: {msg}"
+                            )
+                        ]
+                    ]
+                ]
+        )
+
+    let view (watcher: Watcher.Service) (server: Protocol.IServer) =
 
         Component(fun ctx ->
+            let projectInfo = ctx.useState watcher.WatchingProjectInfo
 
-            // sharedの購読
-            let evalText =
-                ctx.usePassedRead (shared.Msg |> State.readMap (fun m -> m.Contents), true)
+            match projectInfo.Current with
+            | None ->
+                ProjectInfoSelecter.view (fun x ->
+                    watcher.Watch x
+                    projectInfo.Set(Some x))
+            | Some info ->
+                (Window.GetTopLevel(ctx.control) :?> Window).Title <- $"LiveView - {info.Name}"
+                mainView watcher server)
 
-            let evalResult = ctx.usePassed (shared.EvalResult)
-            let evalWarnings = ctx.usePassed (shared.EvalWarings)
-            let status = ctx.usePassed shared.Status
-
-            /// `true`ならEvalTextが更新されたら自動でEvalする。
-            let autoEval = ctx.useState true
-            /// `true`ならEvalTextを表示する。
-            let showEvalText = ctx.useState false
-
-            ctx.trackDisposable client
-
-            /// Evalを実行する。
-            let evalInteractionAsync _ =
-                StateStore.evalInteraction shared |> ignore
-
-            ctx.useEffect (
-                (fun _ ->
-                    evalText.Observable
-                    |> Observable.subscribe (fun _ ->
-                        if autoEval.Current then
-                            evalInteractionAsync ())),
-                [ EffectTrigger.AfterInit ]
-            )
-
-            let rootGridName = "live-preview-root"
-
-            ctx.attrs [
-                Component.styles [
-                    (fun (x: Selector) -> x.Name(rootGridName).Child()),
-                    [ Layoutable.margin 8; Layoutable.verticalAlignment VerticalAlignment.Center ]
-                ]
-            ]
-
-            Grid.create [
-                Grid.name rootGridName
-                Grid.rowDefinitions "Auto,*,4,*,Auto"
-                Grid.columnDefinitions "Auto,*,Auto"
-                Grid.children [
-                    CheckBox.create [
-                        CheckBox.row 0
-                        CheckBox.column 0
-                        CheckBox.content "Show EvalText"
-                        CheckBox.isChecked showEvalText.Current
-                        CheckBox.onChecked (fun _ -> showEvalText.Set true)
-                        CheckBox.onUnchecked (fun _ -> showEvalText.Set false)
-                    ]
-                    TextBox.create [
-                        if showEvalText.Current then
-                            TextBox.row 1
-                            TextBox.column 0
-                            TextBox.columnSpan 3
-                            TextBox.acceptsReturn true
-                            TextBox.textWrapping TextWrapping.Wrap
-                            TextBox.text (String.concat "" evalText.Current)
-
-                            if not <| Array.isEmpty evalWarnings.Current then
-                                TextBox.errors evalWarnings.Current
-                        else
-                            TextBox.isVisible false
-                    ]
-
-                    GridSplitter.create [
-                        if showEvalText.Current then
-                            GridSplitter.row 2
-                            GridSplitter.column 0
-                            GridSplitter.columnSpan 3
-                        else
-                            GridSplitter.isVisible false
-                    ]
-                    ScrollViewer.create [
-                        if showEvalText.Current then
-                            ScrollViewer.row 3
-                        else
-                            ScrollViewer.row 1
-                            ScrollViewer.rowSpan 3
-                        ScrollViewer.margin (4, 4)
-                        ScrollViewer.padding (4, 0)
-                        ScrollViewer.verticalAlignment VerticalAlignment.Top
-                        ScrollViewer.column 0
-                        ScrollViewer.columnSpan 3
-                        ScrollViewer.column 0
-                        ScrollViewer.content (
-                            DockPanel.create [
-                                DockPanel.children [
-                                    for (name, content) in evalResult.Current do
-                                        Border.create [
-                                            Border.dock Dock.Top
-                                            Border.borderThickness 2
-                                            Border.borderBrush buttonBackground
-                                            Border.child (
-                                                Grid.create [
-                                                    Grid.rowDefinitions "Auto,Auto,Auto"
-                                                    Grid.children [
-                                                        TextBlock.create [
-                                                            TextBlock.row 0
-                                                            TextBlock.fontSize 20
-                                                            TextBlock.margin 4
-                                                            TextBlock.fontWeight FontWeight.SemiBold
-                                                            TextBlock.text name
-                                                        ]
-                                                        Border.create [
-                                                            Border.row 1
-                                                            Border.height 2
-                                                            Border.background buttonBackground
-                                                        ]
-                                                        Border.create [ Border.row 2; Border.child content ]
-                                                    ]
-                                                ]
-                                            )
-                                        ]
-                                ]
-                            ]
-                        )
-                    ]
-                    CheckBox.create [
-                        CheckBox.row 4
-                        CheckBox.column 0
-                        CheckBox.margin 4
-                        CheckBox.content "Auto EvalText"
-                        CheckBox.isChecked autoEval.Current
-                        CheckBox.onChecked (fun _ -> autoEval.Set true)
-                        CheckBox.onUnchecked (fun _ -> autoEval.Set false)
-                    ]
-                    Button.create [
-                        Button.row 4
-                        TextBox.column 1
-                        Button.horizontalAlignment HorizontalAlignment.Left
-                        Button.content "eval manualy"
-                        Button.onClick evalInteractionAsync
-                    ]
-                    TextBlock.create [ TextBlock.row 5; TextBlock.column 2; TextBlock.text $"{status.Current}" ]
-                ]
-            ])
 
 type LiveViewWindow() =
     inherit HostWindow(Title = "LiveView", Width = 800, Height = 600)
 
-    /// `Interactive`のStore。
-    /// ※本来、Storeはアプリケーション一つだけであるのが望ましい。
-    let shared = StateStore.init ()
+
+    let watcher = new Watcher.Service()
 
     let client = Server.create ()
 
     do
-        client.OnLogMessage |> Event.add shared.Status.Set
-
-        client.OnMsgReceived |> Event.add shared.Msg.Set
-
-        base.Content <- LiveView.view shared client
+        base.Content <- LiveView.view watcher client
         base.AttachDevTools()
+
+    override _.OnClosed e =
+        Disposable.dispose watcher
+        Disposable.dispose client
+        base.OnClosed e

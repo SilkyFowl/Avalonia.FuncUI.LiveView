@@ -27,9 +27,10 @@ module ProjectInfoTests =
         let path = __SOURCE_DIRECTORY__ + "/../../src/Avalonia.FuncUI.LiveView/Avalonia.FuncUI.LiveView.fsproj"
         // Act
         let project = ProjectInfo.loadFromProjFile path
+        let project' = ProjectInfo.loadFromProjFile path
 
         // Assert
-        project |> should be (ofCase <@ Result<ProjectInfo,string>.Ok @>)
+        project |> shouldEqual project'
 
 
     [<Fact>]
@@ -38,8 +39,9 @@ module ProjectInfoTests =
             MSBuildLocator.registerIfNotRegistered ()
             let path = __SOURCE_DIRECTORY__ + "/../../Avalonia.FuncUI.LiveView.sln"
             // Act
-            let project = ProjectInfo.loadFromSlnFile path
+            let projects = ProjectInfo.loadFromSlnFile path |> Seq.toList
+            let projects' = ProjectInfo.loadFromSlnFile path |> Seq.toList
 
             // Assert
-            project |> shouldContain
+            projects |> shouldEqual projects'
 

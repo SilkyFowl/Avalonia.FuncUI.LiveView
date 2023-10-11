@@ -15,7 +15,21 @@
 			"detail": "Build the Avalonia.FuncUI.LiveView.sln solution using dotnet build"
 		},
 		{
+			"label": "Build: LiveView.Cli",
+			"detail": "Build the LiveView.Cli project using dotnet build",
+			"type": "process",
+			"command": "dotnet",
+			"args": [
+				"build",
+				"src/Avalonia.FuncUI.LiveView.Cli"
+			],
+			"problemMatcher": [
+				"$msCompile"
+			],
+		},
+		{
 			"label": "Start Current Test",
+			"detail": "Start the current test",
 			"type": "shell",
 			"command": "dotnet test ${fileDirname}",
 			"isBackground": true,
@@ -32,6 +46,23 @@
 					"endsPattern": "^Process Id: \\d+, Name: testhost$"
 				}
 			}
+		},
+		{
+			"label": "PackAndSetLocalAnalyzer",
+			"detail": "Pack and set local analyzer",
+			"type": "process",
+			"command": "dotnet",
+			"args": [
+				"run",
+				"--project",
+				"build",
+				"--",
+				"-t",
+				"PackAndSetLocalAnalyzer"
+			],
+			"problemMatcher": [
+				"$msCompile"
+			]
 		}
 	]
 }
