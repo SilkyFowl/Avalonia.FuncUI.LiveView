@@ -168,6 +168,8 @@ module LiveView =
         Component.create (
             "live-view-main",
             fun ctx ->
+                let requestEvalAsync { FullName = path; Contents = contents } =
+                    backgroundTask { watcher.RequestEval(path, contents) } |> ignore
 
                 let logs = ctx.useState<LogMessage list> []
 
@@ -187,22 +189,21 @@ module LiveView =
                 )
 
                 let evalResults = ctx.useState<list<string * Control>> []
-                let evalWarnings = ctx.useState<FSharpDiagnostic[]> [||]
                 let evalExn = ctx.useState<exn option> None
+                let evalWarnings = ctx.useState<FSharpDiagnostic[]> ([||], false)
 
                 ctx.useEffect (
                     (fun _ ->
                         watcher.OnEvalResult
                         |> Event.add (function
                             | Ok(name, results, warnings) ->
-                                evalResults.Set results
                                 evalWarnings.Set warnings
+                                evalResults.Set results
                             | Error(ex, warnings) ->
-                                evalExn.Set(Some ex)
-                                evalWarnings.Set warnings)),
+                                evalWarnings.Set warnings
+                                evalExn.Set(Some ex))),
                     [ EffectTrigger.AfterInit ]
                 )
-
 
                 let autoEval = ctx.useState true
 
@@ -210,8 +211,7 @@ module LiveView =
                     (fun _ ->
                         server.OnMsgReceived
                         |> Event.filter (fun _ -> autoEval.Current)
-                        |> Event.add (fun { FullName = path; Contents = contents } ->
-                            watcher.RequestEval(path, contents))),
+                        |> Event.add requestEvalAsync),
                     [ EffectTrigger.AfterInit ]
                 )
 
@@ -317,7 +317,7 @@ module LiveView =
                             Button.content "eval manualy"
                             Button.onClick (fun _ ->
                                 match msgs.Current with
-                                | { FullName = path; Contents = contents } :: _ -> watcher.RequestEval(path, contents)
+                                | headMsg :: _ -> requestEvalAsync headMsg
                                 | _ -> ())
                         ]
                         TextBlock.create [
