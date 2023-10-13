@@ -58,10 +58,10 @@ module Analyzer =
 module Watcher =
     type IWatcherService =
         inherit IDisposable
-        abstract member Server: Protocol.IServer
-        abstract member IsConnected: bool
+        abstract member WatchingProjectInfo: option<ProjectInfo>
         abstract member Watch: ProjectInfo -> unit
         abstract member Unwatch: unit -> unit
+        abstract member RequestEval: path: string -> content: string array -> unit
 
         [<CLIEvent>]
         abstract member OnLogMessage: IEvent<LogMessage>

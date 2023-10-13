@@ -11,6 +11,10 @@ open FSharp.Compiler.Interactive.Shell
 open Avalonia.FuncUI.LiveView.Types
 
 module Watcher =
+    let inline tryDispose (x: #IDisposable option) =
+        match x with
+        | Some x -> x.Dispose()
+        | None -> ()
 
     type private WatcherMsg = EvalScript of path: string * constent: string[]
 
@@ -78,12 +82,13 @@ module Watcher =
             match projectInfo with
             | Some current when current = newProjectInfo -> ()
             | _ ->
-                Disposable.tryDispose fsi
+
+                tryDispose fsi
                 projectInfo <- Some newProjectInfo
                 fsi <- Some(FsiSession.ofProjectInfo newProjectInfo)
 
         member _.UnWatch() =
-            Disposable.tryDispose fsi
+            tryDispose fsi
             projectInfo <- None
             fsi <- None
 

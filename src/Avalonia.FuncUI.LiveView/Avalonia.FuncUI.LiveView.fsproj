@@ -22,15 +22,14 @@
   <ItemGroup>
     <Compile Include="Utils.fs" />
     <Compile Include="MSBuild.fs" />
-    <Compile Include="FsiSession.fs" />
-    <Compile Include="Watcher.fs" />
     <Compile Include="LiveView.fs" />
     <Content Include="CaptureCompile.props" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\Avalonia.FuncUI.LiveView.Attribute\Avalonia.FuncUI.LiveView.Attribute.fsproj" />
     <ProjectReference Include="..\Avalonia.FuncUI.LiveView.Core\Avalonia.FuncUI.LiveView.Core.fsproj" PrivateAssets="all" />
     <ProjectReference Include="..\Avalonia.FuncUI.LiveView.Protocol\Avalonia.FuncUI.LiveView.Protocol.fsproj" PrivateAssets="all" />
-    <ProjectReference Include="..\Avalonia.FuncUI.LiveView.Attribute\Avalonia.FuncUI.LiveView.Attribute.fsproj" />
+    <ProjectReference Include="..\Avalonia.FuncUI.LiveView.Watcher\Avalonia.FuncUI.LiveView.Watcher.fsproj" PrivateAssets="all" />
   </ItemGroup>
   <Import Project="..\..\.paket\Paket.Restore.targets" />
 </Project>
