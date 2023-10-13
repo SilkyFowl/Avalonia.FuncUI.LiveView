@@ -29,7 +29,7 @@ Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Sample", "src\Sample\Sample
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{77D972B7-9F97-4C02-959F-C95D4B35CD61}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Avalonia.FuncUI.LiveView.Core.Tests", "tests\Avalonia.FuncUI.LiveView.Core.Tests\Avalonia.FuncUI.LiveView.Core.Tests.fsproj", "{20DD3B4D-46C8-4F78-B114-6ED2CCAA1433}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Avalonia.FuncUI.LiveView.Analyzer.Tests", "tests\Avalonia.FuncUI.LiveView.Analyzer.Tests\Avalonia.FuncUI.LiveView.Analyzer.Tests.fsproj", "{20DD3B4D-46C8-4F78-B114-6ED2CCAA1433}"
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Avalonia.FuncUI.LiveView.Protocol.Tests", "tests\Avalonia.FuncUI.LiveView.Protocol.Tests\Avalonia.FuncUI.LiveView.Protocol.Tests.fsproj", "{D8694ECB-D455-4BFB-828E-953663848471}"
 EndProject
