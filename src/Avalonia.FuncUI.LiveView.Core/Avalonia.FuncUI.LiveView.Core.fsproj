@@ -7,7 +7,6 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Types.fs" />
-    <Compile Include="FuncUIAnalysis.fs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Avalonia.FuncUI.LiveView.Attribute\Avalonia.FuncUI.LiveView.Attribute.fsproj" />

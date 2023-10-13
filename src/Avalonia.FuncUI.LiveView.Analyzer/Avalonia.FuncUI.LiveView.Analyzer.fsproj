@@ -4,11 +4,11 @@
     <OutputType>Exe</OutputType>
     <TargetFramework>net6.0</TargetFramework>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
-
     <PackAsTool>true</PackAsTool>
     <ToolCommandName>funcui-analyzer</ToolCommandName>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="FuncUIAnalysis.fs" />
     <Compile Include="Analyzer.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
