@@ -8,7 +8,6 @@ open System.Text
 open FSharp.Compiler.IO
 open FSharp.Compiler.Interactive.Shell
 
-open Avalonia.FuncUI.DSL
 open Avalonia.FuncUI.LiveView.Types
 
 /// see
