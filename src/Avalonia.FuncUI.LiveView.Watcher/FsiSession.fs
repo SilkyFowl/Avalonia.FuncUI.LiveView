@@ -8,12 +8,7 @@ open System.Text
 open FSharp.Compiler.IO
 open FSharp.Compiler.Interactive.Shell
 
-open Avalonia.Controls
-open Avalonia.Media
-open Avalonia.FuncUI.Types
 open Avalonia.FuncUI.DSL
-open Avalonia.FuncUI.VirtualDom
-
 open Avalonia.FuncUI.LiveView.Types
 
 /// see
@@ -42,33 +37,9 @@ module FsiSession =
                 if isLivePreviewFunc m then
                     let fullName = getFullName m
 
-                    let content =
-                        try
-                            match m.Invoke((), [||]) with
-                            | :? IView as view -> view
-                            | :? Control as view -> ContentControl.create [ ContentControl.content view ]
-                            | other -> TextBlock.create [ TextBlock.text $"%A{other}" ]
-                            |> VirtualDom.create
-                        with :? TargetInvocationException as e ->
-                            StackPanel.create [
-                                StackPanel.children [
-                                    TextBlock.create [
-                                        TextBlock.foreground Brushes.Red
-                                        TextBlock.text $"%A{e.InnerException.GetType()}"
-                                    ]
-                                    TextBlock.create [
-                                        TextBlock.foreground Brushes.Red
-                                        TextBlock.text $"%s{e.InnerException.Message}"
-                                    ]
-                                    TextBlock.create [
-                                        TextBlock.text $"%s{e.InnerException.StackTrace}"
-                                        TextBlock.textWrapping TextWrapping.WrapWithOverflow
-                                    ]
-                                ]
-                            ]
-                            |> VirtualDom.create
+                    let previewFunc () = m.Invoke((), [||])
 
-                    Some(fullName, content)
+                    Some(fullName, previewFunc)
                 else
                     None))
         |> Array.concat
@@ -92,7 +63,10 @@ module FsiSession =
                for refSource in projectInfo.ReferenceSources do
                    $"-r:{refSource.Path}"
                $"-r:{projectInfo.TargetPath}" |]
-
+        
+        
+        // TODO: The collectible parameter is not working. implementation of FSI-generated unloads will wait until after this issue is resolved.
+        // https://github.com/dotnet/fsharp/issues/15669
         FsiEvaluationSession.Create(fsiConfig, argv, inStream, outStream, errStream, true)
 
 

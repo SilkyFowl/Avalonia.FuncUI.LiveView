@@ -158,25 +158,54 @@ module ProjectInfoSelecter =
 
 
 module LiveView =
+    open System.Reflection
 
     open Avalonia.Styling
-    open FSharp.Compiler.Diagnostics
     open Avalonia.Controls.Primitives
+    open Avalonia.FuncUI.VirtualDom
 
-    let mainView (watcher: Watcher.Service) (server: Protocol.IServer) =
+    open Avalonia.FuncUI.LiveView.Types.Watcher
+
+    let evalPreviewFunc (fn: unit -> obj) =
+        try
+            match fn () with
+            | :? IView as view -> view
+            | :? Control as view -> ContentControl.create [ ContentControl.content view ]
+            | other -> TextBlock.create [ TextBlock.text $"%A{other}" ]
+            |> VirtualDom.create
+        with :? TargetInvocationException as e ->
+            StackPanel.create [
+                StackPanel.children [
+                    TextBlock.create [
+                        TextBlock.foreground Brushes.Red
+                        TextBlock.text $"%A{e.InnerException.GetType()}"
+                    ]
+                    TextBlock.create [
+                        TextBlock.foreground Brushes.Red
+                        TextBlock.text $"%s{e.InnerException.Message}"
+                    ]
+                    TextBlock.create [
+                        TextBlock.text $"%s{e.InnerException.StackTrace}"
+                        TextBlock.textWrapping TextWrapping.WrapWithOverflow
+                    ]
+                ]
+            ]
+            |> VirtualDom.create
+
+    let mainView (watcher: IWatcherService) (server: Protocol.IServer) =
 
         Component.create (
             "live-view-main",
             fun ctx ->
-                let requestEvalAsync { FullName = path; Contents = contents } =
-                    backgroundTask { watcher.RequestEval(path, contents) } |> ignore
+                let requestEvalAsync msg =
+                    backgroundTask { watcher.RequestEval msg } |> ignore
 
                 let logs = ctx.useState<LogMessage list> []
 
                 ctx.useEffect (
                     (fun _ ->
                         server.OnLogMessage
-                        |> Event.merge watcher.OnLogMsg
+                        |> Event.merge watcher.OnLogMessage
                         |> Event.add (fun x -> logs.Set(x :: logs.Current))),
                     [ EffectTrigger.AfterInit ]
                 )
@@ -188,18 +217,22 @@ module LiveView =
                     [ EffectTrigger.AfterInit ]
                 )
 
-                let evalResults = ctx.useState<list<string * Control>> []
+                let evalResults = ctx.useState<list<string * (unit -> obj)>> []
                 let evalExn = ctx.useState<exn option> None
-                let evalWarnings = ctx.useState<FSharpDiagnostic[]> ([||], false)
+                let evalWarnings = ctx.useState<Diagnostic list> ([], false)
 
                 ctx.useEffect (
                     (fun _ ->
                         watcher.OnEvalResult
                         |> Event.add (function
-                            | Ok(name, results, warnings) ->
+                            | Ok { msg = msg
+                                   previewFuncs = previewFuncs
+                                   warnings = warnings } ->
                                 evalWarnings.Set warnings
-                                evalResults.Set results
-                            | Error(ex, warnings) ->
+                                evalResults.Set previewFuncs
+                            | Error { msg = msg
+                                      error = ex
+                                      warnings = warnings } ->
                                 evalWarnings.Set warnings
                                 evalExn.Set(Some ex))),
                     [ EffectTrigger.AfterInit ]
@@ -248,8 +281,8 @@ module LiveView =
                                 TextBox.textWrapping TextWrapping.Wrap
                                 TextBox.text (String.concat "" contents)
 
-                                if not <| Array.isEmpty evalWarnings.Current then
-                                    evalWarnings.Current |> Array.map (fun x -> box $"%A{x}") |> TextBox.errors
+                                if not <| List.isEmpty evalWarnings.Current then
+                                    evalWarnings.Current |> List.map (fun x -> box $"%A{x}") |> TextBox.errors
                             | _ -> TextBox.isVisible false
                         ]
 
@@ -292,7 +325,10 @@ module LiveView =
                                                                 TextBlock.text name
                                                             ]
                                                             Border.create [ Border.row 1; Border.height 2 ]
-                                                            Border.create [ Border.row 2; Border.child content ]
+                                                            Border.create [
+                                                                Border.row 2
+                                                                Border.child (evalPreviewFunc content)
+                                                            ]
                                                         ]
                                                     ]
                                                 )
@@ -338,7 +374,7 @@ module LiveView =
                 ]
         )
 
-    let view (watcher: Watcher.Service) (server: Protocol.IServer) =
+    let view (watcher: IWatcherService) (server: Protocol.IServer) =
 
         Component(fun ctx ->
             let projectInfo = ctx.useState watcher.WatchingProjectInfo
@@ -357,7 +393,7 @@ type LiveViewWindow() =
     inherit HostWindow(Title = "LiveView", Width = 800, Height = 600)
 
 
-    let watcher = new Watcher.Service()
+    let watcher = Watcher.createService ()
 
     let client = Server.create ()
 
