@@ -34,7 +34,7 @@ nuget FsUnit.xUnit
 group Build
   source https://api.nuget.org/v3/index.json
   strategy: max
-  framework: net6.0
+  framework: netstandard2.1,  net6.0, net7.0
   storage: none
 
   nuget FSharp.Core
@@ -53,7 +53,4 @@ group Build
   nuget Fake.DotNet.Testing.XUnit2
   nuget Fake.IO.FileSystem
   nuget Fake.IO.Zip
-  nuget Microsoft.Build 17.3.2
-  nuget Microsoft.Build.Framework 17.3.2
-  nuget Microsoft.Build.Tasks.Core 17.3.2
-  nuget Microsoft.Build.Utilities.Core 17.3.2
+  nuget MSBuild.StructuredLogger

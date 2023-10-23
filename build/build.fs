@@ -4,7 +4,6 @@ open Fake.IO
 open Fake.IO.FileSystemOperators
 open Fake.IO.Globbing.Operators
 open Fake.Core.TargetOperators
-open System.Runtime.InteropServices
 open System.Text.RegularExpressions
 
 // ****************************************************************************************************
