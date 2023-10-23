@@ -83,9 +83,11 @@ module Watcher =
           Subcategory: string
           ErrorNumber: ErrorNumber }
 
+    type PreviewFunc = string * (unit -> obj)
+
     type PreviewFuncInfo =
         { msg: Msg
-          previewFuncs: List<string * (unit -> obj)>
+          previewFuncs: List<PreviewFunc>
           warnings: Diagnostic list }
 
     type EvalErrorInfo =

@@ -22,7 +22,14 @@
   <ItemGroup>
     <Compile Include="Utils.fs" />
     <Compile Include="MSBuild.fs" />
-    <Compile Include="LiveView.fs" />
+    <Compile Include="Views\Library.fs" />
+    <Compile Include="Views\PreviewFuncView.fs" />
+    <Compile Include="Views\DiagnosticsView.fs" />
+    <Compile Include="Views\SelectProjectInfoView.fs" />
+    <Compile Include="Views\WatchingProjectInfoView.fs" />
+    <Compile Include="Views\LogMessageView.fs" />
+    <Compile Include="Views\LiveView.fs" />
+    <Compile Include="LiveViewWindow.fs" />
     <Content Include="CaptureCompile.props" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
   <ItemGroup>
