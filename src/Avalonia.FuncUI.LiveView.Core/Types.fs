@@ -109,3 +109,10 @@ module Watcher =
 
         [<CLIEvent>]
         abstract member OnLogMessage: IEvent<LogMessage>
+
+type Config = { WatichingProjectInfo: WatichingProjectInfo option }
+
+and WatichingProjectInfo = {
+    Path: string
+    TargetFramework: string
+}

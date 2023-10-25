@@ -36,3 +36,62 @@ module IO =
             Some()
         else
             None
+
+module Config =
+    open Types
+
+    module EnvironmentVariable =
+        open System
+        open System.Text
+
+        let toEnvironmentVariableName (str: string) =
+            let pairwised = Seq.toList str |> List.pairwise
+
+            (new StringBuilder(), pairwised)
+            ||> List.fold (fun sb (prev, curr) ->
+                sb.Append [|
+                    if sb.Length = 0 then
+                        Char.ToUpper prev
+
+                    if not (Char.IsUpper prev) && Char.IsUpper curr then
+                        '_'
+
+                    Char.ToUpper curr
+                |])
+            |> fun sb -> sb.ToString()
+
+
+        let tryGet (key: string) =
+            match Environment.GetEnvironmentVariable key with
+            | null -> None
+            | value -> Some value
+
+    module EnvVarName =
+        let private prefix = "FuncuiLiveview"
+
+        module WatichingProjectInfo =
+            let private prefix = $"{prefix}{nameof WatichingProjectInfo}"
+            let private d = Unchecked.defaultof<WatichingProjectInfo>
+
+            let path =
+                $"{prefix}{nameof d.Path}" |> EnvironmentVariable.toEnvironmentVariableName
+
+            let targetFramework =
+                $"{prefix}{nameof d.TargetFramework}"
+                |> EnvironmentVariable.toEnvironmentVariableName
+
+    let tryGetFromEnv () : Config =
+        let info =
+            let pathEnvVar = EnvVarName.WatichingProjectInfo.path |> EnvironmentVariable.tryGet
+
+            let targetFrameworkEnvVar =
+                EnvVarName.WatichingProjectInfo.targetFramework |> EnvironmentVariable.tryGet
+
+            match pathEnvVar, targetFrameworkEnvVar with
+            | Some path, Some targetFramework ->
+                Some
+                    { Path = path
+                      TargetFramework = targetFramework }
+            | _ -> None
+
+        { WatichingProjectInfo = info }

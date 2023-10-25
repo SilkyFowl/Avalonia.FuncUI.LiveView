@@ -20,6 +20,23 @@ let create (log: LogMessage -> unit) onOpenSelectProject =
 
             let projOrSlnPath = ctx.useState<string> ""
 
+            let configFromEnv = ctx.useStateLazy Config.tryGetFromEnv
+
+            ctx.useEffect (
+                (fun () ->
+                    match configFromEnv.Current with
+                    | { WatichingProjectInfo = Some { Path = IO.FilePathString path & IO.MatchExtension @"\..+proj"
+                                                      TargetFramework = tf } } ->
+
+                        ProjectInfo.loadFromProjFile path
+                        |> List.tryPick (function
+                            | Ok x when x.TargetFramework = tf -> Some x
+                            | _ -> None)
+                        |> Option.iter onOpenSelectProject
+                    | _ -> ()),
+                [ EffectTrigger.AfterInit ]
+            )
+
             ctx.useEffect (
                 (fun () ->
                     backgroundTask {
