@@ -95,3 +95,60 @@ module Config =
             | _ -> None
 
         { WatichingProjectInfo = info }
+
+module Plugin =
+    open System
+    open System.IO
+    open System.Reflection
+    open System.Runtime.CompilerServices
+    open System.Runtime.Loader
+
+    type PluginLoadContext(pluginPath: string) =
+        inherit AssemblyLoadContext("PluginLoadContext", true)
+        let resolver = AssemblyDependencyResolver(pluginPath)
+
+        member _.PluginAssemblyName =
+            AssemblyName(Path.GetFileNameWithoutExtension(pluginPath))
+
+        override this.Load(assemblyName: AssemblyName) =
+            let assemblyPath = resolver.ResolveAssemblyToPath(assemblyName)
+
+            if assemblyPath <> null then
+                this.LoadFromAssemblyPath(assemblyPath)
+            else
+                null
+
+        override this.LoadUnmanagedDll(unmanagedDllName: string) =
+            let libraryPath = resolver.ResolveUnmanagedDllToPath(unmanagedDllName)
+
+            if libraryPath <> null then
+                this.LoadUnmanagedDllFromPath(libraryPath)
+            else
+                IntPtr.Zero
+
+    [<MethodImpl(MethodImplOptions.NoInlining)>]
+    let load<'t> (ctx: PluginLoadContext) =
+        ctx.LoadFromAssemblyName(ctx.PluginAssemblyName).GetTypes()
+        |> Seq.find (typeof<'t>).IsAssignableFrom
+        |> Activator.CreateInstance
+        :?> 't
+
+module Watcher =
+    open System.IO
+    open System.Runtime.CompilerServices
+    open Avalonia.FuncUI.LiveView.Types.Watcher
+
+    let watcherContext =
+        let dllPath =
+            Path.Combine [|
+                Path.GetDirectoryName typeof<IWatcherService>.Assembly.Location
+                "plugins"
+                "watcher"
+                "Avalonia.FuncUI.LiveView.Watcher.dll"
+            |]
+
+        new Plugin.PluginLoadContext(dllPath)
+
+    [<MethodImpl(MethodImplOptions.NoInlining)>]
+    let createService () =
+        Plugin.load<IWatcherService> watcherContext

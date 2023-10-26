@@ -198,5 +198,3 @@ module Watcher =
                     cts.Dispose()
                     (this :> IWatcherService).UnWatch()
                     LivePreviewFileSystem.resetFileSystem ()
-
-    let createService () : IWatcherService = new Service()
