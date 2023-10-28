@@ -2,16 +2,20 @@ namespace Avalonia.FuncUI.LiveView
 
 module MSBuildLocator =
     open Microsoft.Build.Locator
+    open System.Runtime.CompilerServices
+
     /// Returns true if instance of MSBuild found on the machine is registered.
     let inline isRegistered () = MSBuildLocator.IsRegistered
 
     /// Registers the highest version instance of MSBuild found on the machine.
+    [<MethodImpl(MethodImplOptions.NoInlining)>]
     let register () =
         let visualStudioInstances = MSBuildLocator.QueryVisualStudioInstances()
         let instance = visualStudioInstances |> Seq.maxBy (fun i -> i.Version)
         MSBuildLocator.RegisterInstance(instance)
 
     /// Registers the highest version instance of MSBuild found on the machine if it is not already registered.
+    [<MethodImpl(MethodImplOptions.NoInlining)>]
     let registerIfNotRegistered () =
         if not <| isRegistered () then
             register ()
