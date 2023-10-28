@@ -3,7 +3,9 @@
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFrameworks>net6.0;net7.0</TargetFrameworks>
-      </PropertyGroup>
+    <PackAsTool>true</PackAsTool>
+    <ToolCommandName>funcui-liveview</ToolCommandName>
+  </PropertyGroup>
 
   <ItemGroup>
     <Compile Include="Program.fs" />
