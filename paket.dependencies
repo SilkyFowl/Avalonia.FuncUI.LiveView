@@ -10,15 +10,15 @@ nuget FSharp.Analyzers.SDK 0.11.0
 nuget FSharp.Core content: none
 nuget FSharp.Control.TaskSeq 0.3.0
 
-nuget Avalonia.FuncUI ~> 1.0.1
-nuget Avalonia.FuncUI.Elmish ~> 1.0.1
+nuget Avalonia.FuncUI ~> 1.1.0
+nuget Avalonia.FuncUI.Elmish ~> 1.1.0
 
-nuget Avalonia ~> 11.0.3
+nuget Avalonia ~> 11.0.5
 nuget Avalonia.Desktop
 nuget Avalonia.Diagnostics
 nuget Avalonia.Themes.Fluent
 nuget Avalonia.Themes.Simple
-nuget Avalonia.Angle.Windows.Natives ~> 2.1.0.0
+nuget Avalonia.Angle.Windows.Natives ~> 2.1.22045.20230930
 
 nuget Microsoft.Build.Locator
 nuget Microsoft.Build 17.3.2 copy_local: false
