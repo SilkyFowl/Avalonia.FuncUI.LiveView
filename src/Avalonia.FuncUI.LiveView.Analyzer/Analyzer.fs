@@ -1,19 +1,79 @@
 ﻿module Avalonia.FuncUI.LiveView.Analyzer.Library
 
 open System
-open System.Reflection
-open Avalonia.FuncUI.LiveView
-open Avalonia.FuncUI.LiveView.MessagePack
-open Avalonia.FuncUI.LiveView.Core.Types
+open System.Diagnostics
+open System.IO
+open System.Net.Sockets
+open System.Threading
+open System.Threading.Channels
+
+open Avalonia.Skia
+
 open FSharp.Analyzers.SDK
+open FSharp.Control
 
+open Avalonia.FuncUI.LiveView
+open Avalonia.FuncUI.LiveView.Types
+open Avalonia.FuncUI.LiveView.Types.Analyzer
+open Avalonia.FuncUI.LiveView.Protocol
 
-let service =
-    lazy
-        let server = Server.init Settings.iPAddress Settings.port
-        // When `fsautocomplete` terminates, the server also terminates.
-        AppDomain.CurrentDomain.ProcessExit.Add(fun _ -> server.Dispose())
-        server
+type AnalyzerService() =
+    let logExn (ex: exn) =
+        let ex = ex.GetBaseException()
+        let msg = $"{ex.GetType().Name}:{ex.Message}"
+        Trace.TraceError(msg)
+
+    let cts = new CancellationTokenSource()
+
+    let channel =
+        Channel.CreateUnbounded<Msg>(UnboundedChannelOptions(SingleReader = true, SingleWriter = false))
+
+    let runner =
+        task {
+            while not cts.IsCancellationRequested do
+                try
+                    while not (File.Exists Settings.socketPath) do
+                        do! Tasks.Task.Delay(1000)
+
+                    use client = Client.create ()
+
+                    for msg in channel.Reader.ReadAllAsync(cts.Token) do
+                        do! client.PostAsync msg
+                with
+                | :? IOException as ex ->
+                    logExn ex
+                    do! Tasks.Task.Delay(1_000)
+                | :? SocketException as ex ->
+                    logExn ex
+                    do! Tasks.Task.Delay(1_000)
+        }
+
+    let mutable isDisposed = false
+
+    let dispose _ =
+        if not isDisposed then
+            isDisposed <- true
+
+            if
+                channel.Writer.TryComplete()
+                && not runner.IsCompleted
+                && not (runner.Wait(3_000))
+            then
+                cts.Cancel()
+
+            cts.Dispose()
+
+    do AppDomain.CurrentDomain.ProcessExit.Add(dispose)
+
+    interface IAnalyzerService with
+        member __.Post msg =
+            while File.Exists Settings.socketPath && not (channel.Writer.TryWrite msg) do
+                ()
+
+    interface IDisposable with
+        member __.Dispose() = dispose ()
+
+let service: IAnalyzerService = new AnalyzerService()
 
 
 let private nl = Environment.NewLine
@@ -22,8 +82,9 @@ let private nl = Environment.NewLine
 /// This is used to realize LiveView.
 [<Analyzer "FuncUiAnalyzer">]
 let funcUiAnalyzer: Analyzer =
+    SkiaPlatform.Initialize()
+
     fun ctx ->
-        let service = service.Value
         let livePreviewFuncs = ResizeArray()
         let errorMessages = ResizeArray()
         let notSuppurtPatternMessages = ResizeArray()
@@ -61,12 +122,14 @@ let funcUiAnalyzer: Analyzer =
                               Fixes = [] } }
         )
 
-        if Seq.isEmpty errorMessages then
-            // Errors in FuncUIAnalyzer itself are counted only when there is a Preview target.
-            errorMessages.AddRange notSuppurtPatternMessages
+        List.distinct [
+            if
+                Seq.isEmpty errorMessages
+                && Seq.isEmpty notSuppurtPatternMessages
+                && not (Seq.isEmpty livePreviewFuncs)
+            then
+                Msg.create ctx.FileName ctx.Content |> service.Post
 
-            // Post if no errors.
-            if not (Seq.isEmpty livePreviewFuncs) then
-                service.Post { Content = String.concat nl ctx.Content }
-
-        Seq.distinct errorMessages |> Seq.toList
+            yield! errorMessages
+            yield! notSuppurtPatternMessages
+        ]

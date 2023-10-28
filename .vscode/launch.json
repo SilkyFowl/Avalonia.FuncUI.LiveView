@@ -21,24 +21,26 @@
             }
         },
         {
-            "name": "Sample(Live Preview)",
+            "name": "Launch LiveView.Cli(net6.0)",
             "type": "coreclr",
             "request": "launch",
-            "preLaunchTask": "Build: solution",
-            "program": "${workspaceFolder}/src/Sample/bin/Debug/net6.0/Sample.dll",
+            "preLaunchTask": "Build: LiveView.Cli",
+            "program": "${workspaceFolder}/src/Avalonia.FuncUI.LiveView.Cli/bin/Debug/net6.0/Avalonia.FuncUI.LiveView.Cli.dll",
             "args": [],
             "cwd": "${workspaceFolder}",
-            "console": "internalConsole",
             "stopAtEntry": false,
-            "env": {
-                "FUNCUI_LIVEPREVIEW": "1"
-            },
-            "linux": {
-                "env": {
-                    "LANG": "en_US.UTF-8",
-                    "FUNCUI_LIVEPREVIEW": "1"
-                }
-            }
+            "console": "internalConsole"
+        },
+        {
+            "name": "Launch LiveView.Cli(net7.0)",
+            "type": "coreclr",
+            "request": "launch",
+            "preLaunchTask": "Build: LiveView.Cli",
+            "program": "${workspaceFolder}/src/Avalonia.FuncUI.LiveView.Cli/bin/Debug/net7.0/Avalonia.FuncUI.LiveView.Cli.dll",
+            "args": [],
+            "cwd": "${workspaceFolder}",
+            "stopAtEntry": false,
+            "console": "internalConsole"
         },
         {
             "name": "Debug Current Tests",

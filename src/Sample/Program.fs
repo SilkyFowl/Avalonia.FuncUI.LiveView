@@ -26,15 +26,6 @@ type MainWindow() as this =
 type App() =
     inherit Application()
 
-    [<Literal>]
-    let FUNCUI_LIVEPREVIEW = "FUNCUI_LIVEPREVIEW"
-
-    let livePreviewEnabled =
-        match Environment.GetEnvironmentVariable FUNCUI_LIVEPREVIEW with
-        | null -> false
-        | "1" -> true
-        | _ -> false
-
     override this.Initialize() =
         this.Styles.Add(FluentTheme())
         this.RequestedThemeVariant <- Styling.ThemeVariant.Dark
@@ -42,11 +33,7 @@ type App() =
     override this.OnFrameworkInitializationCompleted() =
         match this.ApplicationLifetime with
         | :? IClassicDesktopStyleApplicationLifetime as desktopLifetime ->
-            desktopLifetime.MainWindow <-
-                if livePreviewEnabled then
-                    LiveViewWindow() :> Window
-                else
-                    MainWindow()
+            desktopLifetime.MainWindow <- MainWindow()
         | _ -> ()
 
 module Program =

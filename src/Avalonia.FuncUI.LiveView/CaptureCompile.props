@@ -1,0 +1,16 @@
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+    <PropertyGroup>
+        <!-- base settings -->
+        <BuildInParallel>true</BuildInParallel>
+        <BuildProjectReferences>false</BuildProjectReferences>
+        <CopyBuildOutputToOutputDirectory>false</CopyBuildOutputToOutputDirectory>
+        <CopyOutputSymbolsToOutputDirectory>false</CopyOutputSymbolsToOutputDirectory>
+        <CopyDocumentationFileToOutputDirectory>false</CopyDocumentationFileToOutputDirectory>
+    </PropertyGroup>
+
+   <PropertyGroup>
+        <!-- fsc settings -->
+        <SkipCompilerExecution>true</SkipCompilerExecution>
+        <ProvideCommandLineArgs>true</ProvideCommandLineArgs>
+   </PropertyGroup>
+</Project>

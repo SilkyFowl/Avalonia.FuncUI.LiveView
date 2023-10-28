@@ -4,7 +4,6 @@ open Fake.IO
 open Fake.IO.FileSystemOperators
 open Fake.IO.Globbing.Operators
 open Fake.Core.TargetOperators
-open System.Runtime.InteropServices
 open System.Text.RegularExpressions
 
 // ****************************************************************************************************
@@ -32,6 +31,7 @@ type ProjSetting =
 
 let analyzerProjSetting = { Name = "Avalonia.FuncUI.LiveView.Analyzer" }
 let liveViewProjSetting = { Name = "Avalonia.FuncUI.LiveView" }
+let liveViewCliProjSetting = { Name = "Avalonia.FuncUI.LiveView.Cli" }
 
 
 module Proc =
@@ -210,11 +210,31 @@ let initTargets () =
         Some analyzersPath
         |> DotNet.installTool analyzerProjSetting.PackageId release.NugetVersion)
 
+    Target.create "InstallLiveViewCliAsLocalTool" (fun _ ->
+        DotNet.installTool liveViewCliProjSetting.PackageId release.NugetVersion None)
+
+    Target.create "UninstallLiveViewCliAsLocalTool" (fun _ ->
+        if DotNet.isIntalledLocalTool liveViewCliProjSetting.PackageId release.NugetVersion None then
+            DotNet.uninstallTool liveViewCliProjSetting.PackageId None)
+
+    Target.create "ClearLiveViewCliNugetGlobalPackagesCache" (fun _ ->
+        match Nuget.tryGetGlobalPackagesCacheDir release.NugetVersion liveViewCliProjSetting.PackageId with
+        | Some path ->
+            Trace.logfn "Nuget global-packages cache found: %s" path
+            Nuget.tryClearGlobalPackagesCacheDir release.NugetVersion liveViewCliProjSetting.PackageId
+            Trace.logfn "Nuget global-packages cache cleared: %s" path
+        | None ->
+            Trace.logfn
+                "Nuget global-packages cache not found: %s %s"
+                liveViewCliProjSetting.PackageId
+                release.NugetVersion)
+
     Target.create "RebuildDebug" ignore
     Target.create "RebuildRelease" ignore
     Target.create "RebuildAll" ignore
     Target.create "RebuildReleaseWithPack" ignore
     Target.create "ReInstallAnalyerAsLocalTool" ignore
+    Target.create "ReInstallLiveViewCliAsLocalTool" ignore
     Target.create "Pack" ignore
     Target.create "PackAndSetLocalAnalyzer" ignore
     Target.create "Default" ignore
@@ -230,6 +250,11 @@ let initTargets () =
     ?=> "InstallAnalyerAsLocalTool"
     |> ignore
 
+    "UninstallLiveViewCliAsLocalTool"
+    ?=> "ClearLiveViewCliNugetGlobalPackagesCache"
+    ?=> "InstallLiveViewCliAsLocalTool"
+    |> ignore
+
     "CleanDebug" ?=> "BuildDebug" |> ignore
     "CleanRelease" ?=> "BuildRelease" |> ignore
 
@@ -243,6 +268,7 @@ let initTargets () =
 
     "Pack" ?=> "SetLocalAnalyzer" |> ignore
     "Pack" ?=> "InstallAnalyerAsLocalTool" |> ignore
+    "Pack" ?=> "ReinstallLiveViewCliAsLocalTool" |> ignore
 
     "RebuildDebug" <== [ "CleanDebug"; "BuildDebug" ]
 
@@ -262,7 +288,13 @@ let initTargets () =
           "UninstallAnalyerAsLocalTool"
           "ClearAnalyerNugetGlobalPackagesCache" ]
 
-    "PackAndSetLocalAnalyzer" <== [ "Pack"; "SetLocalAnalyzer" ]
+    "ReinstallLiveViewCliAsLocalTool"
+    <== [ "InstallLiveViewCliAsLocalTool"
+          "UninstallLiveViewCliAsLocalTool"
+          "ClearLiveViewCliNugetGlobalPackagesCache" ]
+
+    "PackAndSetLocalAnalyzer"
+    <== [ "Pack"; "SetLocalAnalyzer"; "ReinstallLiveViewCliAsLocalTool" ]
 
 //-----------------------------------------------------------------------------
 // Target Start

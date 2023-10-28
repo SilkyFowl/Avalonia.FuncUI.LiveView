@@ -1,8 +1,29 @@
-module Avalonia.FuncUI.LiveView.Core.Types
+module Avalonia.FuncUI.LiveView.Types
 
 open System
 
-type Msg = { Content: string }
+type ReferenceSource =
+    { Path: string
+      ReferenceSourceTarget: string
+      FusionName: string }
+
+type ProjectInfo =
+    { Name: string
+      ProjectDirectory: string
+      TargetPath: string
+      TargetFramework: string
+      ReferenceSources: ReferenceSource list }
+
+type Msg =
+    { FullName: string
+      Contents: string[]
+      Timestamp: DateTimeOffset }
+
+module Msg =
+    let create (fullName: string) (contents: string[]) =
+        { FullName = fullName
+          Contents = contents
+          Timestamp = DateTimeOffset.Now }
 
 type LogMessage =
     | LogDebug of string
@@ -11,24 +32,87 @@ type LogMessage =
 
 type Logger = LogMessage -> unit
 
-[<AttributeUsage(AttributeTargets.Property)>]
-type LivePreviewAttribute() =
-    inherit Attribute()
+module Protocol =
+    open System.Threading.Tasks
 
-module FuncUiAnalyzer =
-    open System
-    open System.Threading
+    type IClient =
+        inherit IDisposable
+        abstract member PostAsync: msg: Msg -> Task<unit>
+        abstract member IsConnected: bool
 
-    type Post = Msg -> unit
+    type IServer =
+        inherit IDisposable
 
-    type Server(body) =
-        let cts = new CancellationTokenSource()
-        let actor = MailboxProcessor<Msg>.Start(body cts.Token, cts.Token)
-        member _.Post = actor.Post
-        member _.Dispose() = cts.Dispose()
+        abstract member IsConnected: bool
 
-        interface IDisposable with
-            member this.Dispose() = this.Dispose()
+        [<CLIEvent>]
+        abstract member OnMsgReceived: IEvent<Msg>
 
-module FuncUiLiveView =
-    type Receive = unit -> Msg
+        [<CLIEvent>]
+        abstract member OnLogMessage: IEvent<LogMessage>
+
+module Analyzer =
+    type IAnalyzerService =
+        abstract member Post: msg: Msg -> unit
+
+module Watcher =
+    type ErrorNumber =
+        { ErrorNumber: int
+          ErrorNumberPrefix: string }
+
+        member this.ErrorNumberText = $"{this.ErrorNumberPrefix}{this.ErrorNumber}"
+
+    type Position = { Line: int; Column: int }
+
+    type Range =
+        { FileName: string
+          Start: Position
+          End: Position }
+
+    [<RequireQualifiedAccess>]
+    type DiagnosticSeverity =
+        | Hidden
+        | Info
+        | Warning
+        | Error
+
+    type Diagnostic =
+        { Range: Range
+          Severity: DiagnosticSeverity
+          Message: string
+          Subcategory: string
+          ErrorNumber: ErrorNumber }
+
+    type PreviewFunc = string * (unit -> obj)
+
+    type PreviewFuncInfo =
+        { msg: Msg
+          previewFuncs: List<PreviewFunc>
+          warnings: Diagnostic list }
+
+    type EvalErrorInfo =
+        { msg: Msg
+          error: exn
+          warnings: Diagnostic list }
+
+    type EvalResult = Result<PreviewFuncInfo, EvalErrorInfo>
+
+    type IWatcherService =
+        inherit IDisposable
+        abstract member WatchingProjectInfo: option<ProjectInfo>
+        abstract member Watch: ProjectInfo -> unit
+        abstract member UnWatch: unit -> unit
+        abstract member RequestEval: msg: Msg -> unit
+
+        [<CLIEvent>]
+        abstract member OnEvalResult: IEvent<EvalResult>
+
+        [<CLIEvent>]
+        abstract member OnLogMessage: IEvent<LogMessage>
+
+type Config = { WatichingProjectInfo: WatichingProjectInfo option }
+
+and WatichingProjectInfo = {
+    Path: string
+    TargetFramework: string
+}

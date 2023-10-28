@@ -1,35 +1,55 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>net6.0</TargetFramework>
+    <TargetFrameworks>net6.0;net7.0</TargetFrameworks>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
   </PropertyGroup>
-
   <PropertyGroup>
     <TargetsForTfmSpecificBuildOutput>$(TargetsForTfmSpecificBuildOutput);CopyProjectReferencesToPackage</TargetsForTfmSpecificBuildOutput>
   </PropertyGroup>
-
   <Target Name="CopyProjectReferencesToPackage" DependsOnTargets="BuildOnlySettings;ResolveReferences">
     <ItemGroup>
       <!-- Filter out unnecessary files -->
-      <_ReferenceCopyLocalPaths Include="@(ReferenceCopyLocalPaths->WithMetadataValue('ReferenceSourceTarget', 'ProjectReference')->WithMetadataValue('PrivateAssets', 'All'))"/>
-    </ItemGroup>
-
+      <_ReferenceCopyLocalPaths Include="@(ReferenceCopyLocalPaths->WithMetadataValue('ReferenceSourceTarget', 'ProjectReference')->WithMetadataValue('PrivateAssets', 'All'))" />
+          </ItemGroup>
     <!-- Print batches for debug purposes -->
-    <Message Text="Batch for .nupkg: ReferenceCopyLocalPaths = @(_ReferenceCopyLocalPaths), ReferenceCopyLocalPaths.DestinationSubDirectory = %(_ReferenceCopyLocalPaths.DestinationSubDirectory) Filename = %(_ReferenceCopyLocalPaths.Filename) Extension = %(_ReferenceCopyLocalPaths.Extension)" Importance="High" Condition="'@(_ReferenceCopyLocalPaths)' != ''" />
-
+        <Message Text="Batch for .nupkg: ReferenceCopyLocalPaths = @(_ReferenceCopyLocalPaths), ReferenceCopyLocalPaths.DestinationSubDirectory = %(_ReferenceCopyLocalPaths.DestinationSubDirectory) Filename = %(_ReferenceCopyLocalPaths.Filename) Extension = %(_ReferenceCopyLocalPaths.Extension)" Importance="High" Condition="'@(_ReferenceCopyLocalPaths)' != ''" />
     <ItemGroup>
       <!-- Add file to package with consideration of sub folder. If empty, the root folder is chosen. -->
-      <BuildOutputInPackage Include="@(_ReferenceCopyLocalPaths)" TargetPath="%(_ReferenceCopyLocalPaths.DestinationSubDirectory)"/>
+      <BuildOutputInPackage Include="@(_ReferenceCopyLocalPaths)" TargetPath="%(_ReferenceCopyLocalPaths.DestinationSubDirectory)" />
     </ItemGroup>
   </Target>
+ <Target Name="CopyWatchPlugin" BeforeTargets="AssignTargetPaths">
   <ItemGroup>
-    <Compile Include="FsiSession.fs" />
-    <Compile Include="LiveView.fs" />
+    <_WatcherPluginFiles
+      Include="..\Avalonia.FuncUI.LiveView.Watcher\$(BaseOutputPath)\$(Configuration)\$(TargetFramework)\**\*"
+      Exclude="..\**\*FSharp.Core.*" />
+
+    <Content 
+      Include="@(_WatcherPluginFiles)" >
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      <TargetPath>plugins\watcher\%(RecursiveDir)%(Filename)%(Extension)</TargetPath>
+    </Content>
+  </ItemGroup>
+</Target>
+  <ItemGroup>
+    <Compile Include="Utils.fs" />
+    <Compile Include="MSBuild.fs" />
+    <Compile Include="Views\Library.fs" />
+    <Compile Include="Views\PreviewFuncView.fs" />
+    <Compile Include="Views\DiagnosticsView.fs" />
+    <Compile Include="Views\SelectProjectInfoView.fs" />
+    <Compile Include="Views\WatchingProjectInfoView.fs" />
+    <Compile Include="Views\LogMessageView.fs" />
+    <Compile Include="Views\LiveView.fs" />
+    <Compile Include="LiveViewWindow.fs" />
+    <Content Include="CaptureCompile.props" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\Avalonia.FuncUI.LiveView.Attribute\Avalonia.FuncUI.LiveView.Attribute.fsproj" />
     <ProjectReference Include="..\Avalonia.FuncUI.LiveView.Core\Avalonia.FuncUI.LiveView.Core.fsproj" PrivateAssets="all" />
-    <ProjectReference Include="..\Avalonia.FuncUI.LiveView.MessagePack\Avalonia.FuncUI.LiveView.MessagePack.fsproj" PrivateAssets="all" />
+    <ProjectReference Include="..\Avalonia.FuncUI.LiveView.Protocol\Avalonia.FuncUI.LiveView.Protocol.fsproj" PrivateAssets="all" />
+    <ProjectReference Include="..\Avalonia.FuncUI.LiveView.Watcher\Avalonia.FuncUI.LiveView.Watcher.fsproj"  ReferenceOutputAssembly="false" />
   </ItemGroup>
   <Import Project="..\..\.paket\Paket.Restore.targets" />
 </Project>

@@ -8,9 +8,7 @@ open FSharp.Compiler.Symbols
 open FSharp.Compiler.Symbols.FSharpExprPatterns
 open FSharp.Compiler.Text
 
-open Avalonia.Skia
 open Avalonia.FuncUI.Types
-open Avalonia.FuncUI.LiveView.Core.Types
 
 type FuncUIAnalysisHander =
     { OnLivePreviewFunc: FSharpMemberOrFunctionOrValue -> list<list<FSharpMemberOrFunctionOrValue>> -> unit
@@ -28,9 +26,6 @@ let (|FSharpString|_|) t =
 
     if $"{t}" = stringType then Some() else None
 
-do
-    // Load service required for `Path.data` parsing.
-    SkiaPlatform.Initialize()
 
 let stringArgDSLFuncMap =
     let (|FsStaticMember|_|) (m: MethodInfo) =
@@ -269,5 +264,23 @@ let rec visitDeclaration (f: FuncUIAnalysisHander) d =
     | FSharpImplementationFileDeclaration.Entity(e, subDecls) ->
         for subDecl in subDecls do
             visitDeclaration f subDecl
-    | FSharpImplementationFileDeclaration.MemberOrFunctionOrValue(v, vs, e) -> visitExpr f e
+    | FSharpImplementationFileDeclaration.MemberOrFunctionOrValue(v, vs, e) ->
+        match v.DeclaringEntity with
+        | Some declaringEntity when declaringEntity.IsFSharpUnion && v.IsCompilerGenerated ->
+            try
+                /// https://github.com/SilkyFowl/Avalonia.FuncUI.LiveView/issues/5
+                /// 
+                /// This error seems to occur when accessing `e.ImmediateSubExpressions` with `MemberOrFunctionOrValue(v, vs, e)` of an automatically generated member of DU that satisfies certain conditions.
+                /// Condition (tentative):DU with no Case that satisfies the following conditions
+                /// - Case with no value
+                /// - Case where the value is a function value (such as `Case of (int -> unit)`)
+                let _tryAccessImmediateSubExpressions = e.ImmediateSubExpressions
+
+                // if no error, visit sub expressions.
+                visitExpr f e
+            with NotSuppurtPatternMessage _ ->
+                // If an error occurs, skip visiting sub expressions.
+                ()
+        | _ -> visitExpr f e
+
     | FSharpImplementationFileDeclaration.InitAction(e) -> visitExpr f e

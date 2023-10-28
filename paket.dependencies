@@ -5,30 +5,36 @@ storage: none
 framework: netstandard2.0, netstandard2.1,  net6.0, net7.0
 
 nuget Argu
-nuget coverlet.collector
-nuget FSharp.Compiler.Service 43.7.300
+nuget FSharp.Compiler.Service 43.7.400
 nuget FSharp.Analyzers.SDK 0.11.0
 nuget FSharp.Core content: none
-nuget FsUnit.xUnit
+nuget FSharp.Control.TaskSeq 0.3.0
 
-nuget Avalonia.FuncUI ~> 1.0.1
-nuget Avalonia.FuncUI.Elmish ~> 1.0.1
+nuget Avalonia.FuncUI ~> 1.1.0
+nuget Avalonia.FuncUI.Elmish ~> 1.1.0
 
-nuget Avalonia ~> 11.0.3
+nuget Avalonia ~> 11.0.5
 nuget Avalonia.Desktop
 nuget Avalonia.Diagnostics
 nuget Avalonia.Themes.Fluent
 nuget Avalonia.Themes.Simple
-nuget Avalonia.Angle.Windows.Natives ~> 2.1.0.0
-nuget MessagePack.FSharpExtensions
+nuget Avalonia.Angle.Windows.Natives ~> 2.1.22045.20230930
+
+nuget Microsoft.Build.Locator
+nuget Microsoft.Build 17.3.2 copy_local: false
+nuget Microsoft.Build.Framework 17.3.2 copy_local: false
+nuget Microsoft.Build.Utilities.Core 17.3.2 copy_local: false
+
 nuget Microsoft.NET.Test.Sdk
 nuget xunit
 nuget xunit.runner.visualstudio
+nuget coverlet.collector
+nuget FsUnit.xUnit
 
 group Build
   source https://api.nuget.org/v3/index.json
   strategy: max
-  framework: net6.0
+  framework: netstandard2.1,  net6.0, net7.0
   storage: none
 
   nuget FSharp.Core
@@ -47,7 +53,4 @@ group Build
   nuget Fake.DotNet.Testing.XUnit2
   nuget Fake.IO.FileSystem
   nuget Fake.IO.Zip
-  nuget Microsoft.Build 17.3.2
-  nuget Microsoft.Build.Framework 17.3.2
-  nuget Microsoft.Build.Tasks.Core 17.3.2
-  nuget Microsoft.Build.Utilities.Core 17.3.2
+  nuget MSBuild.StructuredLogger

@@ -13,27 +13,17 @@ module Draft
 #r "Avalonia.FuncUI"
 #r "Avalonia.FuncUI.DSL"
 #r "Sample"
-#r "Avalonia.FuncUI.LiveView.Core"
+#r "Avalonia.FuncUI.LiveView.Attribute"
 #endif
 
 open Avalonia.Controls
-open Avalonia.Controls.Shapes
 open Avalonia.Media
 open Avalonia.Layout
 open Avalonia.FuncUI
 open Avalonia.FuncUI.DSL
-open Avalonia.FuncUI.LiveView.Core.Types
-
+open Avalonia.FuncUI.LiveView
 open Sample
 
-// TODO: 更新速度が遅くなる理由を解明、解決する
-/// Script-demo
-///
-/// 今わかること
-/// - view関数にlambda式が混ざると遅くなる。
-///   - このファイルをしばらく編集してから他のファイルに移ったらしばらく固まった
-///       ヒントになるか？
-///   - 遅延はデバッグ起動時のみ。通常起動だと実用レベルか。
 module Counter =
 
     let view name attrs fNum numState =

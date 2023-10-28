@@ -6,25 +6,36 @@ MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".paket", ".paket", "{0A4244DC-3284-4E74-A62E-1A04BF2F016D}"
 	ProjectSection(SolutionItems) = preProject
 		paket.dependencies = paket.dependencies
+		paket.lock = paket.lock
 	EndProjectSection
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "build", "build\build.fsproj", "{049BAB3B-2D97-4B66-94C9-7E5E8F85171C}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{DB8DF710-E6E6-4722-99D4-514834AEEB16}"
 EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Avalonia.FuncUI.LiveView.Attribute", "src\Avalonia.FuncUI.LiveView.Attribute\Avalonia.FuncUI.LiveView.Attribute.fsproj", "{D07BE140-CF50-439E-882E-1FB88DF5B11F}"
+EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Avalonia.FuncUI.LiveView.Core", "src\Avalonia.FuncUI.LiveView.Core\Avalonia.FuncUI.LiveView.Core.fsproj", "{AA59F86F-40EC-4935-928E-ACE854A73DE4}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Avalonia.FuncUI.LiveView.MessagePack", "src\Avalonia.FuncUI.LiveView.MessagePack\Avalonia.FuncUI.LiveView.MessagePack.fsproj", "{012E7FAA-B6D4-4FCE-B9C9-F795C53FEA46}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Avalonia.FuncUI.LiveView.Protocol", "src\Avalonia.FuncUI.LiveView.Protocol\Avalonia.FuncUI.LiveView.Protocol.fsproj", "{012E7FAA-B6D4-4FCE-B9C9-F795C53FEA46}"
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Avalonia.FuncUI.LiveView.Analyzer", "src\Avalonia.FuncUI.LiveView.Analyzer\Avalonia.FuncUI.LiveView.Analyzer.fsproj", "{285A3E92-3E68-40A0-8167-D5227798D489}"
 EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Avalonia.FuncUI.LiveView.Watcher", "src\Avalonia.FuncUI.LiveView.Watcher\Avalonia.FuncUI.LiveView.Watcher.fsproj", "{0787B8F0-B4BE-4477-940E-E4121B26CEB1}"
+EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Avalonia.FuncUI.LiveView", "src\Avalonia.FuncUI.LiveView\Avalonia.FuncUI.LiveView.fsproj", "{4D51DD74-3547-4077-8821-BAA46F554C60}"
+EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Avalonia.FuncUI.LiveView.Cli", "src\Avalonia.FuncUI.LiveView.Cli\Avalonia.FuncUI.LiveView.Cli.fsproj", "{4DC7B574-8C51-41CE-AC00-387685C930F8}"
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Sample", "src\Sample\Sample.fsproj", "{5C2F7CB8-7EC7-4C46-855C-0D9D2B195EA5}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{77D972B7-9F97-4C02-959F-C95D4B35CD61}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Avalonia.FuncUI.LiveView.Core.Tests", "tests\Avalonia.FuncUI.LiveView.Core.Tests\Avalonia.FuncUI.LiveView.Core.Tests.fsproj", "{20DD3B4D-46C8-4F78-B114-6ED2CCAA1433}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Avalonia.FuncUI.LiveView.Tests", "tests\Avalonia.FuncUI.LiveView.Tests\Avalonia.FuncUI.LiveView.Tests.fsproj", "{05AEA857-8FF8-4B09-A592-948378015A06}"
+EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Avalonia.FuncUI.LiveView.Protocol.Tests", "tests\Avalonia.FuncUI.LiveView.Protocol.Tests\Avalonia.FuncUI.LiveView.Protocol.Tests.fsproj", "{D8694ECB-D455-4BFB-828E-953663848471}"
+EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Avalonia.FuncUI.LiveView.Analyzer.Tests", "tests\Avalonia.FuncUI.LiveView.Analyzer.Tests\Avalonia.FuncUI.LiveView.Analyzer.Tests.fsproj", "{20DD3B4D-46C8-4F78-B114-6ED2CCAA1433}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -61,6 +72,26 @@ Global
 		{20DD3B4D-46C8-4F78-B114-6ED2CCAA1433}.Release|Any CPU.Build.0 = Release|Any CPU
 		{049BAB3B-2D97-4B66-94C9-7E5E8F85171C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{049BAB3B-2D97-4B66-94C9-7E5E8F85171C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D07BE140-CF50-439E-882E-1FB88DF5B11F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D07BE140-CF50-439E-882E-1FB88DF5B11F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D07BE140-CF50-439E-882E-1FB88DF5B11F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D07BE140-CF50-439E-882E-1FB88DF5B11F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4DC7B574-8C51-41CE-AC00-387685C930F8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4DC7B574-8C51-41CE-AC00-387685C930F8}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4DC7B574-8C51-41CE-AC00-387685C930F8}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4DC7B574-8C51-41CE-AC00-387685C930F8}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D8694ECB-D455-4BFB-828E-953663848471}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D8694ECB-D455-4BFB-828E-953663848471}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D8694ECB-D455-4BFB-828E-953663848471}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D8694ECB-D455-4BFB-828E-953663848471}.Release|Any CPU.Build.0 = Release|Any CPU
+		{05AEA857-8FF8-4B09-A592-948378015A06}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{05AEA857-8FF8-4B09-A592-948378015A06}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{05AEA857-8FF8-4B09-A592-948378015A06}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{05AEA857-8FF8-4B09-A592-948378015A06}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0787B8F0-B4BE-4477-940E-E4121B26CEB1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0787B8F0-B4BE-4477-940E-E4121B26CEB1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0787B8F0-B4BE-4477-940E-E4121B26CEB1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0787B8F0-B4BE-4477-940E-E4121B26CEB1}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{AA59F86F-40EC-4935-928E-ACE854A73DE4} = {DB8DF710-E6E6-4722-99D4-514834AEEB16}
@@ -69,5 +100,10 @@ Global
 		{012E7FAA-B6D4-4FCE-B9C9-F795C53FEA46} = {DB8DF710-E6E6-4722-99D4-514834AEEB16}
 		{5C2F7CB8-7EC7-4C46-855C-0D9D2B195EA5} = {DB8DF710-E6E6-4722-99D4-514834AEEB16}
 		{20DD3B4D-46C8-4F78-B114-6ED2CCAA1433} = {77D972B7-9F97-4C02-959F-C95D4B35CD61}
+		{D07BE140-CF50-439E-882E-1FB88DF5B11F} = {DB8DF710-E6E6-4722-99D4-514834AEEB16}
+		{4DC7B574-8C51-41CE-AC00-387685C930F8} = {DB8DF710-E6E6-4722-99D4-514834AEEB16}
+		{D8694ECB-D455-4BFB-828E-953663848471} = {77D972B7-9F97-4C02-959F-C95D4B35CD61}
+		{05AEA857-8FF8-4B09-A592-948378015A06} = {77D972B7-9F97-4C02-959F-C95D4B35CD61}
+		{0787B8F0-B4BE-4477-940E-E4121B26CEB1} = {DB8DF710-E6E6-4722-99D4-514834AEEB16}
 	EndGlobalSection
 EndGlobal

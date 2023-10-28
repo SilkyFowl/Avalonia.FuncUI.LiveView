@@ -1,20 +1,20 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>net6.0</TargetFramework>
-    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <TargetFrameworks>net6.0;net7.0</TargetFrameworks>
     <PackAsTool>true</PackAsTool>
-    <ToolCommandName>funcui-analyzer</ToolCommandName>
+    <ToolCommandName>funcui-liveview</ToolCommandName>
   </PropertyGroup>
+
   <ItemGroup>
-    <Compile Include="FuncUIAnalysis.fs" />
-    <Compile Include="Analyzer.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\Avalonia.FuncUI.LiveView.Core\Avalonia.FuncUI.LiveView.Core.fsproj" />
     <ProjectReference Include="..\Avalonia.FuncUI.LiveView.Protocol\Avalonia.FuncUI.LiveView.Protocol.fsproj" />
+    <ProjectReference Include="..\Avalonia.FuncUI.LiveView\Avalonia.FuncUI.LiveView.fsproj" />
   </ItemGroup>
   <Import Project="..\..\.paket\Paket.Restore.targets" />
 </Project>
