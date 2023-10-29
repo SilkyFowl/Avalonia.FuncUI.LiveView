@@ -12,12 +12,14 @@ module MSBuildLocator =
     let register () =
         let visualStudioInstances = MSBuildLocator.QueryVisualStudioInstances()
         let instance = visualStudioInstances |> Seq.maxBy (fun i -> i.Version)
-        MSBuildLocator.RegisterInstance(instance)
+
+        if MSBuildLocator.CanRegister then
+            MSBuildLocator.RegisterInstance(instance)
 
     /// Registers the highest version instance of MSBuild found on the machine if it is not already registered.
     [<MethodImpl(MethodImplOptions.NoInlining)>]
     let registerIfNotRegistered () =
-        if not <| isRegistered () then
+        if not MSBuildLocator.IsRegistered then
             register ()
 
 
