@@ -10,7 +10,6 @@ module StyledElement =
 
     type StyledElement with
 
-        /// 参考:
         static member styles(styleSeq: list<(Selector -> Selector) * list<IAttr<'a>>>) =
             let styles = Styles()
 

@@ -58,6 +58,7 @@ module FsiSession =
                "--gui-"
                "--debug+"
                "--shadowcopyreferences+"
+               "-d:DEBUG"
                "-d:LIVEPREVIEW"
                for refSource in projectInfo.ReferenceSources do
                    $"-r:{refSource.Path}"

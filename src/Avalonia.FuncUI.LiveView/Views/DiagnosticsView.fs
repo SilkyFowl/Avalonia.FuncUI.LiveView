@@ -105,6 +105,8 @@ let create (diagnostics: Diagnostic list) attrs =
         )
     ]
 
+#if DEBUG
+
 [<LivePreview>]
 let preview () =
     create [
@@ -150,3 +152,5 @@ let preview () =
           Message = "This is a test hidden message."
           Subcategory = "TEST" }
     ] []
+
+#endif

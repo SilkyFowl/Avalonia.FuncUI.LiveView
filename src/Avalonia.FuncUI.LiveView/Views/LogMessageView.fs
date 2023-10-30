@@ -16,9 +16,11 @@ let create (msg: LogMessage option) attrs =
         | Some(LogInfo msg) -> $"Info: {removeLineBreaks msg}"
         | Some(LogDebug msg) -> $"Debug: {removeLineBreaks msg}"
         | Some(LogError msg) -> $"Error: {removeLineBreaks msg}"
-        | None -> "None." 
+        | None -> "None."
 
     TextBlock.create [ TextBlock.text text ]
+
+#if DEBUG
 
 [<LivePreview>]
 let preview () =
@@ -32,3 +34,5 @@ let preview () =
             create None []
         ]
     ]
+
+#endif

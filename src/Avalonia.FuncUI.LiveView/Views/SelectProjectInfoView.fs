@@ -123,5 +123,9 @@ let create (log: LogMessage -> unit) onOpenSelectProject =
             ]
     )
 
+#if DEBUG
+
 [<LivePreview>]
 let filePickerView () = create ignore ignore
+
+#endif
