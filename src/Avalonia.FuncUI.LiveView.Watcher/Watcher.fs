@@ -1,7 +1,10 @@
 namespace Avalonia.FuncUI.LiveView
 
 open System
+open System.IO
 open System.Text.RegularExpressions
+open System.Reflection
+open System.Runtime.Loader
 open System.Threading
 open System.Threading.Channels
 
@@ -75,18 +78,94 @@ module internal Diagnostic =
         )
 
 module Watcher =
+    open System.Collections.Concurrent
+
     let inline tryDispose (x: #IDisposable option) =
         match x with
         | Some x -> x.Dispose()
         | None -> ()
 
+    /// watch project assembly and load ot reload assembly dynamically.
+    /// To avaid build project, read assembly byte from byte[], not from file directly.
+    ///
+    /// > [TODO]:
+    /// > implement `Unload` method to unload assembly manually after [dotnetfsharp/#15669](https://github.com/dotnet/fsharp/issues/15669) fixed.
+    /// > `Unload` is not workint in FSI-generated AssemblyLoadContext. So, can't unload assembly manually by create collectible  AssemblyLoadContext.
+    type PrijectAssemblyWatcher(info: ProjectInfo) =
+
+        /// target assembly path to load assembly dynamically.
+        let watchPaths =
+            [ info.TargetPath
+              yield!
+                  info.ReferenceSources
+                  |> List.filter (fun x -> x.ReferenceSourceTarget = "ProjectReference")
+                  |> List.map (fun x -> x.Path) ]
+
+        /// loaded assembly cache.
+        let loadedAssemblyDictionary =
+            let concurrencyLevel = Environment.ProcessorCount * 2
+            let capacity = List.length watchPaths
+            ConcurrentDictionary<string, Assembly>(concurrencyLevel, capacity)
+
+        let tryRemove key =
+            match loadedAssemblyDictionary.TryRemove(key = key) with
+            | result, _ -> result
+
+        /// if watching assembly updated, remove from cache.
+        /// Updated assembly will be loaded again when assembly is requested after removed from cache.
+        let assemblyFileWatchers =
+            watchPaths
+            |> List.groupBy (fun path -> Path.GetDirectoryName path)
+            |> List.map (fun (dir, paths) ->
+                let watcher = new FileSystemWatcher(dir)
+                paths |> List.iter (Path.GetFileName >> watcher.Filters.Add)
+                watcher.EnableRaisingEvents <- true
+                watcher.NotifyFilter <- NotifyFilters.LastWrite
+
+                watcher.Changed.Add(fun e ->
+                    while loadedAssemblyDictionary.ContainsKey e.FullPath && not (tryRemove e.FullPath) do
+                        ())
+
+                watcher)
+
+        /// if assembly not found in cache, load assembly from file bytes.
+        ///
+        /// > [NOTE]:
+        /// > AssemblyLoadContext.Resolving event will continue to fire if assembly is not loaded into that AssemblyLoadContext, such as return assembly from another AssemblyLoadContext.
+        /// > This behaiar is used to replace loaded project assembly.
+        let resolvingHandler =
+            Func<AssemblyLoadContext, AssemblyName, Assembly>(fun ctx name ->
+                watchPaths
+                |> List.tryFind (fun path ->
+                    AssemblyName.ReferenceMatchesDefinition(name, AssemblyName.GetAssemblyName path))
+                |> Option.map (fun path -> loadedAssemblyDictionary.GetOrAdd(path, File.ReadAllBytes >> Assembly.Load))
+                |> Option.defaultValue null)
+
+        do AssemblyLoadContext.Default.add_Resolving resolvingHandler
+
+        let mutable isDisposed = false
+
+        interface IDisposable with
+            member _.Dispose() =
+                if not isDisposed then
+                    isDisposed <- true
+                    AssemblyLoadContext.Default.remove_Resolving resolvingHandler
+                    assemblyFileWatchers |> List.iter (fun x -> x.Dispose())
+
     type private WatcherMsg = EvalScript of msg: Msg
 
+    /// watch project and eval script.
     type internal Service() =
 
         let cts = new CancellationTokenSource()
+
+        /// channel for communication to runner.
         let msgChannel = Channel.CreateUnbounded<WatcherMsg>()
+
+        /// event for eval result.
         let evalResultEvent = new Event<EvalResult>()
+
+        /// event for log message.
         let logMessageEvent = new Event<LogMessage>()
 
 
@@ -98,10 +177,16 @@ module Watcher =
 
             logger LogInfo, logger LogError, logger LogDebug
 
+        /// project info to watch.
         let mutable projectInfo: ProjectInfo option = None
+
+        /// watcher for project assembly.
+        let mutable prijectAssemblyWatcher: PrijectAssemblyWatcher option = None
+
+        /// fsi session for eval script.
         let mutable fsi: FsiEvaluationSession option = None
 
-
+        /// add or update fs code to fsi session.
         let addOrUpdateFsCode path content =
             content
             // Fsi newline code for any OS is LF(\n).
@@ -111,10 +196,12 @@ module Watcher =
 
         do LivePreviewFileSystem.setLivePreviewFileSystem ()
 
-
+        /// runner for eval script. if want to communicate to runner, write to msgChannel.
         let runner =
             task {
                 while not cts.IsCancellationRequested do
+
+                    // loop for read all messages from channel.
                     for msg in msgChannel.Reader.ReadAllAsync(cts.Token) do
                         try
                             match projectInfo, fsi, msg with
@@ -161,16 +248,18 @@ module Watcher =
                 match projectInfo with
                 | Some current when current = newProjectInfo -> ()
                 | _ ->
-
+                    tryDispose prijectAssemblyWatcher
                     tryDispose fsi
                     projectInfo <- Some newProjectInfo
+                    prijectAssemblyWatcher <- Some(new PrijectAssemblyWatcher(newProjectInfo))
                     fsi <- Some(FsiSession.ofProjectInfo newProjectInfo)
 
             member _.UnWatch() =
                 tryDispose fsi
+                tryDispose prijectAssemblyWatcher
                 projectInfo <- None
                 fsi <- None
-
+                prijectAssemblyWatcher <- None
 
             member _.RequestEval msg =
                 let msg = EvalScript msg
