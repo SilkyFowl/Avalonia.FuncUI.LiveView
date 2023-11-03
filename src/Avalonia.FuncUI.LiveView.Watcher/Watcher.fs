@@ -85,13 +85,15 @@ module Watcher =
         | Some x -> x.Dispose()
         | None -> ()
 
+    type FullPath = string
+
     /// watch project assembly and load ot reload assembly dynamically.
     /// To avaid build project, read assembly byte from byte[], not from file directly.
     ///
     /// > [TODO]:
     /// > implement `Unload` method to unload assembly manually after [dotnetfsharp/#15669](https://github.com/dotnet/fsharp/issues/15669) fixed.
     /// > `Unload` is not workint in FSI-generated AssemblyLoadContext. So, can't unload assembly manually by create collectible  AssemblyLoadContext.
-    type PrijectAssemblyWatcher(info: ProjectInfo) =
+    type PrijectAssemblyWatcher(info: ProjectInfo, onPrijectAssemblyUpdated: FullPath -> unit) =
 
         /// target assembly path to load assembly dynamically.
         let watchPaths =
@@ -124,7 +126,9 @@ module Watcher =
 
                 watcher.Changed.Add(fun e ->
                     while loadedAssemblyDictionary.ContainsKey e.FullPath && not (tryRemove e.FullPath) do
-                        ())
+                        ()
+
+                    onPrijectAssemblyUpdated e.FullPath)
 
                 watcher)
 
@@ -152,7 +156,9 @@ module Watcher =
                     AssemblyLoadContext.Default.remove_Resolving resolvingHandler
                     assemblyFileWatchers |> List.iter (fun x -> x.Dispose())
 
-    type private WatcherMsg = EvalScript of msg: Msg
+    type private WatcherMsg =
+        | EvalScript of msg: Msg
+        | ProjectAssemblyUpdated of fullPath: string
 
     /// watch project and eval script.
     type internal Service() =
@@ -161,6 +167,10 @@ module Watcher =
 
         /// channel for communication to runner.
         let msgChannel = Channel.CreateUnbounded<WatcherMsg>()
+
+        let writeMsg msg =
+            while not (msgChannel.Writer.TryWrite msg) do
+                ()
 
         /// event for eval result.
         let evalResultEvent = new Event<EvalResult>()
@@ -194,7 +204,29 @@ module Watcher =
             |> String.concat ""
             |> LivePreviewFileSystem.addOrUpdateFsCode path
 
+
+        let watch (newProjectInfo: ProjectInfo) =
+            match projectInfo with
+            | Some current when current = newProjectInfo -> ()
+            | _ ->
+                tryDispose prijectAssemblyWatcher
+                tryDispose fsi
+                projectInfo <- Some newProjectInfo
+
+                prijectAssemblyWatcher <-
+                    Some(new PrijectAssemblyWatcher(newProjectInfo, ProjectAssemblyUpdated >> writeMsg))
+
+                fsi <- Some(FsiSession.ofProjectInfo newProjectInfo)
+
+        let unWatch () =
+            tryDispose fsi
+            tryDispose prijectAssemblyWatcher
+            projectInfo <- None
+            fsi <- None
+            prijectAssemblyWatcher <- None
+
         do LivePreviewFileSystem.setLivePreviewFileSystem ()
+
 
         /// runner for eval script. if want to communicate to runner, write to msgChannel.
         let runner =
@@ -234,6 +266,14 @@ module Watcher =
                                           error = ex
                                           warnings = warnings }
                                     |> evalResultEvent.Trigger
+                            | Some projectInfo, Some fsi, ProjectAssemblyUpdated fullPath ->
+                                logDebug $"project assembly updated: {fullPath}"
+
+                                unWatch ()
+
+                                watch projectInfo
+
+                                logDebug $"fsi reset succeeded"
 
                         with ex ->
                             logErr $"{typeof<Service>} failed: {ex}"
@@ -244,28 +284,11 @@ module Watcher =
         interface IWatcherService with
             member _.WatchingProjectInfo = projectInfo
 
-            member _.Watch(newProjectInfo: ProjectInfo) =
-                match projectInfo with
-                | Some current when current = newProjectInfo -> ()
-                | _ ->
-                    tryDispose prijectAssemblyWatcher
-                    tryDispose fsi
-                    projectInfo <- Some newProjectInfo
-                    prijectAssemblyWatcher <- Some(new PrijectAssemblyWatcher(newProjectInfo))
-                    fsi <- Some(FsiSession.ofProjectInfo newProjectInfo)
+            member _.Watch(newProjectInfo: ProjectInfo) = watch newProjectInfo
 
-            member _.UnWatch() =
-                tryDispose fsi
-                tryDispose prijectAssemblyWatcher
-                projectInfo <- None
-                fsi <- None
-                prijectAssemblyWatcher <- None
+            member _.UnWatch() = unWatch ()
 
-            member _.RequestEval msg =
-                let msg = EvalScript msg
-
-                while not (msgChannel.Writer.TryWrite msg) do
-                    ()
+            member _.RequestEval msg = EvalScript msg |> writeMsg
 
             [<CLIEvent>]
             member _.OnEvalResult = evalResultEvent.Publish
