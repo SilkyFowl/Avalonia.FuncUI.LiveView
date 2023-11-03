@@ -383,6 +383,24 @@ vscodeの場合は、以下のようなタスクを追加しておくといい�
                     "FUNCUI_LIVEVIEW_WATICHING_PROJECT_INFO_TARGET_FRAMEWORK": "net7.0"
                 }
             }
+        },
+        {
+            "label": "watch App project",
+            "type": "shell",
+            "command": "dotnet",
+            "args": [
+                "watch",
+                "build", // or "run" or "test", etc.
+                "--project",
+                "${workspaceFolder}/src/App/App.fsproj"
+            ],
+        },
+        {
+            "label": "start watch App project and funcui-liveview",
+            "dependsOn": [
+                "watch App project",
+                "start funcui-liveview"
+            ],
         }
 ```
 
