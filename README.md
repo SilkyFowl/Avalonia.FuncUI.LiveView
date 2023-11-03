@@ -67,7 +67,6 @@ code .
 
 Create a project.
 
-
 ```sh
 dotnet new tool-manifest
 dotnet new gitignore
@@ -112,10 +111,11 @@ source https://api.nuget.org/v3/index.json
 storage: none
 
 nuget FSharp.Core content: none
-nuget Avalonia.FuncUI 1.0.1
-nuget Avalonia.Desktop 11.0.3
-nuget Avalonia.Themes.Fluent 11.0.3
-nuget SilkyFowl.Avalonia.FuncUI.LiveView 0.0.3
+nuget Avalonia.FuncUI 1.1.0
+nuget Avalonia.Desktop 11.0.5
+nuget Avalonia.Diagnostics 11.0.5
+nuget Avalonia.Themes.Fluent 11.0.5
+nuget SilkyFowl.Avalonia.FuncUI.LiveView.Attribute 0.0.4-preview01
 ```
 
 
@@ -123,8 +123,9 @@ nuget SilkyFowl.Avalonia.FuncUI.LiveView 0.0.3
 dotnet paket convert-from-nuget --force --no-install --no-auto-restore
 dotnet paket add -p ./src/YourFuncUIApp/YourFuncUIApp.fsproj Avalonia.FuncUI --no-install
 dotnet paket add -p ./src/YourFuncUIApp/YourFuncUIApp.fsproj Avalonia.Desktop --no-install
+dotnet paket add -p ./src/YourFuncUIApp/YourFuncUIApp.fsproj Avalonia.Diagnostics --no-install
 dotnet paket add -p ./src/YourFuncUIApp/YourFuncUIApp.fsproj Avalonia.Themes.Fluent --no-install
-dotnet paket add -p ./src/YourFuncUIApp/YourFuncUIApp.fsproj SilkyFowl.Avalonia.FuncUI.LiveView --no-install
+dotnet paket add -p ./src/YourFuncUIApp/YourFuncUIApp.fsproj SilkyFowl.Avalonia.FuncUI.LiveView.Attribute --no-install
 dotnet paket install
 ```
 
@@ -145,10 +146,10 @@ Add a dependency to `YourFuncUIApp.fsproj` as follows:
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Avalonia.Desktop" Version="11.0.3" />
-    <PackageReference Include="Avalonia.Themes.Fluent" Version="11.0.3" />
-    <PackageReference Include="Avalonia.FuncUI" Version="1.0.1" />
-    <PackageReference Include="SilkyFowl.Avalonia.FuncUI.LiveView" Version="0.0.3" />
+    <PackageReference Include="Avalonia.Desktop" Version="11.0.5" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="11.0.5" />
+    <PackageReference Include="Avalonia.FuncUI" Version="1.1.0" />
+    <PackageReference Include="SilkyFowl.Avalonia.FuncUI.LiveView.Attribute" Version="0.0.4-preview01" />
   </ItemGroup>
 </Project>
 ```
@@ -174,10 +175,8 @@ open Avalonia.FuncUI.DSL
 open Avalonia.Layout
 
 open Avalonia.FuncUI.LiveView
-open Avalonia.FuncUI.LiveView.Core.Types
 
 module Main =
-    [<LivePreview>]
     let view () =
         Component(fun ctx ->
             let state = ctx.useState 0
@@ -207,6 +206,9 @@ module Main =
                     ]
                 ]
             ])
+    
+    [<LivePreview>]
+    let preview () = view()
 
 type MainWindow() =
     inherit HostWindow()
@@ -214,13 +216,6 @@ type MainWindow() =
     do
         base.Title <- "Counter Example"
         base.Content <- Main.view ()
-
-module LiveView =
-    let enabled =
-        match System.Environment.GetEnvironmentVariable("FUNCUI_LIVEPREVIEW") with
-        | null -> false
-        | "1" -> true
-        | _ -> false
 
 type App() =
     inherit Application()
@@ -232,17 +227,14 @@ type App() =
     override this.OnFrameworkInitializationCompleted() =
         match this.ApplicationLifetime with
         | :? IClassicDesktopStyleApplicationLifetime as desktopLifetime ->
-            desktopLifetime.MainWindow <-
-                if LiveView.enabled then
-                    LiveViewWindow() :> Window
-                else
-                    MainWindow()
+            desktopLifetime.MainWindow <- MainWindow()
         | _ -> ()
 
 #if DEBUG
         this.AttachDevTools()
 #endif
 
+#if !LIVEPREVIEW
 module Program =
 
     [<EntryPoint>]
@@ -252,6 +244,7 @@ module Program =
             .UsePlatformDetect()
             .UseSkia()
             .StartWithClassicDesktopLifetime(args)
+#endif
 ```
 
 Start the program and check if it works.
@@ -274,20 +267,6 @@ dotnet run --project ./src/YourFuncUIApp/YourFuncUIApp.fsproj
             "preLaunchTask": "build",
             "program": "${workspaceFolder}/src/YourFuncUIApp/bin/Debug/net7.0/YourFuncUIApp.dll",
             "args": [],
-            "cwd": "${workspaceFolder}",
-            "stopAtEntry": false,
-            "console": "internalConsole"
-        },
-        {
-            "name": "FuncUI Launch (Preview)",
-            "type": "coreclr",
-            "request": "launch",
-            "preLaunchTask": "build",
-            "program": "${workspaceFolder}/src/YourFuncUIApp/bin/Debug/net7.0/YourFuncUIApp.dll",
-            "args": [],
-            "env": {
-                "FUNCUI_LIVEPREVIEW": "1"
-            },
             "cwd": "${workspaceFolder}",
             "stopAtEntry": false,
             "console": "internalConsole"
@@ -339,11 +318,11 @@ When launched, proceed to the next step.
 
 Install Analyzer.
 
-> **Warning**
+> **Note**
 > Installation of SilkyFowl.Avalonia.FuncUI.LiveView.Analyzer has changed since v0.0.3.
 
 ```sh
-dotnet tool install SilkyFowl.Avalonia.FuncUI.LiveView.Analyzer --version 0.0.3 --tool-path analyzers
+dotnet tool install SilkyFowl.Avalonia.FuncUI.LiveView.Analyzer --version 0.0.4-preview01 --tool-path analyzers
 ```
 
 ### Check if FuncUI Analyzer works
@@ -362,119 +341,50 @@ With these conditions, editing **the F# code recognized in the `Solution Explore
 >
 > ![there-is-no-fsx-in-fs-explorer]
 
-### Launch LivePreview
+### Setting up FuncUI LivePreview
 
-#### When using debugger
+#### Install LivePreview
 
-Change the debugger setting to `FuncUI Launch(Live Preview)` and start it.
-
-[Enjoy-It!!]
-
-#### When not using debugger
-
-Set environment variables.
-
-bash
-
-```bash
-export FUNCUI_LIVEPREVIEW=1
-```
-
-cmd
-
-```bat
-set FUNCUI_LIVEPREVIEW=1
-```
-
-powershell
-
-```powershell
-$env:FUNCUI_LIVEPREVIEW = 1
+```sh
+dotnet tool install SilkyFowl.Avalonia.FuncUI.LiveView.Cli --version 0.0.4-preview01
 ```
 
 > **Note**
-> Without the debugger, response to code changes is improved.
+> Since v0.0.4, recommended to use `SilkyFowl.Avalonia.FuncUI.LiveView.Cli` from dotnet-tool, but you can also use `SilkyFowl.Avalonia.FuncUI.LiveView` liblary as it was before.
+
+#### Check if LivePreview works
 
 ```sh
-dotnet build -c Release
-dotnet ./src/YourFuncUIApp/bin/Release/net7.0/YourFuncUIApp.dll
+dotnet funcui-liveview
 ```
 
-## Known Issues, Limitations
+#### Startup settings
 
-- [ ] Write quickly.
+Although funcui-liveview requires you to select the project to be previewed, you can set following environment variables to automatically select the project at startup.
 
-### If there is a DU in the file that consists entirely of valued case labels, it cannot be previewed
+- `FUNCUI_LIVEVIEW_WATICHING_PROJECT_INFO_PATH`...Path to the project file to be previewed.
+- `FUNCUI_LIVEVIEW_WATICHING_PROJECT_INFO_TARGET_FRAMEWORK`...TargetFramework of the project to be previewed.
 
-![cant...][cant-analyze-du]
+For vscode, you can add task as follows:
 
-### workaround
-
-#### Make it a DU that includes one or more cases with no value
-
-![DU-with-any-no-value-case]
-
-#### DU are defined in a separate file
-
-```fsharp
-// TypesDefinition.fs
-module ElmishModule =
-    type State = { watermark: string }
-    let init = { watermark = "" }
-
-    type Msg =
-        | SetWatermark of string
-
-    let update msg state =
-        match msg with
-        | SetWatermark test -> { state with watermark = test }
+```json
+        {
+            "label": "start funcui-liveview",
+            "type": "shell",
+            "command": "dotnet",
+            "args": [
+                "funcui-liveview"
+            ],
+            "problemMatcher": [],
+            "isBackground": true,
+            "options": {
+                "env": {
+                    "FUNCUI_LIVEVIEW_WATICHING_PROJECT_INFO_PATH": "${workspaceFolder}/src/App/App.fsproj",
+                    "FUNCUI_LIVEVIEW_WATICHING_PROJECT_INFO_TARGET_FRAMEWORK": "net7.0"
+                }
+            }
+        }
 ```
-
-```fsharp
-// OtherFile.fs
-open Sample.ElmishModule
-
-let view (state:State) dispatch =
-
-    StackPanel.create [
-        StackPanel.spacing 10.0
-        StackPanel.children [
-            TextBox.create [
-                TextBox.watermark state.watermark
-                TextBox.horizontalAlignment HorizontalAlignment.Stretch
-            ]
-            Button.create [
-                Button.background "DarkBlue"
-                Button.content "Set Watermark"
-                Button.onClick (fun _ -> SetWatermark "test" |> dispatch)
-                Button.horizontalAlignment HorizontalAlignment.Stretch
-            ]
-
-
-            Button.create [
-                Button.content "Unset Watermark"
-                Button.onClick (fun _ -> SetWatermark "" |> dispatch)
-                Button.horizontalAlignment HorizontalAlignment.Stretch
-            ]
-        ]
-    ]
-
-
-type Host() as this =
-    inherit Hosts.HostControl()
-
-    do
-        Elmish.Program.mkSimple (fun () -> init) update view
-        |> Program.withHost this
-        |> Elmish.Program.run
-
-[<LivePreview>]
-let preview () = ViewBuilder.Create<Host> []
-```
-
-## mechanism
-
-- [ ] Write quickly.
 
 ## Plan
 

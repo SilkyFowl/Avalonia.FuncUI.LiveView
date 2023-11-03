@@ -1,6 +1,7 @@
 ### 0.0.4-preview01
 
-* Separate `LivePreviewAttribute` into project `Avalonia.FuncUI.LiveView.Attribute`.
+* Separate LivePreviewAttribute into project Avalonia.FuncUI.LiveView.Attribute.
+* breaking: Add dotnet tool funcui-liveview to live preview.
 
 ### 0.0.3
 
