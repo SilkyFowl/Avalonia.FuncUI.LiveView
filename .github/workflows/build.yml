@@ -1,0 +1,28 @@
+name: Build
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+jobs:
+    build:
+        name: Build
+        runs-on: ${{ matrix.os }}
+        strategy:
+            fail-fast: false
+            matrix:
+                os: [ubuntu-latest, windows-latest, macOS-latest]
+        steps:
+            - uses: actions/checkout@v4
+            - name: Setup dotnet
+              uses: actions/setup-dotnet@v3
+              with:
+                  dotnet-version: 7.0.x
+            - name: Install tools
+              run: dotnet tool restore
+            - name: paket restore
+              run: dotnet paket restore
+            - name: run build project
+              run: dotnet run --project ./src/Build -- -t PackAndSetLocalAnalyzer
