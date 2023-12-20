@@ -1,3 +1,7 @@
+### 0.0.4-preview02
+
+* Support .NET 8.0.
+
 ### 0.0.4-preview01
 
 * Separate LivePreviewAttribute into project Avalonia.FuncUI.LiveView.Attribute.
