@@ -52,8 +52,10 @@ module Protocol =
         abstract member OnLogMessage: IEvent<LogMessage>
 
 module Analyzer =
+    open System.Threading
+
     type IAnalyzerService =
-        abstract member Post: msg: Msg -> unit
+        abstract member PostAsync: ct: CancellationToken -> msg: Msg -> Async<unit>
 
 module Watcher =
     type ErrorNumber =
@@ -110,9 +112,9 @@ module Watcher =
         [<CLIEvent>]
         abstract member OnLogMessage: IEvent<LogMessage>
 
-type Config = { WatichingProjectInfo: WatichingProjectInfo option }
+type Config =
+    { WatichingProjectInfo: WatichingProjectInfo option }
 
-and WatichingProjectInfo = {
-    Path: string
-    TargetFramework: string
-}
+and WatichingProjectInfo =
+    { Path: string
+      TargetFramework: string }

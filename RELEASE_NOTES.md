@@ -1,3 +1,9 @@
+### 0.0.4-preview03
+
+* Support FSharp.Analyzers.SDK 0.23.0.
+* Support Avalonia.FuncUI 1.2.0.
+* Support Avalonia 11.0.9.
+
 ### 0.0.4-preview02
 
 * Support .NET 8.0.

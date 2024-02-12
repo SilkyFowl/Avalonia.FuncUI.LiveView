@@ -6,14 +6,14 @@ framework: netstandard2.0, netstandard2.1,  net6.0, net7.0, net8.0
 
 nuget Argu
 nuget FSharp.Compiler.Service 43.8.100
-nuget FSharp.Analyzers.SDK 0.11.0
+nuget FSharp.Analyzers.SDK 0.23.0
 nuget FSharp.Core content: none
 nuget FSharp.Control.TaskSeq 0.3.0
 
-nuget Avalonia.FuncUI ~> 1.1.0
-nuget Avalonia.FuncUI.Elmish ~> 1.1.0
+nuget Avalonia.FuncUI ~> 1.2.0
+nuget Avalonia.FuncUI.Elmish ~> 1.2.0
 
-nuget Avalonia ~> 11.0.5
+nuget Avalonia ~> 11.0.9
 nuget Avalonia.Desktop
 nuget Avalonia.Diagnostics
 nuget Avalonia.Themes.Fluent

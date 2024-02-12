@@ -3,7 +3,7 @@
   "isRoot": true,
   "tools": {
     "paket": {
-      "version": "8.0.0",
+      "version": "8.0.3",
       "commands": [
         "paket"
       ]
@@ -15,7 +15,7 @@
       ]
     },
     "silkyfowl.avalonia.funcui.liveview.cli": {
-      "version": "0.0.4-preview02",
+      "version": "0.0.4-preview03",
       "commands": [
         "funcui-liveview"
       ]

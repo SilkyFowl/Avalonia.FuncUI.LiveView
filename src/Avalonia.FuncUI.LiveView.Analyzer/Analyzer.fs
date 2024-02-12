@@ -65,10 +65,14 @@ type AnalyzerService() =
 
     do AppDomain.CurrentDomain.ProcessExit.Add(dispose)
 
+
     interface IAnalyzerService with
-        member __.Post msg =
-            while File.Exists Settings.socketPath && not (channel.Writer.TryWrite msg) do
-                ()
+        member __.PostAsync ct msg =
+            async {
+                if File.Exists Settings.socketPath then
+
+                    do! task { do! channel.Writer.WriteAsync(msg, ct) } |> Async.AwaitTask
+            }
 
     interface IDisposable with
         member __.Dispose() = dispose ()
@@ -80,56 +84,65 @@ let private nl = Environment.NewLine
 
 /// Analyzer can hook into IDE editing of F# code.
 /// This is used to realize LiveView.
-[<Analyzer "FuncUiAnalyzer">]
-let funcUiAnalyzer: Analyzer =
+[<EditorAnalyzer "FuncUiAnalyzer">]
+let funcUiAnalyzer: EditorContext -> Async<Message list> =
     SkiaPlatform.Initialize()
 
-    fun ctx ->
-        let livePreviewFuncs = ResizeArray()
-        let errorMessages = ResizeArray()
-        let notSuppurtPatternMessages = ResizeArray()
+    fun (ctx) ->
+        match ctx.CheckFileResults, ctx.TypedTree with
+        | Some checkResults, Some typedTree ->
+            async {
+                let livePreviewFuncs = ResizeArray()
+                let errorMessages = ResizeArray()
+                let notSuppurtPatternMessages = ResizeArray()
 
-        ctx.TypedTree.Declarations
-        |> List.iter (
-            FuncUIAnalysis.visitDeclaration
-                { OnLivePreviewFunc = fun v vs -> livePreviewFuncs.Add v.FullName
-                  OnInvalidLivePreviewFunc =
-                    fun v vs ->
-                        errorMessages.Add
-                            { Type = "FuncUi analyzer"
-                              Message = "LivePreview must be unit -> 'a"
-                              Code = "OV001"
-                              Severity = Error
-                              Range = v.DeclarationLocation
-                              Fixes = [] }
-                  OnInvalidStringCall =
-                    fun ex range m typeArgs argExprs ->
-                        errorMessages.Add
-                            { Type = "FuncUi analyzer"
-                              Message = $"{ex.GetType().Name}:{ex.Message}"
-                              Code = "OV002"
-                              Severity = Error
-                              Range = range
-                              Fixes = [] }
-                  OnNotSuppurtPattern =
-                    fun ex e ->
-                        notSuppurtPatternMessages.Add
-                            { Type = "FuncUi analyzer"
-                              Message = $"FuncUiAnalyzer does not support this pattern.{nl}{ex.Message}"
-                              Code = "OV000"
-                              Severity = Warning
-                              Range = e.Range
-                              Fixes = [] } }
-        )
+                let! token = Async.CancellationToken
 
-        List.distinct [
-            if
-                Seq.isEmpty errorMessages
-                && Seq.isEmpty notSuppurtPatternMessages
-                && not (Seq.isEmpty livePreviewFuncs)
-            then
-                Msg.create ctx.FileName ctx.Content |> service.Post
+                typedTree.Declarations
+                |> List.iter (
+                    FuncUIAnalysis.visitDeclaration
+                        { OnLivePreviewFunc = fun v vs -> livePreviewFuncs.Add v.FullName
+                          OnInvalidLivePreviewFunc =
+                            fun v vs ->
+                                errorMessages.Add
+                                    { Type = "FuncUi analyzer"
+                                      Message = "LivePreview must be unit -> 'a"
+                                      Code = "OV001"
+                                      Severity = Error
+                                      Range = v.DeclarationLocation
+                                      Fixes = [] }
+                          OnInvalidStringCall =
+                            fun ex range m typeArgs argExprs ->
+                                errorMessages.Add
+                                    { Type = "FuncUi analyzer"
+                                      Message = $"{ex.GetType().Name}:{ex.Message}"
+                                      Code = "OV002"
+                                      Severity = Error
+                                      Range = range
+                                      Fixes = [] }
+                          OnNotSuppurtPattern =
+                            fun ex e ->
+                                notSuppurtPatternMessages.Add
+                                    { Type = "FuncUi analyzer"
+                                      Message = $"FuncUiAnalyzer does not support this pattern.{nl}{ex.Message}"
+                                      Code = "OV000"
+                                      Severity = Warning
+                                      Range = e.Range
+                                      Fixes = [] } }
+                )
 
-            yield! errorMessages
-            yield! notSuppurtPatternMessages
-        ]
+                if
+                    Seq.isEmpty errorMessages
+                    && Seq.isEmpty notSuppurtPatternMessages
+                    && not (Seq.isEmpty livePreviewFuncs)
+                then
+                    let contents =
+                        [| for i in 0 .. ctx.SourceText.GetLineCount() - 1 do
+                               yield ctx.SourceText.GetLineString i |]
+
+                    do! Msg.create ctx.FileName contents |> service.PostAsync token
+
+                return List.distinct [ yield! errorMessages; yield! notSuppurtPatternMessages ]
+            }
+
+        | _, _ -> async.Return []
