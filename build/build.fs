@@ -164,7 +164,8 @@ let initTargets () =
 
     Target.create "UninstallAnalyerAsLocalTool" (fun _ ->
         let packageId = analyzerProjSetting.PackageId
-        let version = release.NugetVersion
+        // uninstall all versions
+        let version = "."
 
         if DotNet.isIntalledLocalTool packageId version None then
             DotNet.uninstallTool packageId None)
@@ -214,7 +215,11 @@ let initTargets () =
         DotNet.installTool liveViewCliProjSetting.PackageId release.NugetVersion None)
 
     Target.create "UninstallLiveViewCliAsLocalTool" (fun _ ->
-        if DotNet.isIntalledLocalTool liveViewCliProjSetting.PackageId release.NugetVersion None then
+        let packageId = liveViewCliProjSetting.PackageId
+        // uninstall all versions
+        let version = "."
+
+        if DotNet.isIntalledLocalTool packageId version None then
             DotNet.uninstallTool liveViewCliProjSetting.PackageId None)
 
     Target.create "ClearLiveViewCliNugetGlobalPackagesCache" (fun _ ->

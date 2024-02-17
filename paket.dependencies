@@ -6,7 +6,7 @@ framework: netstandard2.0, netstandard2.1,  net6.0, net7.0, net8.0
 
 nuget Argu
 nuget FSharp.Compiler.Service 43.8.100
-nuget FSharp.Analyzers.SDK 0.23.0
+nuget FSharp.Analyzers.SDK 0.24.0
 nuget FSharp.Core content: none
 nuget FSharp.Control.TaskSeq 0.3.0
 

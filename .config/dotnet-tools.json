@@ -15,7 +15,7 @@
       ]
     },
     "silkyfowl.avalonia.funcui.liveview.cli": {
-      "version": "0.0.4-preview03",
+      "version": "0.0.4-preview04",
       "commands": [
         "funcui-liveview"
       ]

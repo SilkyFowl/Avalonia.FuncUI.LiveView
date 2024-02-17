@@ -115,7 +115,7 @@ nuget Avalonia.FuncUI 1.1.0
 nuget Avalonia.Desktop 11.0.5
 nuget Avalonia.Diagnostics 11.0.5
 nuget Avalonia.Themes.Fluent 11.0.5
-nuget SilkyFowl.Avalonia.FuncUI.LiveView.Attribute 0.0.4-preview01
+nuget SilkyFowl.Avalonia.FuncUI.LiveView.Attribute 0.0.4-preview04
 ```
 
 
@@ -149,7 +149,7 @@ Add a dependency to `YourFuncUIApp.fsproj` as follows:
     <PackageReference Include="Avalonia.Desktop" Version="11.0.5" />
     <PackageReference Include="Avalonia.Themes.Fluent" Version="11.0.5" />
     <PackageReference Include="Avalonia.FuncUI" Version="1.1.0" />
-    <PackageReference Include="SilkyFowl.Avalonia.FuncUI.LiveView.Attribute" Version="0.0.4-preview01" />
+    <PackageReference Include="SilkyFowl.Avalonia.FuncUI.LiveView.Attribute" Version="0.0.4-preview04" />
   </ItemGroup>
 </Project>
 ```
@@ -322,7 +322,7 @@ Install Analyzer.
 > Installation of SilkyFowl.Avalonia.FuncUI.LiveView.Analyzer has changed since v0.0.3.
 
 ```sh
-dotnet tool install SilkyFowl.Avalonia.FuncUI.LiveView.Analyzer --version 0.0.4-preview01 --tool-path analyzers
+dotnet tool install SilkyFowl.Avalonia.FuncUI.LiveView.Analyzer --version 0.0.4-preview04 --tool-path analyzers
 ```
 
 ### Check if FuncUI Analyzer works
@@ -346,7 +346,7 @@ With these conditions, editing **the F# code recognized in the `Solution Explore
 #### Install LivePreview
 
 ```sh
-dotnet tool install SilkyFowl.Avalonia.FuncUI.LiveView.Cli --version 0.0.4-preview01
+dotnet tool install SilkyFowl.Avalonia.FuncUI.LiveView.Cli --version 0.0.4-preview04
 ```
 
 > **Note**

@@ -63,6 +63,45 @@
 			"problemMatcher": [
 				"$msCompile"
 			]
+		},
+		{
+			"label": "start funcui-liveview LiveView project",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"funcui-liveview"
+			],
+			"problemMatcher": [],
+			"isBackground": true,
+			"options": {
+				"env": {
+					"FUNCUI_LIVEVIEW_WATICHING_PROJECT_INFO_PATH": "${workspaceFolder}/src/Avalonia.FuncUI.LiveView/Avalonia.FuncUI.LiveView.fsproj",
+					"FUNCUI_LIVEVIEW_WATICHING_PROJECT_INFO_TARGET_FRAMEWORK": "net8.0"
+				}
+			}
+		},
+		{
+			"label": "watch LiveView project",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"watch",
+				"test", // or "run" or "test", etc.
+				"--project",
+				"${workspaceFolder}/tests/Avalonia.FuncUI.LiveView.Tests",
+				"--framework",
+				"net8.0"
+			],
+			"problemMatcher": [
+				"$msCompile"
+			]
+		},
+		{
+			"label": "start watch LiveView project and funcui-liveview",
+			"dependsOn": [
+				"watch LiveView project",
+				"start funcui-liveview LiveView project"
+			],
 		}
 	]
 }

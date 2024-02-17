@@ -16,6 +16,14 @@ open Avalonia.FuncUI.LiveView
 open Avalonia.FuncUI.LiveView.Types
 open Avalonia.FuncUI.LiveView.Types.Analyzer
 open Avalonia.FuncUI.LiveView.Protocol
+open System.Threading.Tasks
+
+type Async with
+
+    static member AwaitValueTask(task: ValueTask<'T>) = task.AsTask() |> Async.AwaitTask
+
+    static member AwaitValueTaskIgnore(task: ValueTask) =
+        task.AsTask() |> Async.AwaitTask |> Async.Ignore
 
 type AnalyzerService() =
     let logExn (ex: exn) =
@@ -70,8 +78,7 @@ type AnalyzerService() =
         member __.PostAsync ct msg =
             async {
                 if File.Exists Settings.socketPath then
-
-                    do! task { do! channel.Writer.WriteAsync(msg, ct) } |> Async.AwaitTask
+                    do! channel.Writer.WriteAsync(msg, ct) |> Async.AwaitValueTaskIgnore
             }
 
     interface IDisposable with
@@ -108,7 +115,7 @@ let funcUiAnalyzer: EditorContext -> Async<Message list> =
                                     { Type = "FuncUi analyzer"
                                       Message = "LivePreview must be unit -> 'a"
                                       Code = "OV001"
-                                      Severity = Error
+                                      Severity = Severity.Error
                                       Range = v.DeclarationLocation
                                       Fixes = [] }
                           OnInvalidStringCall =
@@ -117,7 +124,7 @@ let funcUiAnalyzer: EditorContext -> Async<Message list> =
                                     { Type = "FuncUi analyzer"
                                       Message = $"{ex.GetType().Name}:{ex.Message}"
                                       Code = "OV002"
-                                      Severity = Error
+                                      Severity = Severity.Error
                                       Range = range
                                       Fixes = [] }
                           OnNotSuppurtPattern =
@@ -126,7 +133,7 @@ let funcUiAnalyzer: EditorContext -> Async<Message list> =
                                     { Type = "FuncUi analyzer"
                                       Message = $"FuncUiAnalyzer does not support this pattern.{nl}{ex.Message}"
                                       Code = "OV000"
-                                      Severity = Warning
+                                      Severity = Severity.Warning
                                       Range = e.Range
                                       Fixes = [] } }
                 )

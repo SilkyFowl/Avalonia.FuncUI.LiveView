@@ -1,3 +1,7 @@
+### 0.0.4-preview04
+
+* Support FSharp.Analyzers.SDK 0.24.0.
+
 ### 0.0.4-preview03
 
 * Support FSharp.Analyzers.SDK 0.23.0.
